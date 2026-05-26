@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Lock } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
+import { Lock, Sun, Moon } from 'lucide-react'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+  const { theme, toggle } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -19,54 +21,65 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center p-4 relative">
+      <button
+        onClick={toggle}
+        className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
+        title="Toggle theme"
+      >
+        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+      </button>
+
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-accent-muted border border-accent/20 mb-5">
-            <span className="text-2xl font-semibold text-accent">A</span>
-          </div>
-          <h1 className="text-3xl font-semibold text-text-primary tracking-tight">Arche</h1>
-          <p className="text-text-secondary text-sm mt-1">Your private workspace</p>
+          <h1 className="text-4xl font-semibold text-text-primary tracking-widest mb-2">ARCHE</h1>
+          <p className="text-text-muted text-sm">Prime private workspace</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="w-full bg-bg-surface border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
-            />
-          </div>
-          <div>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full bg-bg-surface border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
-            />
-          </div>
+        <div className="bg-bg-surface border border-bg-border rounded-2xl p-6 shadow-xl">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
+              />
+            </div>
 
-          {error && (
-            <p className="text-danger text-xs px-1">{error}</p>
-          )}
+            {error && (
+              <div className="bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">
+                <p className="text-danger text-xs">{error}</p>
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <Lock size={14} />
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-1"
+            >
+              <Lock size={14} />
+              {loading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+        </div>
 
-        <p className="text-center text-text-muted text-xs mt-8">
-          Single-user private workspace
+        <p className="text-center text-text-muted text-xs mt-6">
+          Single-user · Private · Secure
         </p>
       </div>
     </div>

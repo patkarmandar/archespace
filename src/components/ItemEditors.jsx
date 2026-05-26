@@ -1,6 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { Plus, Trash2, GripVertical, CheckSquare, Square } from 'lucide-react'
-import { IconButton } from './UI'
+import { useState, useCallback, useRef } from 'react'
+import { Plus, Trash2, CheckSquare, Square } from 'lucide-react'
 
 function useDebounce(fn, delay = 600) {
   const timer = useRef(null)
@@ -8,6 +7,17 @@ function useDebounce(fn, delay = 600) {
     clearTimeout(timer.current)
     timer.current = setTimeout(() => fn(...args), delay)
   }, [fn, delay])
+}
+
+function DelBtn({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all shrink-0"
+    >
+      <Trash2 size={13} />
+    </button>
+  )
 }
 
 export function TextboxEditor({ content, onChange }) {
@@ -25,14 +35,13 @@ export function TextboxEditor({ content, onChange }) {
       onChange={handleChange}
       placeholder="Start writing anything…"
       rows={6}
-      className="w-full bg-bg-base border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-y min-h-[120px] font-sans leading-relaxed"
+      className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-y min-h-[120px] font-sans leading-relaxed"
     />
   )
 }
 
 export function ChecklistEditor({ content, onChange }) {
   const [items, setItems] = useState(content?.items || [])
-  const inputRef = useRef(null)
 
   const push = (newItems) => {
     setItems(newItems)
@@ -58,15 +67,14 @@ export function ChecklistEditor({ content, onChange }) {
     if (e.key === 'Enter') { e.preventDefault(); addItem() }
     if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
       e.preventDefault()
-      const newItems = items.filter((_, i) => i !== idx)
-      push(newItems)
+      push(items.filter((_, i) => i !== idx))
     }
   }
 
   return (
     <div className="space-y-1">
       {items.map((item, idx) => (
-        <div key={item.id} className="flex items-center gap-2 group">
+        <div key={item.id} className="flex items-center gap-2 group py-0.5">
           <button
             onClick={() => updateItem(item.id, 'checked', !item.checked)}
             className="shrink-0 text-text-muted hover:text-accent transition-colors"
@@ -86,17 +94,14 @@ export function ChecklistEditor({ content, onChange }) {
               item.checked ? 'line-through text-text-muted' : 'text-text-primary'
             }`}
           />
-          <IconButton danger onClick={() => removeItem(item.id)} className="opacity-0 group-hover:opacity-100">
-            <Trash2 size={13} />
-          </IconButton>
+          <DelBtn onClick={() => removeItem(item.id)} />
         </div>
       ))}
       <button
         onClick={addItem}
         className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
       >
-        <Plus size={14} />
-        Add item
+        <Plus size={14} /> Add item
       </button>
     </div>
   )
@@ -133,8 +138,8 @@ export function MenuListEditor({ content, onChange }) {
   return (
     <div className="space-y-1">
       {items.map((item, idx) => (
-        <div key={item.id} className="flex items-center gap-2 group">
-          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-0.5" />
+        <div key={item.id} className="flex items-center gap-2 group py-0.5">
+          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted" />
           <input
             data-menu-input
             value={item.text}
@@ -143,17 +148,14 @@ export function MenuListEditor({ content, onChange }) {
             placeholder="Item…"
             className="flex-1 bg-transparent text-sm focus:outline-none text-text-primary placeholder-text-muted"
           />
-          <IconButton danger onClick={() => removeItem(item.id)} className="opacity-0 group-hover:opacity-100">
-            <Trash2 size={13} />
-          </IconButton>
+          <DelBtn onClick={() => removeItem(item.id)} />
         </div>
       ))}
       <button
         onClick={addItem}
         className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
       >
-        <Plus size={14} />
-        Add item
+        <Plus size={14} /> Add item
       </button>
     </div>
   )
@@ -180,17 +182,15 @@ export function CardListEditor({ content, onChange }) {
   return (
     <div className="space-y-2">
       {items.map(item => (
-        <div key={item.id} className="group bg-bg-base border border-bg-border rounded-xl p-3 space-y-2">
+        <div key={item.id} className="group bg-bg-elevated border border-bg-border rounded-xl p-3 space-y-2">
           <div className="flex items-center gap-2">
             <input
               value={item.title}
               onChange={e => updateItem(item.id, 'title', e.target.value)}
               placeholder="Title…"
-              className="flex-1 bg-transparent text-sm font-medium focus:outline-none text-text-primary placeholder-text-muted"
+              className="flex-1 bg-transparent text-sm font-semibold focus:outline-none text-text-primary placeholder-text-muted"
             />
-            <IconButton danger onClick={() => removeItem(item.id)} className="opacity-0 group-hover:opacity-100 shrink-0">
-              <Trash2 size={13} />
-            </IconButton>
+            <DelBtn onClick={() => removeItem(item.id)} />
           </div>
           <textarea
             value={item.description}
@@ -205,8 +205,7 @@ export function CardListEditor({ content, onChange }) {
         onClick={addItem}
         className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors py-1"
       >
-        <Plus size={14} />
-        Add card
+        <Plus size={14} /> Add card
       </button>
     </div>
   )

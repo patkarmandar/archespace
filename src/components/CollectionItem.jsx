@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
 import { Trash2, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
-import { IconButton } from './UI'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './ItemEditors'
 
 const TYPE_LABELS = {
@@ -10,11 +9,11 @@ const TYPE_LABELS = {
   card_list: 'Cards',
 }
 
-const TYPE_COLORS = {
-  textbox: 'text-blue-400 bg-blue-400/10',
-  checkbox_list: 'text-green-400 bg-green-400/10',
-  menu_list: 'text-purple-400 bg-purple-400/10',
-  card_list: 'text-amber-400 bg-amber-400/10',
+const TYPE_STYLES = {
+  textbox: { text: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
+  checkbox_list: { text: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
+  menu_list: { text: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
+  card_list: { text: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
 }
 
 export default function CollectionItem({ item, onUpdate, onDelete }) {
@@ -22,6 +21,7 @@ export default function CollectionItem({ item, onUpdate, onDelete }) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleVal, setTitleVal] = useState(item.title)
   const saveTimer = useRef(null)
+  const style = TYPE_STYLES[item.type]
 
   const handleContentChange = useCallback((newContent) => {
     clearTimeout(saveTimer.current)
@@ -45,50 +45,77 @@ export default function CollectionItem({ item, onUpdate, onDelete }) {
   }
 
   return (
-    <div className="bg-bg-surface border border-bg-border rounded-2xl overflow-hidden group/item">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-bg-border">
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${TYPE_COLORS[item.type]}`}>
+    <div className="bg-bg-surface border border-bg-border rounded-2xl overflow-hidden">
+      {/* Item header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border">
+        {/* Type badge */}
+        <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg ${style.bg} ${style.text} border ${style.border}`}>
           {TYPE_LABELS[item.type]}
         </span>
 
+        {/* Title */}
         <div className="flex-1 min-w-0">
           {editingTitle ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={titleVal}
-                onChange={e => setTitleVal(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') { setTitleVal(item.title); setEditingTitle(false) } }}
-                className="flex-1 bg-bg-elevated border border-accent rounded-lg px-2 py-0.5 text-sm text-text-primary focus:outline-none"
-              />
-              <button onClick={saveTitle} className="text-success hover:opacity-80"><Check size={14} /></button>
-              <button onClick={() => { setTitleVal(item.title); setEditingTitle(false) }} className="text-text-muted hover:text-text-primary"><X size={14} /></button>
-            </div>
+            <input
+              autoFocus
+              value={titleVal}
+              onChange={e => setTitleVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') { setTitleVal(item.title); setEditingTitle(false) } }}
+              onBlur={saveTitle}
+              className="w-full bg-bg-elevated border border-accent rounded-lg px-2.5 py-1 text-sm font-medium text-text-primary focus:outline-none"
+            />
           ) : (
-            <div className="flex items-center gap-1.5 group/title">
-              <span className={`text-sm font-medium truncate ${item.title ? 'text-text-primary' : 'text-text-muted italic'}`}>
-                {item.title || 'Untitled'}
-              </span>
-              <button
-                onClick={() => setEditingTitle(true)}
-                className="opacity-0 group-hover/title:opacity-100 text-text-muted hover:text-text-primary transition-opacity"
-              >
-                <Pencil size={11} />
-              </button>
-            </div>
+            <span className={`text-sm font-medium truncate block ${item.title ? 'text-text-primary' : 'text-text-muted italic'}`}>
+              {item.title || 'Untitled'}
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 shrink-0">
-          <IconButton onClick={() => setCollapsed(v => !v)} title={collapsed ? 'Expand' : 'Collapse'}>
-            {collapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
-          </IconButton>
-          <IconButton danger onClick={() => onDelete(item.id)} title="Delete item">
-            <Trash2 size={14} />
-          </IconButton>
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {editingTitle ? (
+            <>
+              <button
+                onClick={saveTitle}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/15 border border-success/30 text-success hover:bg-success/25 transition-all"
+              >
+                <Check size={12} /> Save
+              </button>
+              <button
+                onClick={() => { setTitleVal(item.title); setEditingTitle(false) }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-elevated hover:bg-bg-hover text-text-secondary transition-all"
+              >
+                <X size={12} /> Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setEditingTitle(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-all"
+              >
+                <Pencil size={11} /> Rename
+              </button>
+              <button
+                onClick={() => setCollapsed(v => !v)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-all"
+              >
+                {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>
+              </button>
+              <button
+                onClick={() => onDelete(item.id)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-transparent hover:border-danger/30 hover:bg-danger/10 text-text-muted hover:text-danger transition-all"
+              >
+                <Trash2 size={12} />
+                <span className="hidden sm:inline">Delete</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
+      {/* Content */}
       {!collapsed && (
         <div className="px-4 py-4">
           {editors[item.type]}
