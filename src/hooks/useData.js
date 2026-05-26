@@ -18,7 +18,7 @@ export function useCollections() {
   })
 
   useEffect(() => {
-    const channel = supabase.channel('collections-changes')
+    const channel = supabase.channel(`collections-${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'collections' }, () => {
         qc.invalidateQueries({ queryKey: ['collections'] })
       })
@@ -81,7 +81,7 @@ export function useCollectionItems(collectionId) {
 
   useEffect(() => {
     if (!collectionId) return
-    const channel = supabase.channel(`items-${collectionId}`)
+    const channel = supabase.channel(`items-${crypto.randomUUID()}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'collection_items',
         filter: `collection_id=eq.${collectionId}`
