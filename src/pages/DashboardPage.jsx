@@ -289,7 +289,7 @@ export default function DashboardPage() {
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(col.id)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-danger bg-danger/10 hover:bg-danger/20 border border-danger/25 hover:border-danger/40 transition-all"
                     >
                       <Trash2 size={11} /> Delete
                     </button>
