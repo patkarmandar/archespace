@@ -213,24 +213,29 @@ export default function CollectionPage() {
 
       {/* ── Delete item confirm ── */}
       {deleteConfirm && (
-        <Modal title="Delete item?" onClose={() => setDeleteConfirm(null)}>
-          <p className="text-text-secondary text-sm mb-5 leading-relaxed">
+        <Modal
+          title="Delete item?"
+          onClose={() => setDeleteConfirm(null)}
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { remove.mutate(deleteConfirm); setDeleteConfirm(null) }}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                Delete item
+              </button>
+            </div>
+          }
+        >
+          <p className="text-text-secondary text-sm leading-relaxed">
             This item and all its content will be permanently deleted.
           </p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setDeleteConfirm(null)}
-              className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => { remove.mutate(deleteConfirm); setDeleteConfirm(null) }}
-              className="px-4 py-2.5 text-sm font-semibold bg-danger text-white rounded-xl hover:bg-red-600 transition-colors"
-            >
-              Delete item
-            </button>
-          </div>
         </Modal>
       )}
     </div>

@@ -283,7 +283,7 @@ export default function DashboardPage() {
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setModal({ type: 'edit', col })}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-text-primary hover:bg-bg-elevated border border-transparent hover:border-bg-border transition-all"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
                     >
                       <Pencil size={11} /> Edit
                     </button>
@@ -315,24 +315,29 @@ export default function DashboardPage() {
         />
       )}
       {deleteConfirm && (
-        <Modal title="Delete collection?" onClose={() => setDeleteConfirm(null)}>
-          <p className="text-text-secondary text-sm mb-5 leading-relaxed">
+        <Modal
+          title="Delete collection?"
+          onClose={() => setDeleteConfirm(null)}
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { remove.mutate(deleteConfirm); setDeleteConfirm(null) }}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                Delete collection
+              </button>
+            </div>
+          }
+        >
+          <p className="text-text-secondary text-sm leading-relaxed">
             This will permanently delete the collection and all its items. This cannot be undone.
           </p>
-          <div className="flex gap-2 justify-end">
-            <button
-              onClick={() => setDeleteConfirm(null)}
-              className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => { remove.mutate(deleteConfirm); setDeleteConfirm(null) }}
-              className="px-4 py-2.5 text-sm font-semibold bg-danger/90 hover:bg-danger text-white rounded-xl transition-colors"
-            >
-              Delete collection
-            </button>
-          </div>
         </Modal>
       )}
     </div>

@@ -92,13 +92,13 @@ export default function CollectionItem({ item, onUpdate, onDelete }) {
             <>
               <button
                 onClick={() => setEditingTitle(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-all"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
               >
                 <Pencil size={11} /> Rename
               </button>
               <button
                 onClick={() => setCollapsed(v => !v)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-all"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
               >
                 {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
                 <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>

@@ -7,14 +7,15 @@ export function Spinner({ size = 16 }) {
   )
 }
 
-export function Modal({ title, onClose, children }) {
+export function Modal({ title, onClose, children, footer }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-bg-surface border border-bg-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-bg-border sticky top-0 bg-bg-surface z-10">
+      <div className="bg-bg-surface border border-bg-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+        {/* Header — always visible */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-bg-border shrink-0">
           <h3 className="font-semibold text-text-primary">{title}</h3>
           <button
             onClick={onClose}
@@ -25,7 +26,16 @@ export function Modal({ title, onClose, children }) {
             </svg>
           </button>
         </div>
-        <div className="p-5">{children}</div>
+
+        {/* Scrollable body */}
+        <div className="p-5 overflow-y-auto flex-1">{children}</div>
+
+        {/* Footer — always pinned at bottom when provided */}
+        {footer && (
+          <div className="px-5 py-4 border-t border-bg-border shrink-0 bg-bg-surface rounded-b-2xl">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
