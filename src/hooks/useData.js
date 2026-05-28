@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+const now = () => new Date().toISOString()
+
+// ─────────────────────────────────────────────
+// Collections
+// ─────────────────────────────────────────────
 export function useCollections() {
   const qc = useQueryClient()
 
@@ -11,6 +16,7 @@ export function useCollections() {
       const { data, error } = await supabase
         .from('collections')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
       if (error) throw error
       return data
@@ -21,6 +27,7 @@ export function useCollections() {
     const channel = supabase.channel(`collections-${crypto.randomUUID()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'collections' }, () => {
         qc.invalidateQueries({ queryKey: ['collections'] })
+        qc.invalidateQueries({ queryKey: ['bin'] })
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -43,7 +50,7 @@ export function useCollections() {
     mutationFn: async ({ id, name, description }) => {
       const { data, error } = await supabase
         .from('collections')
-        .update({ name, description, updated_at: new Date().toISOString() })
+        .update({ name, description, updated_at: now() })
         .eq('id', id).select().single()
       if (error) throw error
       return data
@@ -51,17 +58,27 @@ export function useCollections() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
   })
 
+  // Soft delete — moves to recycle bin
   const remove = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase.from('collections').delete().eq('id', id)
+      const { error } = await supabase
+        .from('collections')
+        .update({ deleted_at: now() })
+        .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['bin'] })
+    },
   })
 
   return { ...query, create, update, remove }
 }
 
+// ─────────────────────────────────────────────
+// Collection Items
+// ─────────────────────────────────────────────
 export function useCollectionItems(collectionId) {
   const qc = useQueryClient()
 
@@ -72,6 +89,7 @@ export function useCollectionItems(collectionId) {
         .from('collection_items')
         .select('*')
         .eq('collection_id', collectionId)
+        .is('deleted_at', null)
         .order('position', { ascending: true })
       if (error) throw error
       return data
@@ -87,6 +105,7 @@ export function useCollectionItems(collectionId) {
         filter: `collection_id=eq.${collectionId}`
       }, () => {
         qc.invalidateQueries({ queryKey: ['items', collectionId] })
+        qc.invalidateQueries({ queryKey: ['bin'] })
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
@@ -97,10 +116,10 @@ export function useCollectionItems(collectionId) {
       const items = query.data || []
       const position = items.length
       const defaultContent = {
-        textbox: { text: '' },
+        textbox:       { text: '' },
         checkbox_list: { items: [] },
-        menu_list: { items: [] },
-        card_list: { items: [] },
+        menu_list:     { items: [] },
+        card_list:     { items: [] },
       }
       const { data, error } = await supabase
         .from('collection_items')
@@ -116,7 +135,7 @@ export function useCollectionItems(collectionId) {
     mutationFn: async ({ id, title, content }) => {
       const { data, error } = await supabase
         .from('collection_items')
-        .update({ title, content, updated_at: new Date().toISOString() })
+        .update({ title, content, updated_at: now() })
         .eq('id', id).select().single()
       if (error) throw error
       return data
@@ -124,13 +143,105 @@ export function useCollectionItems(collectionId) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['items', collectionId] }),
   })
 
+  // Soft delete — moves to recycle bin
   const remove = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase
+        .from('collection_items')
+        .update({ deleted_at: now() })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['items', collectionId] })
+      qc.invalidateQueries({ queryKey: ['bin'] })
+    },
+  })
+
+  return { ...query, create, update, remove }
+}
+
+// ─────────────────────────────────────────────
+// Recycle Bin
+// ─────────────────────────────────────────────
+export function useRecycleBin() {
+  const qc = useQueryClient()
+
+  const query = useQuery({
+    queryKey: ['bin'],
+    queryFn: async () => {
+      const [{ data: collections, error: e1 }, { data: items, error: e2 }] = await Promise.all([
+        supabase.from('collections').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+        supabase.from('collection_items').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+      ])
+      if (e1) throw e1
+      if (e2) throw e2
+      return { collections: collections || [], items: items || [] }
+    },
+  })
+
+  // Restore a collection
+  const restoreCollection = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase
+        .from('collections')
+        .update({ deleted_at: null })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['bin'] })
+    },
+  })
+
+  // Permanently delete a collection
+  const purgeCollection = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('collections').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+  })
+
+  // Restore an item
+  const restoreItem = useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase
+        .from('collection_items')
+        .update({ deleted_at: null })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bin'] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+    },
+  })
+
+  // Permanently delete an item
+  const purgeItem = useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase.from('collection_items').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['items', collectionId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
   })
 
-  return { ...query, create, update, remove }
+  // Empty entire bin
+  const emptyBin = useMutation({
+    mutationFn: async () => {
+      const [{ error: e1 }, { error: e2 }] = await Promise.all([
+        supabase.from('collections').delete().not('deleted_at', 'is', null),
+        supabase.from('collection_items').delete().not('deleted_at', 'is', null),
+      ])
+      if (e1) throw e1
+      if (e2) throw e2
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+  })
+
+  const total = (query.data?.collections?.length || 0) + (query.data?.items?.length || 0)
+
+  return { ...query, restoreCollection, purgeCollection, restoreItem, purgeItem, emptyBin, total }
 }

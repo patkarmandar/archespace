@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, LogOut, Download, Upload, Search, Folder, Pencil, Trash2, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { useCollections } from '../hooks/useData'
+import { useCollections, useRecycleBin } from '../hooks/useData'
 import { Modal, Spinner } from '../components/UI'
 import { supabase } from '../lib/supabase'
 
@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const { signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { data: collections = [], isLoading, create, update, remove } = useCollections()
+  const { total: binTotal } = useRecycleBin()
   const navigate = useNavigate()
   const [modal, setModal] = useState(null)
   const [search, setSearch] = useState('')
@@ -146,6 +147,18 @@ export default function DashboardPage() {
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               {theme === 'dark' ? 'Light' : 'Dark'}
             </button>
+            <button
+              onClick={() => navigate('/recycle-bin')}
+              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Trash2 size={14} />
+              Bin
+              {binTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1 leading-none">
+                  {binTotal > 99 ? '99+' : binTotal}
+                </span>
+              )}
+            </button>
             <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium cursor-pointer">
               <Upload size={14} />
               Import
@@ -174,6 +187,17 @@ export default function DashboardPage() {
               className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <button
+              onClick={() => navigate('/recycle-bin')}
+              className="relative p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+            >
+              <Trash2 size={16} />
+              {binTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1 leading-none">
+                  {binTotal > 99 ? '99+' : binTotal}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setMobileMenuOpen(v => !v)}

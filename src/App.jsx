@@ -6,6 +6,7 @@ import { useSessionTimeout } from './hooks/useSessionTimeout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import CollectionPage from './pages/CollectionPage'
+import RecycleBinPage from './pages/RecycleBinPage'
 import { Spinner } from './components/UI'
 
 const queryClient = new QueryClient({
@@ -38,10 +39,11 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/collection/:id" element={<ProtectedRoute><CollectionPage /></ProtectedRoute>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/login"            element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/"                 element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/collection/:id"   element={<ProtectedRoute><CollectionPage /></ProtectedRoute>} />
+      <Route path="/recycle-bin"      element={<ProtectedRoute><RecycleBinPage /></ProtectedRoute>} />
+      <Route path="*"                 element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
