@@ -1,53 +1,88 @@
-import { useState, useRef, useCallback } from 'react'
-import { Trash2, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Trash2, ChevronDown, ChevronUp, Pencil, Check, X, Pin, PinOff, Save, AlertTriangle } from 'lucide-react'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './ItemEditors'
 
-const TYPE_LABELS = {
-  textbox: 'Note',
-  checkbox_list: 'Checklist',
-  menu_list: 'List',
-  card_list: 'Cards',
-}
-
+const TYPE_LABELS = { textbox: 'Note', checkbox_list: 'Checklist', menu_list: 'List', card_list: 'Cards' }
 const TYPE_STYLES = {
-  textbox: { text: 'text-blue-400', bg: 'bg-blue-400/10', border: 'border-blue-400/20' },
-  checkbox_list: { text: 'text-green-400', bg: 'bg-green-400/10', border: 'border-green-400/20' },
-  menu_list: { text: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
-  card_list: { text: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
+  textbox:       { text: 'text-blue-400',   bg: 'bg-blue-400/10',   border: 'border-blue-400/20'   },
+  checkbox_list: { text: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20'  },
+  menu_list:     { text: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
+  card_list:     { text: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20'  },
 }
 
-export default function CollectionItem({ item, onUpdate, onDelete }) {
-  const [collapsed, setCollapsed] = useState(false)
+export default function CollectionItem({ item, onUpdate, onTogglePin, onDelete, onDirtyChange }) {
+  const [collapsed, setCollapsed]       = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
-  const [titleVal, setTitleVal] = useState(item.title)
-  const saveTimer = useRef(null)
+  const [titleVal, setTitleVal]         = useState(item.title)
+  const [localContent, setLocalContent] = useState(item.content)
+  const [isDirty, setIsDirty]           = useState(false)
+  const [saving, setSaving]             = useState(false)
+  const [collapseGuard, setCollapseGuard] = useState(false) // show warning before collapsing dirty
   const style = TYPE_STYLES[item.type]
 
+  // Keep local title in sync if item prop changes from outside (e.g. realtime)
+  useEffect(() => {
+    if (!isDirty) {
+      setTitleVal(item.title)
+      setLocalContent(item.content)
+    }
+  }, [item.title, item.content, isDirty])
+
+  // Notify parent about dirty state for page-leave warning
+  useEffect(() => {
+    onDirtyChange?.(item.id, isDirty)
+  }, [isDirty, item.id, onDirtyChange])
+
   const handleContentChange = useCallback((newContent) => {
-    clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      onUpdate({ id: item.id, title: item.title, content: newContent })
-    }, 500)
-  }, [item.id, item.title, onUpdate])
+    setLocalContent(newContent)
+    setIsDirty(true)
+  }, [])
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onUpdate({ id: item.id, title: titleVal, content: localContent })
+    setIsDirty(false)
+    setSaving(false)
+    setCollapseGuard(false)
+  }
+
+  const handleDiscard = () => {
+    setTitleVal(item.title)
+    setLocalContent(item.content)
+    setIsDirty(false)
+    setCollapseGuard(false)
+  }
+
+  const handleCollapseClick = () => {
+    if (!collapsed && isDirty) {
+      setCollapseGuard(true) // show warning instead of collapsing
+      return
+    }
+    setCollapseGuard(false)
+    setCollapsed(v => !v)
+  }
 
   const saveTitle = () => {
     setEditingTitle(false)
-    if (titleVal !== item.title) {
-      onUpdate({ id: item.id, title: titleVal, content: item.content })
-    }
+    if (titleVal !== item.title) setIsDirty(true)
   }
 
   const editors = {
-    textbox: <TextboxEditor content={item.content} onChange={handleContentChange} />,
-    checkbox_list: <ChecklistEditor content={item.content} onChange={handleContentChange} />,
-    menu_list: <MenuListEditor content={item.content} onChange={handleContentChange} />,
-    card_list: <CardListEditor content={item.content} onChange={handleContentChange} />,
+    textbox:       <TextboxEditor       content={localContent} onChange={handleContentChange} />,
+    checkbox_list: <ChecklistEditor     content={localContent} onChange={handleContentChange} />,
+    menu_list:     <MenuListEditor      content={localContent} onChange={handleContentChange} />,
+    card_list:     <CardListEditor      content={localContent} onChange={handleContentChange} />,
   }
 
   return (
-    <div className="bg-bg-surface border border-bg-border rounded-2xl overflow-hidden">
-      {/* Item header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border">
+    <div className={`bg-bg-surface border rounded-2xl overflow-hidden transition-colors ${
+      item.pinned ? 'border-accent/30' : 'border-bg-border'
+    }`}>
+      {/* ── Header ── */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border flex-wrap gap-y-2">
+        {/* Pin indicator */}
+        {item.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
+
         {/* Type badge */}
         <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg ${style.bg} ${style.text} border ${style.border}`}>
           {TYPE_LABELS[item.type]}
@@ -71,51 +106,113 @@ export default function CollectionItem({ item, onUpdate, onDelete }) {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {editingTitle ? (
+        {/* Dirty indicator */}
+        {isDirty && !saving && (
+          <span className="shrink-0 text-xs text-amber-400 font-medium px-2 py-0.5 bg-amber-400/10 rounded-md border border-amber-400/20">
+            Unsaved
+          </span>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+          {isDirty ? (
             <>
               <button
-                onClick={saveTitle}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/15 border border-success/30 text-success hover:bg-success/25 transition-all"
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-accent hover:bg-accent-hover text-white transition-colors disabled:opacity-60"
               >
-                <Check size={12} /> Save
+                {saving ? <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" /> : <Save size={12} />}
+                Save
               </button>
               <button
-                onClick={() => { setTitleVal(item.title); setEditingTitle(false) }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-elevated hover:bg-bg-hover text-text-secondary transition-all"
+                onClick={handleDiscard}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all"
               >
-                <X size={12} /> Cancel
+                <X size={12} /> Discard
               </button>
             </>
           ) : (
             <>
-              <button
-                onClick={() => setEditingTitle(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-              >
-                <Pencil size={11} /> Rename
-              </button>
-              <button
-                onClick={() => setCollapsed(v => !v)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-              >
-                {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-                <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>
-              </button>
-              <button
-                onClick={() => onDelete(item.id)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface text-text-secondary hover:text-danger hover:bg-danger/10 hover:border-danger/30 focus:text-danger focus:bg-danger/10 focus:border-danger/30 active:bg-danger/15 transition-all"
-              >
-                <Trash2 size={12} />
-                <span className="hidden sm:inline">Delete</span>
-              </button>
+              {editingTitle ? (
+                <>
+                  <button onClick={saveTitle} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/15 border border-success/30 text-success hover:bg-success/25 transition-all">
+                    <Check size={12} /> Save
+                  </button>
+                  <button onClick={() => { setTitleVal(item.title); setEditingTitle(false) }} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all">
+                    <X size={12} /> Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setEditingTitle(true)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                  >
+                    <Pencil size={11} /> Rename
+                  </button>
+                  <button
+                    onClick={() => onTogglePin(item.id, item.pinned)}
+                    title={item.pinned ? 'Unpin' : 'Pin to top'}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      item.pinned
+                        ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
+                        : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
+                    }`}
+                  >
+                    {item.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                    {item.pinned ? 'Unpin' : 'Pin'}
+                  </button>
+                  <button
+                    onClick={handleCollapseClick}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                  >
+                    {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+                    <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>
+                  </button>
+                  <button
+                    onClick={() => onDelete(item.id)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all"
+                  >
+                    <Trash2 size={12} />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Unsaved collapse warning ── */}
+      {collapseGuard && (
+        <div className="px-4 py-3 bg-amber-400/8 border-b border-amber-400/20 flex items-center gap-3 flex-wrap">
+          <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+          <span className="text-sm text-amber-400 flex-1">You have unsaved changes.</span>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent hover:bg-accent-hover text-white transition-colors"
+            >
+              <Save size={12} /> Save & collapse
+            </button>
+            <button
+              onClick={() => { handleDiscard(); setCollapsed(true) }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all"
+            >
+              Discard & collapse
+            </button>
+            <button
+              onClick={() => setCollapseGuard(false)}
+              className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Content ── */}
       {!collapsed && (
         <div className="px-4 py-4">
           {editors[item.type]}

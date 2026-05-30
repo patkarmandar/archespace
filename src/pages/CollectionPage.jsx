@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Pencil, Check, X, AlignLeft, CheckSquare, List, LayoutList } from 'lucide-react'
 import { useCollections, useCollectionItems } from '../hooks/useData'
@@ -6,17 +6,17 @@ import CollectionItem from '../components/CollectionItem'
 import { Spinner, Modal } from '../components/UI'
 
 const ITEM_TYPES = [
-  { type: 'textbox',       label: 'Note',      desc: 'Free-form text area',       icon: AlignLeft,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-  { type: 'checkbox_list', label: 'Checklist', desc: 'Items with checkboxes',      icon: CheckSquare, color: 'text-green-400',  bg: 'bg-green-400/10'  },
-  { type: 'menu_list',     label: 'List',      desc: 'Simple bullet list',          icon: List,        color: 'text-purple-400', bg: 'bg-purple-400/10' },
-  { type: 'card_list',     label: 'Cards',     desc: 'Title + description pairs',   icon: LayoutList,  color: 'text-amber-400',  bg: 'bg-amber-400/10'  },
+  { type: 'textbox',       label: 'Note',      desc: 'Free-form text area',      icon: AlignLeft,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
+  { type: 'checkbox_list', label: 'Checklist', desc: 'Items with checkboxes',     icon: CheckSquare, color: 'text-green-400',  bg: 'bg-green-400/10'  },
+  { type: 'menu_list',     label: 'List',      desc: 'Simple bullet list',         icon: List,        color: 'text-purple-400', bg: 'bg-purple-400/10' },
+  { type: 'card_list',     label: 'Cards',     desc: 'Title + description pairs',  icon: LayoutList,  color: 'text-amber-400',  bg: 'bg-amber-400/10'  },
 ]
 
 export default function CollectionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: collections = [] } = useCollections()
-  const { data: items = [], isLoading, create, update, remove } = useCollectionItems(id)
+  const { data: items = [], isLoading, create, update, togglePin, remove } = useCollectionItems(id)
   const { update: updateCollection } = useCollections()
 
   const collection = collections.find(c => c.id === id)
@@ -25,6 +25,28 @@ export default function CollectionPage() {
   const [headerDesc, setHeaderDesc]       = useState('')
   const [addModal, setAddModal]           = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [dirtyItems, setDirtyItems]       = useState(new Set())
+
+  // Track dirty state per item
+  const handleDirtyChange = useCallback((itemId, dirty) => {
+    setDirtyItems(prev => {
+      const next = new Set(prev)
+      dirty ? next.add(itemId) : next.delete(itemId)
+      return next
+    })
+  }, [])
+
+  // Warn browser on page close/refresh when there are unsaved changes
+  useEffect(() => {
+    const handler = (e) => {
+      if (dirtyItems.size > 0) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirtyItems])
 
   const startEditHeader = () => {
     setHeaderName(collection?.name || '')
@@ -60,11 +82,9 @@ export default function CollectionPage() {
   return (
     <div className="min-h-screen bg-bg-base">
 
-      {/* ── Sticky header — fixed height, never grows ── */}
+      {/* ── Sticky header ── */}
       <header className="sticky top-0 z-20 glass">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-
-          {/* Back */}
           <button
             onClick={() => navigate('/')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
@@ -73,7 +93,6 @@ export default function CollectionPage() {
             <span className="hidden sm:inline">Back</span>
           </button>
 
-          {/* Title (read-only in header) */}
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-text-primary truncate">{collection?.name}</h1>
             {collection?.description && (
@@ -81,7 +100,13 @@ export default function CollectionPage() {
             )}
           </div>
 
-          {/* Actions */}
+          {/* Unsaved count badge */}
+          {dirtyItems.size > 0 && (
+            <span className="hidden sm:flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-lg px-2 py-1 shrink-0">
+              {dirtyItems.size} unsaved
+            </span>
+          )}
+
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={editingHeader ? cancelEdit : startEditHeader}
@@ -103,7 +128,7 @@ export default function CollectionPage() {
         </div>
       </header>
 
-      {/* ── Inline edit panel — below header, never inside it ── */}
+      {/* ── Inline edit panel ── */}
       {editingHeader && (
         <div className="bg-bg-surface border-b border-bg-border">
           <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
@@ -118,7 +143,9 @@ export default function CollectionPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1.5">Description <span className="text-text-muted font-normal">(optional)</span></label>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                Description <span className="text-text-muted font-normal">(optional)</span>
+              </label>
               <input
                 value={headerDesc}
                 onChange={e => setHeaderDesc(e.target.value)}
@@ -170,8 +197,10 @@ export default function CollectionPage() {
               <CollectionItem
                 key={item.id}
                 item={item}
-                onUpdate={payload => update.mutate(payload)}
+                onUpdate={payload => update.mutateAsync(payload)}
+                onTogglePin={(itemId, pinned) => togglePin.mutate({ id: itemId, pinned })}
                 onDelete={itemId => setDeleteConfirm(itemId)}
+                onDirtyChange={handleDirtyChange}
               />
             ))}
           </div>
@@ -187,7 +216,6 @@ export default function CollectionPage() {
         )}
       </main>
 
-      {/* ── Add item modal ── */}
       {addModal && (
         <Modal title="Add item" onClose={() => setAddModal(false)}>
           <p className="text-text-muted text-xs mb-3">Choose the type of content to add</p>
@@ -211,7 +239,6 @@ export default function CollectionPage() {
         </Modal>
       )}
 
-      {/* ── Delete item confirm ── */}
       {deleteConfirm && (
         <Modal
           title="Delete item?"

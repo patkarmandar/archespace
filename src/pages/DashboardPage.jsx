@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, LogOut, Download, Upload, Search, Folder, Pencil, Trash2, ChevronRight, Sun, Moon } from 'lucide-react'
+import { Plus, LogOut, Download, Upload, Search, Folder, Pencil, Trash2, ChevronRight, Sun, Moon, Pin, PinOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useCollections, useRecycleBin } from '../hooks/useData'
@@ -68,7 +68,7 @@ function CollectionModal({ initial, onSave, onClose }) {
 export default function DashboardPage() {
   const { signOut } = useAuth()
   const { theme, toggle } = useTheme()
-  const { data: collections = [], isLoading, create, update, remove } = useCollections()
+  const { data: collections = [], isLoading, create, update, togglePin, remove } = useCollections()
   const { total: binTotal } = useRecycleBin()
   const navigate = useNavigate()
   const [modal, setModal] = useState(null)
@@ -289,11 +289,16 @@ export default function DashboardPage() {
               <div
                 key={col.id}
                 onClick={() => navigate(`/collection/${col.id}`)}
-                className="group bg-bg-surface border border-bg-border rounded-2xl p-4 cursor-pointer hover:border-accent/40 hover:shadow-lg hover:shadow-accent/5 transition-all"
+                className={`group bg-bg-surface border rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:shadow-accent/5 transition-all ${
+                  col.pinned ? 'border-accent/30 hover:border-accent/50' : 'border-bg-border hover:border-accent/40'
+                }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-text-primary truncate">{col.name}</h3>
+                    <div className="flex items-center gap-1.5">
+                      {col.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
+                      <h3 className="font-semibold text-text-primary truncate">{col.name}</h3>
+                    </div>
                     {col.description && (
                       <p className="text-text-secondary text-sm mt-1 line-clamp-2 leading-relaxed">{col.description}</p>
                     )}
@@ -305,6 +310,17 @@ export default function DashboardPage() {
                     {new Date(col.updated_at || col.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => togglePin.mutate({ id: col.id, pinned: col.pinned })}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        col.pinned
+                          ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
+                          : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
+                      }`}
+                    >
+                      {col.pinned ? <PinOff size={11} /> : <Pin size={11} />}
+                      {col.pinned ? 'Unpin' : 'Pin'}
+                    </button>
                     <button
                       onClick={() => setModal({ type: 'edit', col })}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"

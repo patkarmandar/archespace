@@ -17,6 +17,7 @@ export function useCollections() {
         .from('collections')
         .select('*')
         .is('deleted_at', null)
+        .order('pinned', { ascending: false })
         .order('created_at', { ascending: false })
       if (error) throw error
       return data
@@ -58,6 +59,17 @@ export function useCollections() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
   })
 
+  const togglePin = useMutation({
+    mutationFn: async ({ id, pinned }) => {
+      const { error } = await supabase
+        .from('collections')
+        .update({ pinned: !pinned, updated_at: now() })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+  })
+
   // Soft delete — moves to recycle bin
   const remove = useMutation({
     mutationFn: async (id) => {
@@ -73,7 +85,7 @@ export function useCollections() {
     },
   })
 
-  return { ...query, create, update, remove }
+  return { ...query, create, update, togglePin, remove }
 }
 
 // ─────────────────────────────────────────────
@@ -90,6 +102,7 @@ export function useCollectionItems(collectionId) {
         .select('*')
         .eq('collection_id', collectionId)
         .is('deleted_at', null)
+        .order('pinned', { ascending: false })
         .order('position', { ascending: true })
       if (error) throw error
       return data
@@ -143,6 +156,17 @@ export function useCollectionItems(collectionId) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['items', collectionId] }),
   })
 
+  const togglePin = useMutation({
+    mutationFn: async ({ id, pinned }) => {
+      const { error } = await supabase
+        .from('collection_items')
+        .update({ pinned: !pinned, updated_at: now() })
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['items', collectionId] }),
+  })
+
   // Soft delete — moves to recycle bin
   const remove = useMutation({
     mutationFn: async (id) => {
@@ -158,7 +182,7 @@ export function useCollectionItems(collectionId) {
     },
   })
 
-  return { ...query, create, update, remove }
+  return { ...query, create, update, togglePin, remove }
 }
 
 // ─────────────────────────────────────────────
@@ -183,16 +207,10 @@ export function useRecycleBin() {
   // Restore a collection
   const restoreCollection = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('collections')
-        .update({ deleted_at: null })
-        .eq('id', id)
+      const { error } = await supabase.from('collections').update({ deleted_at: null }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['collections'] })
-      qc.invalidateQueries({ queryKey: ['bin'] })
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['collections'] }); qc.invalidateQueries({ queryKey: ['bin'] }) },
   })
 
   // Permanently delete a collection
@@ -207,16 +225,10 @@ export function useRecycleBin() {
   // Restore an item
   const restoreItem = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('collection_items')
-        .update({ deleted_at: null })
-        .eq('id', id)
+      const { error } = await supabase.from('collection_items').update({ deleted_at: null }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bin'] }); qc.invalidateQueries({ queryKey: ['items'] }) },
   })
 
   // Permanently delete an item
@@ -242,6 +254,5 @@ export function useRecycleBin() {
   })
 
   const total = (query.data?.collections?.length || 0) + (query.data?.items?.length || 0)
-
   return { ...query, restoreCollection, purgeCollection, restoreItem, purgeItem, emptyBin, total }
 }

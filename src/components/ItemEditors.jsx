@@ -1,13 +1,5 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, Trash2, CheckSquare, Square } from 'lucide-react'
-
-function useDebounce(fn, delay = 600) {
-  const timer = useRef(null)
-  return useCallback((...args) => {
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => fn(...args), delay)
-  }, [fn, delay])
-}
 
 function DelBtn({ onClick }) {
   return (
@@ -20,22 +12,39 @@ function DelBtn({ onClick }) {
   )
 }
 
+// Auto-expanding textarea
 export function TextboxEditor({ content, onChange }) {
   const [text, setText] = useState(content?.text || '')
-  const save = useDebounce(val => onChange({ text: val }))
+  const ref = useRef(null)
+
+  // Expand to fit content on mount and on every change
+  const adjust = () => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  useEffect(() => { adjust() }, [text])
+  // Also adjust when content prop changes from outside (e.g. load)
+  useEffect(() => {
+    setText(content?.text || '')
+  }, []) // only on mount
 
   const handleChange = (e) => {
     setText(e.target.value)
-    save(e.target.value)
+    onChange({ text: e.target.value })
+    adjust()
   }
 
   return (
     <textarea
+      ref={ref}
       value={text}
       onChange={handleChange}
       placeholder="Start writing anything…"
-      rows={6}
-      className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-y min-h-[120px] font-sans leading-relaxed"
+      rows={3}
+      className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none overflow-hidden leading-relaxed min-h-[80px]"
     />
   )
 }
@@ -57,10 +66,7 @@ export function ChecklistEditor({ content, onChange }) {
     }, 50)
   }
 
-  const updateItem = (id, field, value) => {
-    push(items.map(item => item.id === id ? { ...item, [field]: value } : item))
-  }
-
+  const updateItem = (id, field, value) => push(items.map(item => item.id === id ? { ...item, [field]: value } : item))
   const removeItem = (id) => push(items.filter(item => item.id !== id))
 
   const handleKeyDown = (e, idx) => {
@@ -79,10 +85,7 @@ export function ChecklistEditor({ content, onChange }) {
             onClick={() => updateItem(item.id, 'checked', !item.checked)}
             className="shrink-0 text-text-muted hover:text-accent transition-colors"
           >
-            {item.checked
-              ? <CheckSquare size={17} className="text-accent" />
-              : <Square size={17} />
-            }
+            {item.checked ? <CheckSquare size={17} className="text-accent" /> : <Square size={17} />}
           </button>
           <input
             data-checklist-input
@@ -90,17 +93,14 @@ export function ChecklistEditor({ content, onChange }) {
             onChange={e => updateItem(item.id, 'text', e.target.value)}
             onKeyDown={e => handleKeyDown(e, idx)}
             placeholder="List item…"
-            className={`flex-1 bg-transparent text-sm focus:outline-none transition-colors placeholder-text-muted ${
+            className={`flex-1 bg-transparent text-sm focus:outline-none placeholder-text-muted ${
               item.checked ? 'line-through text-text-muted' : 'text-text-primary'
             }`}
           />
           <DelBtn onClick={() => removeItem(item.id)} />
         </div>
       ))}
-      <button
-        onClick={addItem}
-        className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
-      >
+      <button onClick={addItem} className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1">
         <Plus size={14} /> Add item
       </button>
     </div>
@@ -110,10 +110,7 @@ export function ChecklistEditor({ content, onChange }) {
 export function MenuListEditor({ content, onChange }) {
   const [items, setItems] = useState(content?.items || [])
 
-  const push = (newItems) => {
-    setItems(newItems)
-    onChange({ items: newItems })
-  }
+  const push = (newItems) => { setItems(newItems); onChange({ items: newItems }) }
 
   const addItem = () => {
     const newItems = [...items, { id: crypto.randomUUID(), text: '' }]
@@ -139,7 +136,7 @@ export function MenuListEditor({ content, onChange }) {
     <div className="space-y-1">
       {items.map((item, idx) => (
         <div key={item.id} className="flex items-center gap-2 group py-0.5">
-          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted" />
+          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-0.5" />
           <input
             data-menu-input
             value={item.text}
@@ -151,10 +148,7 @@ export function MenuListEditor({ content, onChange }) {
           <DelBtn onClick={() => removeItem(item.id)} />
         </div>
       ))}
-      <button
-        onClick={addItem}
-        className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
-      >
+      <button onClick={addItem} className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1">
         <Plus size={14} /> Add item
       </button>
     </div>
@@ -164,19 +158,10 @@ export function MenuListEditor({ content, onChange }) {
 export function CardListEditor({ content, onChange }) {
   const [items, setItems] = useState(content?.items || [])
 
-  const push = (newItems) => {
-    setItems(newItems)
-    onChange({ items: newItems })
-  }
+  const push = (newItems) => { setItems(newItems); onChange({ items: newItems }) }
 
-  const addItem = () => {
-    push([...items, { id: crypto.randomUUID(), title: '', description: '' }])
-  }
-
-  const updateItem = (id, field, value) => {
-    push(items.map(item => item.id === id ? { ...item, [field]: value } : item))
-  }
-
+  const addItem = () => push([...items, { id: crypto.randomUUID(), title: '', description: '' }])
+  const updateItem = (id, field, value) => push(items.map(item => item.id === id ? { ...item, [field]: value } : item))
   const removeItem = (id) => push(items.filter(item => item.id !== id))
 
   return (
@@ -201,10 +186,7 @@ export function CardListEditor({ content, onChange }) {
           />
         </div>
       ))}
-      <button
-        onClick={addItem}
-        className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors py-1"
-      >
+      <button onClick={addItem} className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors py-1">
         <Plus size={14} /> Add card
       </button>
     </div>
