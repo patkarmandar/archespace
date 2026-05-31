@@ -63,6 +63,13 @@ export default function CollectionItem({
   const [saving, setSaving]               = useState(false)
   const [collapseGuard, setCollapseGuard] = useState(false)
 
+  // ── P1 Bugfix: Refs for latest state to prevent stale closures in auto-save ──
+  const latestState = useRef({ title: item.title, content: item.content })
+  
+  useEffect(() => {
+    latestState.current = { title: titleVal, content: localContent }
+  }, [titleVal, localContent])
+
   const autoSaveTimer = useRef(null)
   const style = TYPE_STYLES[item.type]
 
@@ -95,10 +102,9 @@ export default function CollectionItem({
     // Reset the auto-save debounce timer
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
-      // Auto-save: call handleSave via a ref-stable closure
-      performSave(undefined, newContent)
+      // Auto-save using latest state ref to avoid stale closures
+      performSave(latestState.current.title, newContent)
     }, AUTO_SAVE_DELAY)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.id])
 
   /**

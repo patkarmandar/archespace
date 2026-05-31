@@ -74,3 +74,63 @@ body {
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--glass-border);
 }
+
+/* ── Custom Animations ──────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes floatSlowReverse {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(20px) scale(0.95); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+.animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-float-slow { animation: floatSlow 15s ease-in-out infinite; }
+.animate-float-slow-reverse { animation: floatSlowReverse 18s ease-in-out infinite; }
+.animate-shake { animation: shake 0.4s ease-in-out; }
+.animate-slide-out { animation: slideOutRight 0.2s ease-in forwards; }
+
+/* Delay utilities for staggered animations */
+.delay-75 { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-300 { animation-delay: 300ms; }
+
+/* Markdown Prose Styling */
+.prose-custom h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary); }
+.prose-custom h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); }
+.prose-custom h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); }
+.prose-custom p { margin-bottom: 0.75rem; }
+.prose-custom ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose-custom ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose-custom blockquote { border-left: 3px solid var(--accent); padding-left: 1rem; color: var(--text-secondary); font-style: italic; margin-bottom: 0.75rem; }
+.prose-custom pre { background: var(--bg-base); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 0.75rem; border: 1px solid var(--bg-border); font-family: monospace; font-size: 0.875rem; }
+.prose-custom code { background: var(--bg-base); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.875em; color: var(--accent); border: 1px solid var(--bg-border); }
+.prose-custom pre code { background: transparent; padding: 0; border: none; color: inherit; }
+.prose-custom a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.prose-custom a:hover { color: var(--accent-hover); }
+.prose-custom hr { border: none; border-top: 1px solid var(--bg-border); margin: 1.5rem 0; }
+

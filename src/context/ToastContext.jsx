@@ -9,18 +9,16 @@
  *
  * Toasts auto-dismiss after 3 seconds and stack vertically in the
  * bottom-right corner. Max 5 visible at once (oldest removed first).
+ *
+ * Bug fix: Timer IDs are tracked in a ref map and cleaned up on
+ * unmount to prevent memory leaks from orphaned setTimeouts.
  */
 
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react'
+import { TOAST_DISMISS_MS, MAX_TOASTS } from '../lib/constants'
 
 const ToastContext = createContext(null)
-
-/** Maximum number of visible toasts at once */
-const MAX_TOASTS = 5
-
-/** Auto-dismiss delay in milliseconds */
-const DISMISS_MS = 3000
 
 /** Icon + accent colour per toast type */
 const TYPE_CONFIG = {
@@ -31,10 +29,39 @@ const TYPE_CONFIG = {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
+  // Track timer IDs to clean up on unmount (prevents memory leaks)
+  const timerMap = useRef(new Map())
+
+  // ── Cleanup all timers on unmount ──
+  useEffect(() => {
+    const map = timerMap.current
+    return () => {
+      for (const timerId of map.values()) {
+        clearTimeout(timerId)
+      }
+      map.clear()
+    }
+  }, [])
 
   /** Remove a single toast by id */
   const dismiss = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
+    setToasts(prev => prev.map(t => t.id === id ? { ...t, exiting: true } : t))
+
+    // Remove from DOM after exit animation completes
+    const removeTimer = setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id))
+      timerMap.current.delete(id)
+      timerMap.current.delete(`${id}-remove`)
+    }, 200)
+
+    timerMap.current.set(`${id}-remove`, removeTimer)
+
+    // Clear the auto-dismiss timer
+    const existingTimer = timerMap.current.get(id)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      timerMap.current.delete(id)
+    }
   }, [])
 
   /**
@@ -48,11 +75,12 @@ export function ToastProvider({ children }) {
     setToasts(prev => {
       // Trim oldest if we're at the limit
       const trimmed = prev.length >= MAX_TOASTS ? prev.slice(1) : prev
-      return [...trimmed, { id, type, message }]
+      return [...trimmed, { id, type, message, exiting: false }]
     })
 
     // Auto-dismiss after delay
-    setTimeout(() => dismiss(id), DISMISS_MS)
+    const timerId = setTimeout(() => dismiss(id), TOAST_DISMISS_MS)
+    timerMap.current.set(id, timerId)
   }, [dismiss])
 
   /** Convenience methods */
@@ -68,19 +96,24 @@ export function ToastProvider({ children }) {
 
       {/* ── Toast stack (bottom-right, fixed) ── */}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
-        {toasts.map(({ id, type, message }) => {
+        {toasts.map(({ id, type, message, exiting }) => {
           const { Icon, color, bg, border } = TYPE_CONFIG[type] || TYPE_CONFIG.info
           return (
             <div
               key={id}
-              className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border ${border} ${bg} shadow-xl backdrop-blur-md animate-slide-in`}
+              className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border ${border} ${bg} shadow-xl backdrop-blur-md ${
+                exiting ? 'animate-slide-out' : 'animate-slide-in'
+              }`}
               style={{ background: 'var(--bg-surface)', borderColor: undefined }}
+              role="alert"
+              aria-live="polite"
             >
               <Icon size={18} className={`${color} shrink-0`} />
               <span className="flex-1 text-sm text-text-primary">{message}</span>
               <button
                 onClick={() => dismiss(id)}
                 className="shrink-0 p-1 rounded-lg text-text-muted hover:text-text-primary transition-colors"
+                aria-label="Dismiss notification"
               >
                 <X size={14} />
               </button>
@@ -88,15 +121,6 @@ export function ToastProvider({ children }) {
           )
         })}
       </div>
-
-      {/* Inline keyframes for slide-in animation */}
-      <style>{`
-        @keyframes slide-in {
-          from { opacity: 0; transform: translateX(20px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        .animate-slide-in { animation: slide-in 0.2s ease-out; }
-      `}</style>
     </ToastContext.Provider>
   )
 }

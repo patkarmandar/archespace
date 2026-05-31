@@ -8,9 +8,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trash2, RotateCcw, Folder, LayoutList, AlertTriangle } from 'lucide-react'
-import { useRecycleBin } from '../hooks/useData'
+import { useRecycleBin } from '../hooks/useRecycleBin'
 import { useToast } from '../context/ToastContext'
-import { Spinner, Modal } from '../components/UI'
+import { Spinner, Modal } from '../components/ui/UI'
 
 const TYPE_LABELS = {
   textbox: 'Note', checkbox_list: 'Checklist', menu_list: 'List', card_list: 'Cards',

@@ -22,72 +22,12 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
-import { useCollections, useRecycleBin, exportCollections, importCollections } from '../hooks/useData'
-import { Modal, Spinner } from '../components/UI'
-
-/**
- * Modal for creating or editing a collection.
- * @param {{ initial?: Object, onSave: Function, onClose: Function }} props
- */
-function CollectionModal({ initial, onSave, onClose }) {
-  const [name, setName] = useState(initial?.name || '')
-  const [description, setDescription] = useState(initial?.description || '')
-  const [saving, setSaving] = useState(false)
-
-  const handleSave = async () => {
-    if (!name.trim()) return
-    setSaving(true)
-    await onSave({ name: name.trim(), description: description.trim() })
-    setSaving(false)
-    onClose()
-  }
-
-  return (
-    <Modal title={initial ? 'Edit collection' : 'New collection'} onClose={onClose}>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1.5">Name</label>
-          <input
-            autoFocus
-            placeholder="Collection name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-            className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1.5">
-            Description <span className="text-text-muted font-normal">(optional)</span>
-          </label>
-          <textarea
-            placeholder="What's this collection for?"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={2}
-            className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none"
-          />
-        </div>
-        <div className="flex gap-2 justify-end pt-1">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || saving}
-            className="px-4 py-2 text-sm font-semibold bg-accent hover:bg-accent-hover text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving && <Spinner size={12} />}
-            {initial ? 'Save changes' : 'Create'}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
+import { useCollections } from '../hooks/useCollections'
+import { useRecycleBin } from '../hooks/useRecycleBin'
+import { exportCollections, importCollections } from '../lib/exportImport'
+import { Modal, Spinner } from '../components/ui/UI'
+import { CollectionModal } from '../components/collection/CollectionModal'
+import { CollectionCard } from '../components/collection/CollectionCard'
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
@@ -333,7 +273,27 @@ export default function DashboardPage() {
 
         {/* Collections grid */}
         {isLoading ? (
-          <div className="flex justify-center py-20"><Spinner size={24} /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="border border-bg-border rounded-2xl p-4 bg-bg-surface animate-pulse">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-5 bg-bg-elevated rounded w-2/3"></div>
+                    <div className="h-3 bg-bg-elevated rounded w-full"></div>
+                    <div className="h-3 bg-bg-elevated rounded w-4/5"></div>
+                  </div>
+                  <div className="w-4 h-4 bg-bg-elevated rounded shrink-0"></div>
+                </div>
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-bg-border">
+                  <div className="w-16 h-3 bg-bg-elevated rounded"></div>
+                  <div className="flex gap-1">
+                    <div className="w-12 h-6 bg-bg-elevated rounded"></div>
+                    <div className="w-12 h-6 bg-bg-elevated rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-14 h-14 rounded-2xl bg-bg-surface border border-bg-border flex items-center justify-center mx-auto mb-4">
@@ -353,65 +313,22 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map((col, index) => (
-              <div
+              <CollectionCard 
                 key={col.id}
-                draggable={!search}
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={() => handleDrop(index)}
-                onDragEnd={handleDragEnd}
-                onClick={() => navigate(`/collection/${col.id}`)}
-                className={`group border rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:shadow-accent/5 transition-all ${
-                  col.pinned ? 'bg-accent/5 border-accent hover:border-accent/80' : 'bg-bg-surface border-bg-border hover:border-accent/40'
-                } ${
-                  dragOverIndex === index && dragIndex !== index
-                    ? 'border-l-4 border-l-accent pl-3'
-                    : ''
-                } ${dragIndex === index ? 'opacity-40' : ''}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {col.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
-                      <h3 className="font-semibold text-text-primary truncate">{col.name}</h3>
-                    </div>
-                    {col.description && (
-                      <p className="text-text-secondary text-sm mt-1 line-clamp-2 leading-relaxed">{col.description}</p>
-                    )}
-                  </div>
-                  <ChevronRight size={16} className="text-text-muted shrink-0 mt-0.5 group-hover:text-accent transition-colors" />
-                </div>
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-bg-border">
-                  <p className="text-text-muted text-xs">
-                    {new Date(col.updated_at || col.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
-                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => togglePin.mutate({ id: col.id, pinned: col.pinned })}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                        col.pinned
-                          ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
-                          : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
-                      }`}
-                    >
-                      {col.pinned ? <PinOff size={11} /> : <Pin size={11} />}
-                      {col.pinned ? 'Unpin' : 'Pin'}
-                    </button>
-                    <button
-                      onClick={() => setModal({ type: 'edit', col })}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
-                    >
-                      <Pencil size={11} /> Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(col.id)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface text-text-secondary hover:text-danger hover:bg-danger/10 hover:border-danger/30 focus:text-danger focus:bg-danger/10 focus:border-danger/30 active:bg-danger/15 transition-all"
-                    >
-                      <Trash2 size={11} /> Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
+                col={col}
+                index={index}
+                search={search}
+                dragIndex={dragIndex}
+                dragOverIndex={dragOverIndex}
+                handleDragStart={handleDragStart}
+                handleDragOver={handleDragOver}
+                handleDrop={handleDrop}
+                handleDragEnd={handleDragEnd}
+                navigate={navigate}
+                togglePin={togglePin}
+                setModal={setModal}
+                setDeleteConfirm={setDeleteConfirm}
+              />
             ))}
           </div>
         )}

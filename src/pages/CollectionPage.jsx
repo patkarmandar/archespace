@@ -19,10 +19,11 @@ import {
   ArrowLeft, Plus, Pencil, Check, X,
   AlignLeft, CheckSquare, List, LayoutList,
 } from 'lucide-react'
-import { useCollections, useCollectionItems } from '../hooks/useData'
+import { useCollections } from '../hooks/useCollections'
+import { useCollectionItems } from '../hooks/useCollectionItems'
 import { useToast } from '../context/ToastContext'
 import CollectionItem from '../components/CollectionItem'
-import { Spinner, Modal } from '../components/UI'
+import { Spinner, Modal } from '../components/ui/UI'
 
 /** Item type definitions for the "Add item" modal */
 const ITEM_TYPES = [
@@ -272,7 +273,18 @@ export default function CollectionPage() {
       {/* ── Main content ─────────────────────────────── */}
       <main className="max-w-3xl mx-auto px-4 py-6">
         {isLoading ? (
-          <div className="flex justify-center py-20"><Spinner size={24} /></div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="border border-bg-border rounded-2xl p-4 bg-bg-surface animate-pulse">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-16 h-6 bg-bg-elevated rounded"></div>
+                  <div className="w-1/3 h-4 bg-bg-elevated rounded"></div>
+                  <div className="ml-auto w-24 h-6 bg-bg-elevated rounded"></div>
+                </div>
+                <div className="h-16 bg-bg-elevated rounded w-full"></div>
+              </div>
+            ))}
+          </div>
         ) : items.length === 0 ? (
           /* Empty state */
           <div className="text-center py-20">
@@ -299,11 +311,12 @@ export default function CollectionPage() {
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={() => handleDrop(index)}
                 onDragEnd={handleDragEnd}
-                className={`transition-all ${
+                className={`transition-all duration-300 animate-fade-in-up ${
                   dragOverIndex === index && dragIndex !== index
                     ? 'border-t-2 border-accent pt-1'
                     : ''
-                } ${dragIndex === index ? 'opacity-40' : ''}`}
+                } ${dragIndex === index ? 'opacity-40 scale-95' : ''}`}
+                style={{ animationDelay: `${index * 40}ms` }}
               >
                 <CollectionItem
                   item={item}

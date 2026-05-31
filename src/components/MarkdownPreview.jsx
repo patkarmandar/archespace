@@ -13,7 +13,65 @@
  *   - Line breaks (double newline → paragraph)
  *
  * No external dependencies — pure regex-based parsing.
+ *
+ * Security:
+ *   - HTML entities are escaped before markdown parsing (prevents XSS)
+ *   - Links are validated against a safe-protocol allowlist
+ *   - Event handler attributes (on*) are stripped
  */
+
+/**
+ * Validate a URL against a safe protocol allowlist.
+ * Returns '#' for any unsafe URL.
+ *
+ * @param {string} url — The URL to validate
+ * @returns {string}   — Safe URL or '#'
+ */
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return '#'
+
+  const trimmed = url.trim()
+
+  // Decode any percent-encoded characters to catch obfuscation tricks
+  let decoded = trimmed
+  try {
+    decoded = decodeURIComponent(trimmed)
+  } catch {
+    // malformed URI — treat as unsafe
+    return '#'
+  }
+
+  // Strip whitespace and control characters that can bypass protocol checks
+  const normalized = decoded.replace(/[\s\x00-\x1f\x7f]/g, '').toLowerCase()
+
+  // Only allow http, https, mailto, and relative URLs
+  const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:']
+  const UNSAFE_PROTOCOLS = ['javascript:', 'vbscript:', 'data:', 'blob:']
+
+  // Check for explicit unsafe protocols
+  for (const proto of UNSAFE_PROTOCOLS) {
+    if (normalized.startsWith(proto)) return '#'
+  }
+
+  // If it looks like a protocol URL, verify it's in the safe list
+  if (/^[a-z][a-z0-9+.-]*:/i.test(normalized)) {
+    const isAllowed = SAFE_PROTOCOLS.some(proto => normalized.startsWith(proto))
+    if (!isAllowed) return '#'
+  }
+
+  return trimmed
+}
+
+/**
+ * Strip any HTML event handler attributes from a string.
+ * Catches patterns like onerror=, onclick=, etc.
+ *
+ * @param {string} html
+ * @returns {string}
+ */
+function stripEventHandlers(html) {
+  return html.replace(/\bon\w+\s*=\s*(['"]?).*?\1/gi, '')
+}
 
 /**
  * Convert a markdown string to sanitised HTML.
@@ -30,6 +88,8 @@ function markdownToHtml(md) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
   // 2. Fenced code blocks (``` ... ```)
   html = html.replace(/```([\s\S]*?)```/g, (_, code) =>
@@ -118,7 +178,8 @@ function markdownToHtml(md) {
   // Close any trailing open list
   if (inList) processed.push(`</${listType}>`)
 
-  return processed.join('\n')
+  // Final safety pass: strip any event handler attributes
+  return stripEventHandlers(processed.join('\n'))
 }
 
 /**
@@ -137,11 +198,10 @@ function applyInline(text) {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     // Strikethrough
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
-    // Links [text](url)
+    // Links [text](url) — uses safe URL validation
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
-      // Prevent execution of malicious URIs (XSS mitigation)
-      const sanitizedUrl = /^(javascript|vbscript|data):/i.test(url.trim()) ? '#' : url
-      return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`
+      const safeUrl = sanitizeUrl(url)
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`
     })
 }
 

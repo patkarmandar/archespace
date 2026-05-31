@@ -1,36 +1,37 @@
 /**
- * useSessionTimeout.js — Inactivity auto-logout.
+ * useSessionTimeout.js — Inactivity + absolute session timeout.
  *
  * Signs the user out after 2 hours of zero interaction (no mouse
  * movement, keyboard input, clicks, touch, or scroll).
  *
+ * Also enforces an absolute maximum session lifetime of 24 hours
+ * regardless of activity — preventing indefinite sessions.
+ *
  * Implementation notes:
- *   - The reset function is stored in a ref so the event listeners
- *     always reference the same stable function. Without this,
- *     removeEventListener would fail (different closure each render)
- *     and listeners would leak.
- *   - Every user interaction resets the timer.
+ *   - The reset function is stored in useCallback so the event
+ *     listeners always reference the same stable function.
+ *   - Every user interaction resets the inactivity timer.
+ *   - The absolute timer is set once on mount and never reset.
  */
 
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-
-/** Inactivity limit before auto-logout (2 hours) */
-const TIMEOUT_MS = 2 * 60 * 60 * 1000
+import { SESSION_INACTIVITY_MS, SESSION_ABSOLUTE_MAX_MS } from '../lib/constants'
 
 export function useSessionTimeout() {
-  const timerRef = useRef(null)
+  const inactivityTimer = useRef(null)
+  const absoluteTimer = useRef(null)
 
   /**
-   * Stable reset function — clears the old timer and starts a
-   * new one. Stored in useCallback so the reference never changes
-   * between renders, which means removeEventListener works correctly.
+   * Stable reset function — clears the old inactivity timer and
+   * starts a new one. Stored in useCallback so the reference
+   * never changes between renders.
    */
   const reset = useCallback(() => {
-    clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(async () => {
+    clearTimeout(inactivityTimer.current)
+    inactivityTimer.current = setTimeout(async () => {
       await supabase.auth.signOut()
-    }, TIMEOUT_MS)
+    }, SESSION_INACTIVITY_MS)
   }, [])
 
   useEffect(() => {
@@ -40,12 +41,20 @@ export function useSessionTimeout() {
     // Attach listeners (passive so they don't block scrolling)
     events.forEach(e => window.addEventListener(e, reset, { passive: true }))
 
-    // Start the initial timer
+    // Start the initial inactivity timer
     reset()
 
-    // Cleanup: remove all listeners and cancel the timer
+    // ── Absolute session expiry ──
+    // This timer fires regardless of activity. Once the session
+    // has lasted 24 hours, the user must re-authenticate.
+    absoluteTimer.current = setTimeout(async () => {
+      await supabase.auth.signOut()
+    }, SESSION_ABSOLUTE_MAX_MS)
+
+    // Cleanup: remove all listeners and cancel both timers
     return () => {
-      clearTimeout(timerRef.current)
+      clearTimeout(inactivityTimer.current)
+      clearTimeout(absoluteTimer.current)
       events.forEach(e => window.removeEventListener(e, reset))
     }
   }, [reset])
