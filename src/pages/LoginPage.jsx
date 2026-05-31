@@ -1,3 +1,11 @@
+/**
+ * LoginPage.jsx — Authentication screen.
+ *
+ * Allows users to sign in with their email and password.
+ * Arche is designed as a private workspace, so there is no
+ * public registration form (users must be invited/created via Supabase).
+ */
+
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -22,6 +30,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-bg-base flex items-center justify-center p-4 relative">
+      {/* Theme toggle */}
       <button
         onClick={toggle}
         className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"

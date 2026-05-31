@@ -1,12 +1,34 @@
+/**
+ * DashboardPage.jsx — Main entry point for authenticated users.
+ *
+ * Displays a grid of the user's collections.
+ *
+ * Features:
+ *   - Create / Edit / Delete collections
+ *   - Pin collections to top
+ *   - Search collections by name or description
+ *   - Export / Import backup (JSON)
+ *   - Access the Recycle Bin
+ *   - Toggle dark/light theme
+ *   - Sign out
+ */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, LogOut, Download, Upload, Search, Folder, Pencil, Trash2, ChevronRight, Sun, Moon, Pin, PinOff } from 'lucide-react'
+import {
+  Plus, LogOut, Download, Upload, Search, Folder,
+  Pencil, Trash2, ChevronRight, Sun, Moon, Pin, PinOff
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { useCollections, useRecycleBin } from '../hooks/useData'
+import { useToast } from '../context/ToastContext'
+import { useCollections, useRecycleBin, exportCollections, importCollections } from '../hooks/useData'
 import { Modal, Spinner } from '../components/UI'
-import { supabase } from '../lib/supabase'
 
+/**
+ * Modal for creating or editing a collection.
+ * @param {{ initial?: Object, onSave: Function, onClose: Function }} props
+ */
 function CollectionModal({ initial, onSave, onClose }) {
   const [name, setName] = useState(initial?.name || '')
   const [description, setDescription] = useState(initial?.description || '')
@@ -35,7 +57,9 @@ function CollectionModal({ initial, onSave, onClose }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1.5">Description <span className="text-text-muted font-normal">(optional)</span></label>
+          <label className="block text-xs font-medium text-text-secondary mb-1.5">
+            Description <span className="text-text-muted font-normal">(optional)</span>
+          </label>
           <textarea
             placeholder="What's this collection for?"
             value={description}
@@ -66,60 +90,56 @@ function CollectionModal({ initial, onSave, onClose }) {
 }
 
 export default function DashboardPage() {
-  const { signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const { theme, toggle } = useTheme()
+  const { toast } = useToast()
   const { data: collections = [], isLoading, create, update, togglePin, remove } = useCollections()
   const { total: binTotal } = useRecycleBin()
   const navigate = useNavigate()
-  const [modal, setModal] = useState(null)
+
+  // ── Local state ──
+  const [modal, setModal] = useState(null) // { type: 'create' } | { type: 'edit', col } | null
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  // ── Derived state ──
   const filtered = collections.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.description?.toLowerCase().includes(search.toLowerCase())
   )
 
+  // ── Actions ──
   const handleExport = async () => {
-    const allItems = await Promise.all(
-      collections.map(async c => {
-        const { data } = await supabase.from('collection_items').select('*').eq('collection_id', c.id).order('position')
-        return { ...c, items: data || [] }
-      })
-    )
-    const blob = new Blob([JSON.stringify(allItems, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `arche-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      await exportCollections(collections)
+      toast.success('Backup exported successfully')
+      setMobileMenuOpen(false)
+    } catch (err) {
+      toast.error('Failed to export backup')
+      console.error(err)
+    }
   }
 
   const handleImport = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-    const text = await file.text()
-    const parsed = JSON.parse(text)
-    const { data: { user } } = await supabase.auth.getUser()
-    for (const col of parsed) {
-      const { items, id, created_at, updated_at, user_id, ...colData } = col
-      const { data: newCol } = await supabase.from('collections').insert({ ...colData, user_id: user.id }).select().single()
-      if (newCol && items?.length) {
-        const itemsToInsert = items.map(({ id, collection_id, ...item }) => ({
-          ...item, collection_id: newCol.id
-        }))
-        await supabase.from('collection_items').insert(itemsToInsert)
-      }
+
+    try {
+      await importCollections(file, user.id)
+      toast.success('Backup imported successfully')
+    } catch (err) {
+      toast.error('Failed to import backup — invalid format')
+      console.error(err)
     }
-    e.target.value = ''
+
+    e.target.value = '' // reset input
     setMobileMenuOpen(false)
   }
 
   return (
     <div className="min-h-screen bg-bg-base">
-      {/* Header */}
+      {/* ── Header ────────────────────────────────────── */}
       <header className="sticky top-0 z-20 glass">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           {/* Logo */}
@@ -172,7 +192,10 @@ export default function DashboardPage() {
               Export
             </button>
             <button
-              onClick={signOut}
+              onClick={() => {
+                signOut()
+                toast.info('Signed out')
+              }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-danger transition-all text-sm font-medium"
             >
               <LogOut size={14} />
@@ -180,7 +203,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Mobile right side */}
+          {/* Actions — mobile right side */}
           <div className="flex sm:hidden items-center gap-2">
             <button
               onClick={toggle}
@@ -220,13 +243,16 @@ export default function DashboardPage() {
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
             </label>
             <button
-              onClick={() => { handleExport(); setMobileMenuOpen(false) }}
+              onClick={handleExport}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
               <Download size={15} /> Export backup
             </button>
             <button
-              onClick={signOut}
+              onClick={() => {
+                signOut()
+                toast.info('Signed out')
+              }}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-danger transition-all text-sm font-medium"
             >
               <LogOut size={15} /> Sign out
@@ -235,6 +261,7 @@ export default function DashboardPage() {
         )}
       </header>
 
+      {/* ── Main content ──────────────────────────────── */}
       <main className="max-w-5xl mx-auto px-4 py-6">
         {/* Mobile search */}
         <div className="sm:hidden mb-4">
@@ -341,22 +368,33 @@ export default function DashboardPage() {
         )}
       </main>
 
+      {/* ── Modals ────────────────────────────────────── */}
       {modal?.type === 'create' && (
         <CollectionModal
-          onSave={({ name, description }) => create.mutateAsync({ name, description })}
+          onSave={({ name, description }) => {
+            create.mutate({ name, description }, {
+              onSuccess: () => toast.success('Collection created'),
+              onError: () => toast.error('Failed to create collection')
+            })
+          }}
           onClose={() => setModal(null)}
         />
       )}
       {modal?.type === 'edit' && (
         <CollectionModal
           initial={modal.col}
-          onSave={({ name, description }) => update.mutateAsync({ id: modal.col.id, name, description })}
+          onSave={({ name, description }) => {
+            update.mutate({ id: modal.col.id, name, description }, {
+              onSuccess: () => toast.success('Collection updated'),
+              onError: () => toast.error('Failed to update collection')
+            })
+          }}
           onClose={() => setModal(null)}
         />
       )}
       {deleteConfirm && (
         <Modal
-          title="Delete collection?"
+          title="Move collection to bin?"
           onClose={() => setDeleteConfirm(null)}
           footer={
             <div className="flex gap-2 justify-end">
@@ -367,16 +405,23 @@ export default function DashboardPage() {
                 Cancel
               </button>
               <button
-                onClick={() => { remove.mutate(deleteConfirm); setDeleteConfirm(null) }}
+                onClick={() => {
+                  remove.mutate(deleteConfirm, {
+                    onSuccess: () => toast.success('Collection moved to bin'),
+                    onError: () => toast.error('Failed to delete collection')
+                  })
+                  setDeleteConfirm(null)
+                }}
                 className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
               >
-                Delete collection
+                Move to bin
               </button>
             </div>
           }
         >
           <p className="text-text-secondary text-sm leading-relaxed">
-            This will permanently delete the collection and all its items. This cannot be undone.
+            This collection and all its items will be moved to the recycle bin.
+            You can restore them later or permanently delete them from there.
           </p>
         </Modal>
       )}

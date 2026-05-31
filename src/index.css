@@ -1,3 +1,13 @@
+/**
+ * index.css — Global styles & design tokens for Arche.
+ *
+ * Uses CSS custom properties for theming (dark/light) so every
+ * component can reference the same palette through Tailwind's
+ * extended color config (see tailwind.config.js).
+ *
+ * Font: DM Sans (Google Fonts).
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 @tailwind base;
 @tailwind components;
@@ -5,7 +15,7 @@
 
 * { box-sizing: border-box; }
 
-/* ── Dark theme (default) ── */
+/* ── Dark theme (default) ───────────────────────────────── */
 :root {
   --bg-base:       #18181f;
   --bg-surface:    #1f1f28;
@@ -24,7 +34,7 @@
   --glass-border:  rgba(255,255,255,0.06);
 }
 
-/* ── Light theme ── */
+/* ── Light theme ────────────────────────────────────────── */
 [data-theme="light"] {
   --bg-base:       #f2f2f7;
   --bg-surface:    #ffffff;
@@ -43,6 +53,7 @@
   --glass-border:  rgba(0,0,0,0.08);
 }
 
+/* ── Base body styles ───────────────────────────────────── */
 body {
   background: var(--bg-base);
   color: var(--text-primary);
@@ -51,17 +62,15 @@ body {
   transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* ── Scrollbars ── */
+/* ── Custom scrollbars (WebKit) ─────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* ── Utilities ── */
-@layer utilities {
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--glass-border);
-  }
+/* ── Glass header utility (used by sticky headers) ──────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--glass-border);
 }

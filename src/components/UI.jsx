@@ -1,13 +1,64 @@
+/**
+ * UI.jsx — Shared presentational components for Arche.
+ *
+ * Exports:
+ *   - Spinner — Animated SVG loading indicator
+ *   - Modal   — Full-screen overlay with header, scrollable body,
+ *               and optional pinned footer. Closes on backdrop
+ *               click or Escape key.
+ */
+
+import { useEffect } from 'react'
+
+/**
+ * Animated loading spinner.
+ * @param {{ size?: number }} props — Diameter in px (default 16)
+ */
 export function Spinner({ size = 16 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="animate-spin" style={{color:'var(--accent)'}}>
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className="animate-spin"
+      style={{ color: 'var(--accent)' }}
+    >
+      {/* Background ring */}
+      <circle
+        cx="12" cy="12" r="10"
+        stroke="currentColor" strokeWidth="2" strokeOpacity="0.2"
+      />
+      {/* Spinning arc */}
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+      />
     </svg>
   )
 }
 
+/**
+ * Modal dialog overlay.
+ *
+ * Features:
+ *   - Closes when clicking the backdrop (outside the card)
+ *   - Closes on Escape key
+ *   - Responsive: bottom-sheet on mobile, centered card on desktop
+ *   - Optional `footer` prop for sticky action buttons
+ *
+ * @param {{ title: string, onClose: Function, children: React.ReactNode, footer?: React.ReactNode }} props
+ */
 export function Modal({ title, onClose, children, footer }) {
+  // ── Escape key handler ──
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
@@ -30,7 +81,7 @@ export function Modal({ title, onClose, children, footer }) {
         {/* Scrollable body */}
         <div className="p-5 overflow-y-auto flex-1">{children}</div>
 
-        {/* Footer — always pinned at bottom when provided */}
+        {/* Footer — pinned at bottom when provided */}
         {footer && (
           <div className="px-5 py-4 border-t border-bg-border shrink-0 bg-bg-surface rounded-b-2xl">
             {footer}

@@ -1,13 +1,22 @@
+/**
+ * RecycleBinPage.jsx — Manage soft-deleted items and collections.
+ *
+ * Soft-deleted records are kept here and can be permanently purged
+ * or restored to their original location.
+ */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Trash2, RotateCcw, Folder, LayoutList, AlertTriangle } from 'lucide-react'
 import { useRecycleBin } from '../hooks/useData'
+import { useToast } from '../context/ToastContext'
 import { Spinner, Modal } from '../components/UI'
 
 const TYPE_LABELS = {
   textbox: 'Note', checkbox_list: 'Checklist', menu_list: 'List', card_list: 'Cards',
 }
 
+/** Formats a date string into "Today", "Yesterday", or "X days ago" */
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime()
   const days = Math.floor(diff / 86400000)
@@ -18,23 +27,39 @@ function timeAgo(dateStr) {
 
 export default function RecycleBinPage() {
   const navigate = useNavigate()
+  const { toast } = useToast()
   const { data, isLoading, restoreCollection, purgeCollection, restoreItem, purgeItem, emptyBin, total } = useRecycleBin()
+  
   const [confirmEmpty, setConfirmEmpty] = useState(false)
-  const [confirmPurge, setConfirmPurge] = useState(null) // { type, id, name }
+  const [confirmPurge, setConfirmPurge] = useState(null) // { type: 'collection' | 'item', id, name }
 
   const collections = data?.collections || []
   const items = data?.items || []
 
+  // ── Actions ──
   const handleEmptyBin = async () => {
-    await emptyBin.mutateAsync()
-    setConfirmEmpty(false)
+    try {
+      await emptyBin.mutateAsync()
+      toast.success('Recycle bin emptied')
+      setConfirmEmpty(false)
+    } catch {
+      toast.error('Failed to empty recycle bin')
+    }
   }
 
   const handlePurge = async () => {
     if (!confirmPurge) return
-    if (confirmPurge.type === 'collection') await purgeCollection.mutateAsync(confirmPurge.id)
-    else await purgeItem.mutateAsync(confirmPurge.id)
-    setConfirmPurge(null)
+    try {
+      if (confirmPurge.type === 'collection') {
+        await purgeCollection.mutateAsync(confirmPurge.id)
+      } else {
+        await purgeItem.mutateAsync(confirmPurge.id)
+      }
+      toast.success('Permanently deleted')
+      setConfirmPurge(null)
+    } catch {
+      toast.error('Failed to delete permanently')
+    }
   }
 
   return (
@@ -80,7 +105,7 @@ export default function RecycleBinPage() {
         ) : (
           <div className="space-y-6">
 
-            {/* Deleted collections */}
+            {/* ── Deleted Collections ── */}
             {collections.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
@@ -100,7 +125,10 @@ export default function RecycleBinPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
-                          onClick={() => restoreCollection.mutate(col.id)}
+                          onClick={() => restoreCollection.mutate(col.id, {
+                            onSuccess: () => toast.success('Collection restored'),
+                            onError: () => toast.error('Failed to restore collection')
+                          })}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-success/10 hover:border-success/30 hover:text-success text-text-secondary transition-all text-xs font-medium"
                         >
                           <RotateCcw size={13} /> Restore
@@ -118,7 +146,7 @@ export default function RecycleBinPage() {
               </section>
             )}
 
-            {/* Deleted items */}
+            {/* ── Deleted Items ── */}
             {items.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
@@ -142,7 +170,10 @@ export default function RecycleBinPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
-                          onClick={() => restoreItem.mutate(item.id)}
+                          onClick={() => restoreItem.mutate(item.id, {
+                            onSuccess: () => toast.success('Item restored'),
+                            onError: () => toast.error('Failed to restore item')
+                          })}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-success/10 hover:border-success/30 hover:text-success text-text-secondary transition-all text-xs font-medium"
                         >
                           <RotateCcw size={13} /> Restore
@@ -163,7 +194,7 @@ export default function RecycleBinPage() {
         )}
       </main>
 
-      {/* Empty bin confirm */}
+      {/* ── Confirm Empty Bin Modal ── */}
       {confirmEmpty && (
         <Modal
           title="Empty recycle bin?"
@@ -178,7 +209,8 @@ export default function RecycleBinPage() {
               </button>
               <button
                 onClick={handleEmptyBin}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors flex items-center gap-2"
+                disabled={emptyBin.isPending}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {emptyBin.isPending && <Spinner size={13} />}
                 Empty bin permanently
@@ -197,7 +229,7 @@ export default function RecycleBinPage() {
         </Modal>
       )}
 
-      {/* Purge single item confirm */}
+      {/* ── Confirm Purge Single Item Modal ── */}
       {confirmPurge && (
         <Modal
           title="Delete permanently?"
