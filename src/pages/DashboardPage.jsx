@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const { user, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { toast } = useToast()
-  const { data: collections = [], isLoading, create, update, togglePin, remove } = useCollections()
+  const { data: collections = [], isLoading, create, update, togglePin, remove, reorder } = useCollections()
   const { total: binTotal } = useRecycleBin()
   const navigate = useNavigate()
 
@@ -102,6 +102,10 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // ── Drag-and-drop state ──
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   // ── Derived state ──
   const filtered = collections.filter(c =>
@@ -137,11 +141,47 @@ export default function DashboardPage() {
     setMobileMenuOpen(false)
   }
 
+  // ── Drag-and-drop handlers ──
+  const handleDragStart = (index) => {
+    if (search) return // Disable dragging while searching
+    setDragIndex(index)
+  }
+
+  const handleDragOver = (e, index) => {
+    if (search) return
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
+
+  const handleDrop = (index) => {
+    if (search || dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const reordered = [...collections]
+    const [moved] = reordered.splice(dragIndex, 1)
+    reordered.splice(index, 0, moved)
+
+    reorder.mutate(reordered, {
+      onError: () => toast.error('Failed to reorder collections'),
+    })
+
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
   return (
     <div className="min-h-screen bg-bg-base">
       {/* ── Header ────────────────────────────────────── */}
       <header className="sticky top-0 z-20 glass">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+        <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           {/* Logo */}
           <span className="text-lg font-semibold tracking-widest text-text-primary shrink-0">ARCHE</span>
 
@@ -315,10 +355,19 @@ export default function DashboardPage() {
             {filtered.map(col => (
               <div
                 key={col.id}
+                draggable={!search}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={() => handleDrop(index)}
+                onDragEnd={handleDragEnd}
                 onClick={() => navigate(`/collection/${col.id}`)}
-                className={`group bg-bg-surface border rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:shadow-accent/5 transition-all ${
-                  col.pinned ? 'border-accent/30 hover:border-accent/50' : 'border-bg-border hover:border-accent/40'
-                }`}
+                className={`group border rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:shadow-accent/5 transition-all ${
+                  col.pinned ? 'bg-accent/5 border-accent hover:border-accent/80' : 'bg-bg-surface border-bg-border hover:border-accent/40'
+                } ${
+                  dragOverIndex === index && dragIndex !== index
+                    ? 'border-l-4 border-l-accent pl-3'
+                    : ''
+                } ${dragIndex === index ? 'opacity-40' : ''}`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">

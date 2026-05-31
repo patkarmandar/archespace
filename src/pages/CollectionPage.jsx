@@ -177,7 +177,7 @@ export default function CollectionPage() {
 
       {/* ── Sticky header ──────────────────────────────── */}
       <header className="sticky top-0 z-20 glass">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
           {/* Back button */}
           <button
             onClick={() => navigate('/')}

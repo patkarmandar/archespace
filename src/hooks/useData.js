@@ -53,6 +53,7 @@ export function useCollections() {
         .select('*')
         .is('deleted_at', null)           // exclude soft-deleted
         .order('pinned', { ascending: false })
+        .order('position', { ascending: true })
         .order('created_at', { ascending: false })
       if (error) throw error
       return data
@@ -86,9 +87,11 @@ export function useCollections() {
       const userId = session?.user?.id
       if (!userId) throw new Error('Not authenticated')
 
+      const position = query.data?.length || 0
+
       const { data, error } = await supabase
         .from('collections')
-        .insert({ name, description, user_id: userId })
+        .insert({ name, description, user_id: userId, position })
         .select()
         .single()
       if (error) throw error
@@ -146,6 +149,37 @@ export function useCollections() {
     onSettled: () => qc.invalidateQueries({ queryKey: ['collections'] }),
   })
 
+  // ── Reorder (drag-and-drop) ──
+  const reorder = useMutation({
+    mutationFn: async (orderedCollections) => {
+      const updates = orderedCollections.map((col, index) =>
+        supabase
+          .from('collections')
+          .update({ position: index })
+          .eq('id', col.id)
+      )
+      const results = await Promise.all(updates)
+      const failed = results.find(r => r.error)
+      if (failed) throw failed.error
+    },
+    onMutate: async (orderedCollections) => {
+      await qc.cancelQueries({ queryKey: ['collections'] })
+      const previous = qc.getQueryData(['collections'])
+
+      qc.setQueryData(['collections'], orderedCollections.map((col, i) => ({
+        ...col, position: i,
+      })))
+
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(['collections'], context.previous)
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+  })
+
   // ── Soft-delete (move to recycle bin) ──
   const remove = useMutation({
     mutationFn: async (id) => {
@@ -161,7 +195,7 @@ export function useCollections() {
     },
   })
 
-  return { ...query, create, update, togglePin, remove }
+  return { ...query, create, update, togglePin, remove, reorder }
 }
 
 

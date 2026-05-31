@@ -145,15 +145,25 @@ export default function CollectionItem({
     setCollapsed(v => !v)
   }
 
-  /** Save the title and mark dirty if it changed */
-  const saveTitle = () => {
+  /** Save the title instantly to the server without marking dirty */
+  const saveTitle = async () => {
     setEditingTitle(false)
-    if (titleVal !== item.title) setIsDirty(true)
+    if (titleVal !== item.title) {
+      try {
+        await onUpdate({
+          id: item.id,
+          title: titleVal,
+          content: localContent,
+        })
+      } catch (e) {
+        setTitleVal(item.title)
+      }
+    }
   }
 
   return (
-    <div className={`bg-bg-surface border rounded-2xl overflow-hidden transition-colors ${
-      item.pinned ? 'border-accent/30' : 'border-bg-border'
+    <div className={`border rounded-2xl overflow-hidden transition-colors ${
+      item.pinned ? 'bg-accent/5 border-accent' : 'bg-bg-surface border-bg-border'
     }`}>
       {/* ── Header ────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border flex-wrap gap-y-2">

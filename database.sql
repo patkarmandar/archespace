@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS collections (
   user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name        text        NOT NULL CHECK (char_length(name) <= 255),
   description text        DEFAULT '' CHECK (char_length(description) <= 2000),
+  position    integer     DEFAULT 0,
   pinned      boolean     DEFAULT false,        -- pin to top of dashboard
   deleted_at  timestamptz DEFAULT NULL,          -- soft-delete timestamp (NULL = active)
   created_at  timestamptz DEFAULT now(),
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS collection_items (
 
 -- Fast lookup of collections by owner
 CREATE INDEX IF NOT EXISTS collections_user_id_idx ON collections(user_id);
+CREATE INDEX IF NOT EXISTS collections_position_idx ON collections(user_id, position);
 
 -- Fast lookup of items within a collection, ordered by position
 CREATE INDEX IF NOT EXISTS items_collection_id_idx ON collection_items(collection_id);

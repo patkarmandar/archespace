@@ -65,7 +65,7 @@ export default function RecycleBinPage() {
   return (
     <div className="min-h-screen bg-bg-base">
       <header className="sticky top-0 z-20 glass">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
           <button
             onClick={() => navigate('/')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
