@@ -22,7 +22,7 @@ import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical,
 } from 'lucide-react'
-import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './ItemEditors'
+import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
 
 /** Human-readable labels for each item type */
 const TYPE_LABELS = {

@@ -18,7 +18,7 @@ import { ToastProvider } from './context/ToastContext'
 import { useSessionTimeout } from './hooks/useSessionTimeout'
 
 import ErrorBoundary from './components/ErrorBoundary'
-import { Spinner } from './components/UI'
+import { Spinner } from './components/ui/UI'
 
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
