@@ -138,7 +138,11 @@ function applyInline(text) {
     // Strikethrough
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
     // Links [text](url)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
+      // Prevent execution of malicious URIs (XSS mitigation)
+      const sanitizedUrl = /^(javascript|vbscript|data):/i.test(url.trim()) ? '#' : url
+      return `<a href="${sanitizedUrl}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`
+    })
 }
 
 /**

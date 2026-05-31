@@ -535,9 +535,28 @@ export async function importCollections(file, userId) {
   const text   = await file.text()
   const parsed = JSON.parse(text) // may throw on malformed JSON
 
+  // SECURITY: Validate imported data structure
+  if (!Array.isArray(parsed)) {
+    throw new Error('Invalid backup format: Expected an array of collections.')
+  }
+
   for (const col of parsed) {
+    if (typeof col !== 'object' || col === null) {
+      throw new Error('Invalid backup format: Collection must be an object.')
+    }
+
     // Strip server-generated fields so Supabase creates fresh ones
     const { items, id, created_at, updated_at, user_id, deleted_at, pinned, ...colData } = col
+
+    // Ensure name exists and sanitize length (matches DB constraints)
+    if (!colData.name || typeof colData.name !== 'string') {
+      colData.name = 'Imported Collection'
+    }
+    colData.name = colData.name.slice(0, 255)
+
+    if (colData.description && typeof colData.description === 'string') {
+      colData.description = colData.description.slice(0, 2000)
+    }
 
     const { data: newCol, error: colErr } = await supabase
       .from('collections')
@@ -547,14 +566,21 @@ export async function importCollections(file, userId) {
 
     if (colErr) throw colErr
 
-    if (newCol && items?.length) {
+    if (newCol && Array.isArray(items) && items.length > 0) {
       // Re-parent items to the newly created collection
       const itemsToInsert = items.map(
-        ({ id, collection_id, created_at, updated_at, deleted_at, ...item }) => ({
-          ...item,
-          collection_id: newCol.id,
-        })
+        ({ id, collection_id, created_at, updated_at, deleted_at, ...item }) => {
+          // Sanitize item title length
+          if (item.title && typeof item.title === 'string') {
+            item.title = item.title.slice(0, 255)
+          }
+          return {
+            ...item,
+            collection_id: newCol.id,
+          }
+        }
       )
+      
       const { error: itemErr } = await supabase
         .from('collection_items')
         .insert(itemsToInsert)

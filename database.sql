@@ -21,8 +21,8 @@
 CREATE TABLE IF NOT EXISTS collections (
   id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  name        text        NOT NULL,
-  description text        DEFAULT '',
+  name        text        NOT NULL CHECK (char_length(name) <= 255),
+  description text        DEFAULT '' CHECK (char_length(description) <= 2000),
   pinned      boolean     DEFAULT false,        -- pin to top of dashboard
   deleted_at  timestamptz DEFAULT NULL,          -- soft-delete timestamp (NULL = active)
   created_at  timestamptz DEFAULT now(),
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS collection_items (
   id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   collection_id uuid        REFERENCES collections(id) ON DELETE CASCADE NOT NULL,
   type          text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list')),
-  title         text        DEFAULT '',
+  title         text        DEFAULT '' CHECK (char_length(title) <= 255),
   content       jsonb       DEFAULT '{}',
   position      integer     DEFAULT 0,
   pinned        boolean     DEFAULT false,        -- pin to top of collection
@@ -135,6 +135,13 @@ BEGIN
     CREATE POLICY "Users can manage items in their collections"
       ON collection_items FOR ALL
       USING (
+        EXISTS (
+          SELECT 1 FROM collections
+          WHERE collections.id = collection_items.collection_id
+            AND collections.user_id = auth.uid()
+        )
+      )
+      WITH CHECK (
         EXISTS (
           SELECT 1 FROM collections
           WHERE collections.id = collection_items.collection_id
