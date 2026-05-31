@@ -113,7 +113,7 @@ export function TextboxEditor({ content, onChange }) {
           ref={ref}
           value={text}
           onChange={handleChange}
-          placeholder="Start writing anything… (supports **markdown**)"
+          placeholder="Start writing anything…"
           rows={3}
           className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none overflow-hidden leading-relaxed min-h-[80px]"
         />
