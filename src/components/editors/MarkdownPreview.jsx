@@ -1,5 +1,5 @@
 /**
- * MarkdownPreview.jsx — Simple markdown renderer for Note items.
+ * MarkdownPreview.jsx - Simple markdown renderer for Note items.
  *
  * Supports a practical subset of Markdown:
  *   - **bold**, *italic*, ~~strikethrough~~, `inline code`
@@ -12,7 +12,7 @@
  *   - --- horizontal rules
  *   - Line breaks (double newline → paragraph)
  *
- * No external dependencies — pure regex-based parsing.
+ * No external dependencies - pure regex-based parsing.
  *
  * Security:
  *   - HTML entities are escaped before markdown parsing (prevents XSS)
@@ -24,8 +24,8 @@
  * Validate a URL against a safe protocol allowlist.
  * Returns '#' for any unsafe URL.
  *
- * @param {string} url — The URL to validate
- * @returns {string}   — Safe URL or '#'
+ * @param {string} url - The URL to validate
+ * @returns {string}   - Safe URL or '#'
  */
 function sanitizeUrl(url) {
   if (!url || typeof url !== 'string') return '#'
@@ -37,7 +37,7 @@ function sanitizeUrl(url) {
   try {
     decoded = decodeURIComponent(trimmed)
   } catch {
-    // malformed URI — treat as unsafe
+    // malformed URI - treat as unsafe
     return '#'
   }
 
@@ -77,8 +77,8 @@ function stripEventHandlers(html) {
  * Convert a markdown string to sanitised HTML.
  * Escapes raw HTML first to prevent XSS, then applies markdown patterns.
  *
- * @param {string} md — Raw markdown text
- * @returns {string}   — HTML string safe for dangerouslySetInnerHTML
+ * @param {string} md - Raw markdown text
+ * @returns {string}   - HTML string safe for dangerouslySetInnerHTML
  */
 function markdownToHtml(md) {
   if (!md) return ''
@@ -184,7 +184,7 @@ function markdownToHtml(md) {
 
 /**
  * Apply inline markdown formatting to a single line.
- * Order matters — more specific patterns first.
+ * Order matters - more specific patterns first.
  */
 function applyInline(text) {
   return text
@@ -198,7 +198,7 @@ function applyInline(text) {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     // Strikethrough
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
-    // Links [text](url) — uses safe URL validation
+    // Links [text](url) - uses safe URL validation
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => {
       const safeUrl = sanitizeUrl(url)
       return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="md-link">${text}</a>`

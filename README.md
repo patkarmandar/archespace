@@ -3,53 +3,80 @@
 A private, single-user workspace for organising notes, checklists, lists, and cards with Supabase-powered sync.
 
 ## Features
-- **Four Note Types**: Free-form markdown notes, interactive checklists, bullet lists, and title+description cards.
-- **Pin & Reorder**: Pin important collections and items to the top. Drag and drop items to reorder them.
-- **Auto-Save**: Edits are automatically saved to the database.
-- **Recycle Bin**: Soft-delete system prevents accidental data loss.
-- **Backup & Restore**: Export all data to a JSON file and import it anytime.
-- **Dark & Light Mode**: Built-in theme toggle.
-- **Realtime Sync**: Open Arche on multiple tabs/devices and see changes instantly.
 
-## Tech Stack
-- **Frontend**: React 19 + Vite
-- **Styling**: Tailwind CSS + Custom CSS Variables
-- **State/Caching**: React Query (TanStack Query)
-- **Database/Auth**: Supabase (PostgreSQL, Row Level Security, Realtime)
+- **Four item types**: Markdown notes, checklists, bullet lists, and title+description cards
+- **Pin & reorder**: Pin collections and items; drag to reorder
+- **Auto-save**: Debounced saves with “Saved” / offline “Pending sync” feedback
+- **Global search**: Search collection names, tags, and item content (`/` or header button)
+- **Command palette**: Quick actions via `⌘K` / `Ctrl+K`
+- **Keyboard shortcuts**: `N` new collection, `/` search, `⌘S` flush saves, `Esc` close modals
+- **Archive**: Hide collections without deleting (separate from recycle bin)
+- **Duplicate**: Copy collections or individual items
+- **Bulk select**: Select multiple collections or items for pin, duplicate, archive, delete, collapse/expand
+- **Labels**: Collection colors and comma-separated tags
+- **Checklist progress**: Collapsed checklists show `3/7 done`
+- **Export**: Full JSON backup, or per-collection Markdown / ZIP / JSON
+- **Recycle bin**: Soft-delete with restore or permanent purge
+- **PWA**: Installable app with offline shell (edits queue when offline)
+- **Dark & light mode** with persisted preference
+- **Realtime sync** across tabs
+- **Session security**: Inactivity logout (2h), max session (24h), login rate limit
+
+## Tech stack
+
+- React 19 + Vite (route-level code splitting)
+- Tailwind CSS + CSS variables
+- TanStack Query
+- Supabase (PostgreSQL, RLS, Realtime)
+- vite-plugin-pwa + JSZip
 
 ## Setup
 
-1. **Clone & Install**
+1. **Clone & install**
    ```bash
    git clone <your-repo>
    cd Arche
    npm install
    ```
 
-2. **Supabase Project Setup**
-   - Create a new project in [Supabase](https://supabase.com).
-   - Go to the **SQL Editor** in your Supabase dashboard.
-   - Copy the contents of `database.sql` (found in the root of this repository) and run it. This creates the tables, triggers, indexes, and policies.
+2. **Supabase**
+   - Create a project at [supabase.com](https://supabase.com)
+   - Run the full `database.sql` in the SQL Editor (includes migrations for archive, color, tags)
+   - If you already ran an older schema, re-run section **7. SCHEMA MIGRATIONS** from `database.sql`
 
-3. **Environment Variables**
-   - Create a `.env` file in the root directory (copy `.env.example`).
-   - Add your Supabase project URL and anon key:
-     ```env
-     VITE_SUPABASE_URL=https://your-project-id.supabase.co
-     VITE_SUPABASE_ANON_KEY=your-anon-key-here
-     ```
+3. **Environment**
+   ```env
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
 
-4. **Run Locally**
+4. **Run**
    ```bash
    npm run dev
    ```
 
-5. **Create a User**
-   Arche does not have public registration. To log in, you must manually create a user in your Supabase Auth dashboard. Use the email and password you set there to sign into the app.
+5. **Users**
+   - **Single-user (default)**: Create a user in Supabase Auth dashboard; sign in only.
+   - **Multi-user**: Set `VITE_ALLOW_SIGNUP=true` in `.env`, enable **Email** provider in Supabase Auth → Providers, and allow sign-ups. Each user gets an isolated workspace (RLS enforces `user_id`).
 
-## Project Structure
-- `src/components/` — Shared UI elements and collection items.
-- `src/context/` — React Context providers for Auth, Theme, and Toast notifications.
-- `src/hooks/` — Data fetching hooks (`useData.js`) and utilities.
-- `src/pages/` — Main views (Dashboard, Collection, Recycle Bin, Login).
-- `src/lib/` — Singleton configurations (e.g., Supabase client).
+## Project structure
+
+- `src/components/` - UI, editors, command palette, global search
+- `src/context/` - Auth, theme, toasts, shortcuts, command palette, page actions
+- `src/hooks/` - Collections, items, archive, recycle bin, stats, offline sync
+- `src/pages/` - Dashboard, collection, archive, recycle bin, login
+- `src/lib/` - Supabase, export/import, offline queue, search
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘K` / `Ctrl+K` | Command palette |
+| `N` | New collection (dashboard) |
+| `/` | Focus collection search / open global search |
+| `⌘S` / `Ctrl+S` | Save all dirty items on current page |
+| `Esc` | Close modals / menus |
+
+## License
+
+See [LICENSE](LICENSE).

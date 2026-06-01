@@ -1,44 +1,39 @@
 /**
- * LoginPage.jsx — Authentication screen.
- *
- * Allows users to sign in with their email and password.
- * Arche is designed as a private workspace, so there is no
- * public registration form (users must be invited/created via Supabase).
- *
- * Security features:
- *   - Client-side rate limiting (5 attempts → 30s cooldown)
- *   - Password visibility toggle
- *   - Staggered entrance animations
+ * LoginPage.jsx - Sign in and (optional) sign up.
  */
-
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { Lock, Sun, Moon, Eye, EyeOff } from 'lucide-react'
+import { Lock, Sun, Moon, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
+import { MULTI_USER_ENABLED } from '../lib/appConfig'
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
+  const { signIn, signUp } = useAuth()
   const { theme, toggle } = useTheme()
+  const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // ── Rate limiting state ──
   const [attempts, setAttempts] = useState(0)
   const [cooldownEnd, setCooldownEnd] = useState(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   const cooldownTimer = useRef(null)
 
-  // ── Cooldown countdown ──
+  useEffect(() => {
+    if (!MULTI_USER_ENABLED) setMode('signin')
+  }, [])
+
   useEffect(() => {
     if (!cooldownEnd) {
       setCooldownRemaining(0)
       return
     }
-
     const tick = () => {
       const remaining = Math.max(0, cooldownEnd - Date.now())
       setCooldownRemaining(remaining)
@@ -48,41 +43,64 @@ export default function LoginPage() {
         clearInterval(cooldownTimer.current)
       }
     }
-
     tick()
     cooldownTimer.current = setInterval(tick, 1000)
     return () => clearInterval(cooldownTimer.current)
   }, [cooldownEnd])
 
   const isCoolingDown = cooldownRemaining > 0
+  const isSignUp = mode === 'signup' && MULTI_USER_ENABLED
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (isCoolingDown || loading) return
 
     setError('')
+    setInfo('')
+
+    if (isSignUp) {
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters.')
+        return
+      }
+      if (password !== confirmPassword) {
+        setError('Passwords do not match.')
+        return
+      }
+      setLoading(true)
+      const { data, error: signUpError } = await signUp(email, password)
+      setLoading(false)
+      if (signUpError) {
+        setError(signUpError.message)
+        return
+      }
+      if (data.session) {
+        setInfo('Account created. Welcome!')
+        return
+      }
+      setInfo('Account created. Check your email to confirm your address, then sign in.')
+      setMode('signin')
+      setPassword('')
+      setConfirmPassword('')
+      return
+    }
+
     setLoading(true)
-
-    const { error } = await signIn(email, password)
-
-    if (error) {
+    const { error: signInError } = await signIn(email, password)
+    if (signInError) {
       const newAttempts = attempts + 1
       setAttempts(newAttempts)
-      setError(error.message)
-
-      // Trigger cooldown after max attempts
+      setError(signInError.message)
       if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
         setCooldownEnd(Date.now() + LOGIN_COOLDOWN_MS)
         setError(`Too many failed attempts. Please wait ${Math.ceil(LOGIN_COOLDOWN_MS / 1000)} seconds.`)
       }
     }
-
     setLoading(false)
   }
 
   return (
     <div className="min-h-screen bg-bg-base flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated gradient background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full opacity-[0.03] blur-3xl animate-float-slow"
           style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
@@ -92,8 +110,8 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Theme toggle */}
       <button
+        type="button"
         onClick={toggle}
         className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-10"
         title="Toggle theme"
@@ -103,7 +121,6 @@ export default function LoginPage() {
       </button>
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
-        {/* Logo area */}
         <div className="text-center mb-10">
           <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-accent/10">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,11 +130,35 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-4xl font-semibold text-text-primary tracking-widest mb-2">ARCHE</h1>
-          <p className="text-text-muted text-sm">Your private workspace</p>
+          <p className="text-text-muted text-sm">
+            {MULTI_USER_ENABLED ? 'Your private workspace - sign in or create an account' : 'Your private workspace'}
+          </p>
         </div>
 
-        {/* Login card */}
         <div className="bg-bg-surface border border-bg-border rounded-2xl p-6 shadow-xl shadow-black/10">
+          {MULTI_USER_ENABLED && (
+            <div className="flex gap-1 p-1 bg-bg-elevated rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => { setMode('signin'); setError(''); setInfo('') }}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  mode === 'signin' ? 'bg-bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setError(''); setInfo('') }}
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  mode === 'signup' ? 'bg-bg-surface text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                Create account
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label htmlFor="login-email" className="block text-xs font-medium text-text-secondary mb-1.5">Email</label>
@@ -143,31 +184,51 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  autoComplete="current-password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   disabled={isCoolingDown}
-                  className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm disabled:opacity-50"
+                  minLength={isSignUp ? 8 : undefined}
+                  className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            {/* Error message */}
+            {isSignUp && (
+              <div>
+                <label htmlFor="login-confirm" className="block text-xs font-medium text-text-secondary mb-1.5">Confirm password</label>
+                <input
+                  id="login-confirm"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
+                />
+              </div>
+            )}
+
             {error && (
               <div className="bg-danger/10 border border-danger/20 rounded-lg px-3 py-2 animate-shake">
                 <p className="text-danger text-xs">{error}</p>
               </div>
             )}
 
-            {/* Cooldown indicator */}
-            {isCoolingDown && (
+            {info && (
+              <div className="bg-success/10 border border-success/30 rounded-lg px-3 py-2">
+                <p className="text-success text-xs">{info}</p>
+              </div>
+            )}
+
+            {isCoolingDown && !isSignUp && (
               <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
                 <p className="text-amber-400 text-xs">
                   Try again in {Math.ceil(cooldownRemaining / 1000)}s
@@ -177,17 +238,23 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || isCoolingDown}
+              disabled={loading || (isCoolingDown && !isSignUp)}
               className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-3 text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1 active:scale-[0.98] shadow-lg shadow-accent/20"
             >
-              <Lock size={14} />
-              {loading ? 'Signing in…' : isCoolingDown ? 'Locked' : 'Sign in'}
+              {isSignUp ? <UserPlus size={14} /> : <Lock size={14} />}
+              {loading
+                ? (isSignUp ? 'Creating account…' : 'Signing in…')
+                : isCoolingDown && !isSignUp
+                  ? 'Locked'
+                  : isSignUp
+                    ? 'Create account'
+                    : 'Sign in'}
             </button>
           </form>
         </div>
 
         <p className="text-center text-text-muted text-xs mt-6">
-          Single-user · Private · Encrypted
+          {MULTI_USER_ENABLED ? 'Multi-user · Private · Encrypted' : 'Single-user · Private · Encrypted'}
         </p>
       </div>
     </div>

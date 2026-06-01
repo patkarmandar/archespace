@@ -1,5 +1,5 @@
 /**
- * CollectionItem.jsx — A single item card inside a collection.
+ * CollectionItem.jsx - A single item card inside a collection.
  *
  * Renders a collapsible card with:
  *   - Type badge (Note / Checklist / List / Cards)
@@ -20,9 +20,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
-  Pin, PinOff, Save, AlertTriangle, GripVertical,
+  Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
+  CheckSquare, Square,
 } from 'lucide-react'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
+import { getChecklistProgress } from '../lib/checklistProgress'
+import { isOnline, enqueueOffline } from '../lib/offlineQueue'
 
 /** Human-readable labels for each item type */
 const TYPE_LABELS = {
@@ -51,17 +54,25 @@ export default function CollectionItem({
   onUpdate,
   onTogglePin,
   onDelete,
+  onDuplicate,
+  onArchive,
   onDirtyChange,
   dragHandleProps,
+  collapsed = false,
+  onCollapsedChange,
+  selectMode = false,
+  selected = false,
+  onSelectedChange,
 }) {
   // ── Local state ──
-  const [collapsed, setCollapsed]         = useState(false)
   const [editingTitle, setEditingTitle]   = useState(false)
   const [titleVal, setTitleVal]           = useState(item.title)
   const [localContent, setLocalContent]   = useState(item.content)
   const [isDirty, setIsDirty]             = useState(false)
   const [saving, setSaving]               = useState(false)
   const [collapseGuard, setCollapseGuard] = useState(false)
+  const [savedFlash, setSavedFlash] = useState(false)
+  const [pendingSync, setPendingSync] = useState(false)
 
   // ── P1 Bugfix: Refs for latest state to prevent stale closures in auto-save ──
   const latestState = useRef({ title: item.title, content: item.content })
@@ -72,6 +83,7 @@ export default function CollectionItem({
 
   const autoSaveTimer = useRef(null)
   const style = TYPE_STYLES[item.type]
+  const checklistProgress = item.type === 'checkbox_list' ? getChecklistProgress(localContent) : null
 
   // ── Sync from server when not dirty (realtime / parent update) ──
   useEffect(() => {
@@ -95,35 +107,58 @@ export default function CollectionItem({
    * Called by editors on every content change.
    * Marks the item as dirty and schedules an auto-save.
    */
-  const handleContentChange = useCallback((newContent) => {
-    setLocalContent(newContent)
-    setIsDirty(true)
-
-    // Reset the auto-save debounce timer
-    clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => {
-      // Auto-save using latest state ref to avoid stale closures
-      performSave(latestState.current.title, newContent)
-    }, AUTO_SAVE_DELAY)
-  }, [item.id])
-
   /**
    * Persist the current local state to the server.
    * Accepts optional overrides for title/content (used by auto-save
    * to avoid stale closures).
    */
-  const performSave = async (overrideTitle, overrideContent) => {
-    setSaving(true)
-    await onUpdate({
+  const performSave = useCallback(async (overrideTitle, overrideContent) => {
+    const payload = {
       id: item.id,
-      title: overrideTitle ?? titleVal,
-      content: overrideContent ?? localContent,
-    })
-    setIsDirty(false)
-    setSaving(false)
-    setCollapseGuard(false)
+      title: overrideTitle ?? latestState.current.title,
+      content: overrideContent ?? latestState.current.content,
+    }
+
+    if (!isOnline()) {
+      enqueueOffline({ type: 'item-update', payload })
+      setIsDirty(false)
+      setPendingSync(true)
+      setCollapseGuard(false)
+      clearTimeout(autoSaveTimer.current)
+      return
+    }
+
+    setSaving(true)
+    setPendingSync(false)
+    try {
+      await onUpdate(payload)
+      setIsDirty(false)
+      setCollapseGuard(false)
+      clearTimeout(autoSaveTimer.current)
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 2000)
+    } catch {
+      // Keep dirty state so the user can retry
+    } finally {
+      setSaving(false)
+    }
+  }, [item.id, onUpdate])
+
+  useEffect(() => {
+    const onFlush = () => { if (isDirty) performSave() }
+    window.addEventListener('arche:flush-saves', onFlush)
+    return () => window.removeEventListener('arche:flush-saves', onFlush)
+  }, [isDirty, performSave])
+
+  const handleContentChange = useCallback((newContent) => {
+    setLocalContent(newContent)
+    setIsDirty(true)
+
     clearTimeout(autoSaveTimer.current)
-  }
+    autoSaveTimer.current = setTimeout(() => {
+      performSave(latestState.current.title, newContent)
+    }, AUTO_SAVE_DELAY)
+  }, [performSave])
 
   /** Manual save button handler */
   const handleSave = () => performSave()
@@ -148,7 +183,7 @@ export default function CollectionItem({
       return
     }
     setCollapseGuard(false)
-    setCollapsed(v => !v)
+    onCollapsedChange?.(!collapsed)
   }
 
   /** Save the title instantly to the server without marking dirty */
@@ -169,18 +204,29 @@ export default function CollectionItem({
 
   return (
     <div className={`border rounded-2xl overflow-hidden transition-colors ${
+      selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
       item.pinned ? 'bg-accent/5 border-accent' : 'bg-bg-surface border-bg-border'
     }`}>
       {/* ── Header ────────────────────────────────────── */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border flex-wrap gap-y-2">
-        {/* Drag handle */}
-        <div
-          {...dragHandleProps}
-          className="cursor-grab active:cursor-grabbing shrink-0 text-text-muted hover:text-text-secondary transition-colors"
-          title="Drag to reorder"
-        >
-          <GripVertical size={14} />
-        </div>
+        {selectMode ? (
+          <button
+            type="button"
+            onClick={() => onSelectedChange?.(!selected)}
+            className="shrink-0 text-text-muted hover:text-accent transition-colors"
+            aria-label={selected ? 'Deselect' : 'Select'}
+          >
+            {selected ? <CheckSquare size={16} className="text-accent" /> : <Square size={16} />}
+          </button>
+        ) : (
+          <div
+            {...dragHandleProps}
+            className="cursor-grab active:cursor-grabbing shrink-0 text-text-muted hover:text-text-secondary transition-colors"
+            title="Drag to reorder"
+          >
+            <GripVertical size={14} />
+          </div>
+        )}
 
         {/* Pin indicator */}
         {item.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
@@ -211,7 +257,23 @@ export default function CollectionItem({
           )}
         </div>
 
+        {collapsed && checklistProgress && (
+          <span className="shrink-0 text-xs text-text-muted font-medium tabular-nums">
+            {checklistProgress.done}/{checklistProgress.total} done
+          </span>
+        )}
+
         {/* Dirty indicator badge */}
+        {pendingSync && (
+          <span className="shrink-0 text-xs text-blue-400 font-medium px-2 py-0.5 bg-blue-400/10 rounded-md border border-blue-400/20">
+            Pending sync
+          </span>
+        )}
+        {savedFlash && !isDirty && !saving && (
+          <span className="shrink-0 text-xs text-success font-medium px-2 py-0.5 bg-success/10 rounded-md border border-success/30">
+            Saved
+          </span>
+        )}
         {isDirty && !saving && (
           <span className="shrink-0 text-xs text-amber-400 font-medium px-2 py-0.5 bg-amber-400/10 rounded-md border border-amber-400/20">
             Unsaved
@@ -226,6 +288,7 @@ export default function CollectionItem({
         )}
 
         {/* ── Action buttons ── */}
+        {!selectMode && (
         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           {isDirty ? (
             /* Save / Discard mode */
@@ -262,42 +325,67 @@ export default function CollectionItem({
               ) : (
                 <>
                   <button
+                    type="button"
                     onClick={() => setEditingTitle(true)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                    title="Rename"
+                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
                   >
-                    <Pencil size={11} /> Rename
+                    <Pencil size={12} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => onTogglePin(item.id, item.pinned)}
                     title={item.pinned ? 'Unpin' : 'Pin to top'}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    className={`p-2 rounded-lg border transition-all ${
                       item.pinned
                         ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
                         : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
                     }`}
                   >
                     {item.pinned ? <PinOff size={12} /> : <Pin size={12} />}
-                    {item.pinned ? 'Unpin' : 'Pin'}
                   </button>
                   <button
+                    type="button"
                     onClick={handleCollapseClick}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                    title={collapsed ? 'Expand' : 'Collapse'}
+                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
                   >
                     {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-                    <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>
                   </button>
+                  {onDuplicate && (
+                    <button
+                      type="button"
+                      onClick={() => onDuplicate(item)}
+                      title="Duplicate"
+                      className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  )}
+                  {onArchive && (
+                    <button
+                      type="button"
+                      onClick={() => onArchive(item.id)}
+                      title="Archive"
+                      className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
+                    >
+                      <Archive size={12} />
+                    </button>
+                  )}
                   <button
+                    type="button"
                     onClick={() => onDelete(item.id)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all"
+                    title="Delete"
+                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all"
                   >
                     <Trash2 size={12} />
-                    <span className="hidden sm:inline">Delete</span>
                   </button>
                 </>
               )}
             </>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Unsaved collapse warning ─────────────────── */}
@@ -313,7 +401,7 @@ export default function CollectionItem({
               <Save size={12} /> Save & collapse
             </button>
             <button
-              onClick={() => { handleDiscard(); setCollapsed(true) }}
+              onClick={() => { handleDiscard(); onCollapsedChange?.(true) }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all"
             >
               Discard & collapse

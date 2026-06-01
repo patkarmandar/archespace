@@ -1,81 +1,89 @@
 /**
- * App.jsx — Root application component.
- *
- * Wraps the routing tree with all necessary providers:
- *   - ErrorBoundary (Catches unhandled render errors)
- *   - ThemeProvider (Dark/light mode)
- *   - ToastProvider (Notifications)
- *   - QueryClientProvider (React Query cache)
- *   - AuthProvider (Supabase authentication)
+ * App.jsx - Root application component.
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
+import { CommandPaletteProvider } from './context/CommandPaletteContext'
+import { ShortcutsProvider } from './context/ShortcutsContext'
+import { PageActionsProvider } from './context/PageActionsContext'
 import { useSessionTimeout } from './hooks/useSessionTimeout'
 
 import ErrorBoundary from './components/ErrorBoundary'
+import AppChrome from './components/layout/AppChrome'
 import { Spinner } from './components/ui/UI'
 
-import LoginPage from './pages/LoginPage'
-import DashboardPage from './pages/DashboardPage'
-import CollectionPage from './pages/CollectionPage'
-import RecycleBinPage from './pages/RecycleBinPage'
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const CollectionPage = lazy(() => import('./pages/CollectionPage'))
+const RecycleBinPage = lazy(() => import('./pages/RecycleBinPage'))
+const ArchivePage = lazy(() => import('./pages/ArchivePage'))
 
-// Configure React Query to hold data for 30s before considering it stale
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 1000 * 30, retry: 1 } }
+  defaultOptions: { queries: { staleTime: 1000 * 30, retry: 1 } },
 })
 
-/**
- * Wrapper for routes that require an authenticated user.
- * Redirects to /login if unauthenticated.
- */
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+      <Spinner size={24} />
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   useSessionTimeout()
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
-      <Spinner size={24} />
-    </div>
-  )
+  if (loading) return <PageLoader />
   if (!user) return <Navigate to="/login" replace />
-  return children
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {children}
+    </Suspense>
+  )
 }
 
-/**
- * Wrapper for routes that should only be accessible to logged-OUT users.
- * Redirects to dashboard if already authenticated.
- */
 function PublicRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
-      <Spinner size={24} />
-    </div>
-  )
+  if (loading) return <PageLoader />
   if (user) return <Navigate to="/" replace />
-  return children
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {children}
+    </Suspense>
+  )
 }
 
-/** Main routing switch */
-function AppRoutes() {
+/** Shell rendered inside RouterProvider so hooks like useNavigate() work in AppChrome. */
+function RootLayout() {
   return (
-    <Routes>
-      <Route path="/login"            element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/"                 element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/collection/:id"   element={<ProtectedRoute><CollectionPage /></ProtectedRoute>} />
-      <Route path="/recycle-bin"      element={<ProtectedRoute><RecycleBinPage /></ProtectedRoute>} />
-      {/* Catch-all route -> Dashboard */}
-      <Route path="*"                 element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <AppChrome />
+      <Outlet />
+    </>
   )
 }
+
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      { path: '/login', element: <PublicRoute><LoginPage /></PublicRoute> },
+      { path: '/', element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
+      { path: '/collection/:id', element: <ProtectedRoute><CollectionPage /></ProtectedRoute> },
+      { path: '/recycle-bin', element: <ProtectedRoute><RecycleBinPage /></ProtectedRoute> },
+      { path: '/archive', element: <ProtectedRoute><ArchivePage /></ProtectedRoute> },
+      { path: '*', element: <Navigate to="/" replace /> },
+    ],
+  },
+])
 
 export default function App() {
   return (
@@ -83,11 +91,15 @@ export default function App() {
       <ThemeProvider>
         <ToastProvider>
           <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-              <AuthProvider>
-                <AppRoutes />
-              </AuthProvider>
-            </BrowserRouter>
+            <ShortcutsProvider>
+              <CommandPaletteProvider>
+                <PageActionsProvider>
+                  <AuthProvider>
+                    <RouterProvider router={router} />
+                  </AuthProvider>
+                </PageActionsProvider>
+              </CommandPaletteProvider>
+            </ShortcutsProvider>
           </QueryClientProvider>
         </ToastProvider>
       </ThemeProvider>

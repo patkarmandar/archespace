@@ -1,5 +1,5 @@
 /**
- * main.jsx — Application entry point.
+ * main.jsx - Application entry point.
  *
  * Renders the App tree into the #root DOM element.
  */

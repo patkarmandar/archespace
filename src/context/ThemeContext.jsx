@@ -1,5 +1,5 @@
 /**
- * ThemeContext.jsx — Dark / light theme toggle for Arche.
+ * ThemeContext.jsx - Dark / light theme toggle for Arche.
  *
  * Persists the user's preference in localStorage under the key
  * `arche-theme`. On mount it reads the stored value (defaulting
@@ -7,8 +7,8 @@
  * properties in index.css switch to the correct palette.
  *
  * Exposes:
- *   - `theme`  — current theme string ("dark" | "light")
- *   - `toggle` — function to flip between dark and light
+ *   - `theme`  - current theme string ("dark" | "light")
+ *   - `toggle` - function to flip between dark and light
  */
 
 import { createContext, useContext, useEffect, useState } from 'react'
@@ -41,4 +41,8 @@ export function ThemeProvider({ children }) {
  * Hook to access the theme context.
  * Must be used inside a <ThemeProvider>.
  */
-export const useTheme = () => useContext(ThemeContext)
+export function useTheme() {
+  const ctx = useContext(ThemeContext)
+  if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
+  return ctx
+}

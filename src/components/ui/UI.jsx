@@ -1,18 +1,18 @@
 /**
- * UI.jsx — Shared presentational components for Arche.
+ * UI.jsx - Shared presentational components for Arche.
  *
  * Exports:
- *   - Spinner — Animated SVG loading indicator
- *   - Modal   — Full-screen overlay with header, scrollable body,
+ *   - Spinner - Animated SVG loading indicator
+ *   - Modal   - Full-screen overlay with header, scrollable body,
  *               and optional pinned footer. Closes on backdrop
  *               click or Escape key.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 /**
  * Animated loading spinner.
- * @param {{ size?: number }} props — Diameter in px (default 16)
+ * @param {{ size?: number }} props - Diameter in px (default 16)
  */
 export function Spinner({ size = 16 }) {
   return (
@@ -50,6 +50,9 @@ export function Spinner({ size = 16 }) {
  * @param {{ title: string, onClose: Function, children: React.ReactNode, footer?: React.ReactNode }} props
  */
 export function Modal({ title, onClose, children, footer }) {
+  const titleId = useId()
+  const panelRef = useRef(null)
+
   // ── Escape key handler ──
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -59,17 +62,39 @@ export function Modal({ title, onClose, children, footer }) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
+  // Focus the dialog panel when opened
+  useEffect(() => {
+    panelRef.current?.focus()
+  }, [])
+
+  // Prevent background scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
+      role="presentation"
     >
-      <div className="bg-bg-surface border border-bg-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Header — always visible */}
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="bg-bg-surface border border-bg-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh] outline-none"
+      >
+        {/* Header - always visible */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-bg-border shrink-0">
-          <h3 className="font-semibold text-text-primary">{title}</h3>
+          <h3 id={titleId} className="font-semibold text-text-primary">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -81,7 +106,7 @@ export function Modal({ title, onClose, children, footer }) {
         {/* Scrollable body */}
         <div className="p-5 overflow-y-auto flex-1">{children}</div>
 
-        {/* Footer — pinned at bottom when provided */}
+        {/* Footer - pinned at bottom when provided */}
         {footer && (
           <div className="px-5 py-4 border-t border-bg-border shrink-0 bg-bg-surface rounded-b-2xl">
             {footer}

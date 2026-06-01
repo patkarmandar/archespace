@@ -1,18 +1,28 @@
 /**
- * CollectionModal.jsx — Modal for creating or editing a collection.
+ * CollectionModal.jsx - Modal for creating or editing a collection.
  */
 import { useState } from 'react'
 import { Modal, Spinner } from '../ui/UI'
+import { COLLECTION_COLORS, parseTags } from '../../lib/collectionColors'
 
 export function CollectionModal({ initial, onSave, onClose }) {
   const [name, setName] = useState(initial?.name || '')
   const [description, setDescription] = useState(initial?.description || '')
+  const [color, setColor] = useState(initial?.color || null)
+  const [tagsInput, setTagsInput] = useState(
+    () => (Array.isArray(initial?.tags) ? initial.tags.join(', ') : '')
+  )
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     if (!name.trim()) return
     setSaving(true)
-    await onSave({ name: name.trim(), description: description.trim() })
+    await onSave({
+      name: name.trim(),
+      description: description.trim(),
+      color,
+      tags: parseTags(tagsInput.split(',').map(t => t.trim())),
+    })
     setSaving(false)
     onClose()
   }
@@ -43,14 +53,51 @@ export function CollectionModal({ initial, onSave, onClose }) {
             className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none"
           />
         </div>
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1.5">Color</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setColor(null)}
+              className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                !color ? 'border-accent ring-2 ring-accent/30' : 'border-bg-border'
+              } bg-bg-elevated`}
+              title="Default"
+            />
+            {COLLECTION_COLORS.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setColor(c.id)}
+                className={`w-8 h-8 rounded-lg border-2 transition-all ${c.dot} ${
+                  color === c.id ? 'border-white ring-2 ring-accent/40 scale-110' : 'border-transparent'
+                }`}
+                title={c.label}
+              />
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-text-secondary mb-1.5">
+            Tags <span className="text-text-muted font-normal">(comma-separated)</span>
+          </label>
+          <input
+            placeholder="work, personal, ideas"
+            value={tagsInput}
+            onChange={e => setTagsInput(e.target.value)}
+            className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm"
+          />
+        </div>
         <div className="flex gap-2 justify-end pt-1">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={!name.trim() || saving}
             className="px-4 py-2 text-sm font-semibold bg-accent hover:bg-accent-hover text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"

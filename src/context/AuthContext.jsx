@@ -1,11 +1,11 @@
 /**
- * AuthContext.jsx — Authentication provider for Arche.
+ * AuthContext.jsx - Authentication provider for Arche.
  *
  * Wraps the app in a React context that exposes:
- *   - `user`    — the current Supabase User object (or null)
- *   - `loading` — true while the initial session check is in flight
- *   - `signIn`  — sign in with email + password
- *   - `signOut` — end the session
+ *   - `user`    - the current Supabase User object (or null)
+ *   - `loading` - true while the initial session check is in flight
+ *   - `signIn`  - sign in with email + password
+ *   - `signOut` - end the session
  *
  * On mount the provider:
  *   1. Fetches the existing session (e.g. from a stored refresh token).
@@ -44,11 +44,19 @@ export function AuthProvider({ children }) {
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
 
+  /** Register a new account (multi-user mode) */
+  const signUp = (email, password, metadata = {}) =>
+    supabase.auth.signUp({
+      email,
+      password,
+      options: { data: metadata },
+    })
+
   /** End the current session */
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )
@@ -58,4 +66,8 @@ export function AuthProvider({ children }) {
  * Hook to access the auth context.
  * Must be used inside an <AuthProvider>.
  */
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
+}

@@ -1,5 +1,5 @@
 /**
- * ToastContext.jsx — Lightweight notification system for Arche.
+ * ToastContext.jsx - Lightweight notification system for Arche.
  *
  * Provides a `useToast()` hook that exposes a `toast` function.
  * Usage:
@@ -104,7 +104,7 @@ export function ToastProvider({ children }) {
               className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border ${border} ${bg} shadow-xl backdrop-blur-md ${
                 exiting ? 'animate-slide-out' : 'animate-slide-in'
               }`}
-              style={{ background: 'var(--bg-surface)', borderColor: undefined }}
+              style={{ background: 'var(--glass-bg)' }}
               role="alert"
               aria-live="polite"
             >
@@ -129,4 +129,8 @@ export function ToastProvider({ children }) {
  * Hook to access the toast notification system.
  * @returns {{ toast: { success: Function, error: Function, info: Function } }}
  */
-export const useToast = () => useContext(ToastContext)
+export function useToast() {
+  const ctx = useContext(ToastContext)
+  if (!ctx) throw new Error('useToast must be used within ToastProvider')
+  return ctx
+}

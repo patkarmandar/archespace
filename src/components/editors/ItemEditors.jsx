@@ -1,11 +1,11 @@
 /**
- * ItemEditors.jsx — Content editors for each collection-item type.
+ * ItemEditors.jsx - Content editors for each collection-item type.
  *
  * Exports four editor components, one per item type:
- *   - TextboxEditor    — Free-form text area (Note) with markdown preview
- *   - ChecklistEditor  — Checkbox items (add / check / remove)
- *   - MenuListEditor   — Simple bullet list
- *   - CardListEditor   — Title + description card pairs
+ *   - TextboxEditor    - Free-form text area (Note) with markdown preview
+ *   - ChecklistEditor  - Checkbox items (add / check / remove)
+ *   - MenuListEditor   - Simple bullet list
+ *   - CardListEditor   - Title + description card pairs
  *
  * Each editor receives the current `content` object and an
  * `onChange(newContent)` callback. They manage their own local
@@ -77,11 +77,11 @@ export function TextboxEditor({ content, onChange }) {
   // Auto-resize whenever text changes
   useEffect(() => { adjust() }, [text])
 
-  /** Handle user typing — update local state and notify parent */
+  /** Handle user typing - update local state and notify parent */
   const handleChange = (e) => {
     setText(e.target.value)
     onChange({ text: e.target.value })
-    // Note: adjust() is NOT called here — the useEffect above handles it
+    // Note: adjust() is NOT called here - the useEffect above handles it
   }
 
   return (
@@ -128,7 +128,7 @@ export function TextboxEditor({ content, onChange }) {
 // ─────────────────────────────────────────────────────────
 
 /**
- * Checkbox list editor — each item has a toggle and text input.
+ * Checkbox list editor - each item has a toggle and text input.
  *
  * Uses a scoped container ref for focus management so adding a
  * new item focuses the correct input even when multiple checklists
@@ -231,7 +231,7 @@ export function ChecklistEditor({ content, onChange }) {
 // ─────────────────────────────────────────────────────────
 
 /**
- * Simple bullet list editor — text-only items with a dot bullet.
+ * Simple bullet list editor - text-only items with a dot bullet.
  *
  * Same scoped-ref fix as ChecklistEditor for focus management.
  *
@@ -308,7 +308,7 @@ export function MenuListEditor({ content, onChange }) {
 // ─────────────────────────────────────────────────────────
 
 /**
- * Card-based editor — each card has a title and description.
+ * Card-based editor - each card has a title and description.
  *
  * @param {{ content: { items: Array }, onChange: Function }} props
  */

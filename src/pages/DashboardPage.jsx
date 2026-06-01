@@ -1,5 +1,5 @@
 /**
- * DashboardPage.jsx — Main entry point for authenticated users.
+ * DashboardPage.jsx - Main entry point for authenticated users.
  *
  * Displays a grid of the user's collections.
  *
@@ -13,36 +13,107 @@
  *   - Sign out
  */
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Plus, LogOut, Download, Upload, Search, Folder,
-  Pencil, Trash2, ChevronRight, Sun, Moon, Pin, PinOff
+  Trash2, Sun, Moon, Archive, Command, CheckSquare,
 } from 'lucide-react'
+import { useCommandPalette } from '../context/CommandPaletteContext'
+import { MULTI_USER_ENABLED } from '../lib/appConfig'
+import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
+import { useRegisterPageActions } from '../context/PageActionsContext'
 import { useCollections } from '../hooks/useCollections'
 import { useRecycleBin } from '../hooks/useRecycleBin'
+import { useArchive } from '../hooks/useArchive'
+import { useCollectionStats } from '../hooks/useCollectionStats'
 import { exportCollections, importCollections } from '../lib/exportImport'
-import { Modal, Spinner } from '../components/ui/UI'
+import { Modal } from '../components/ui/UI'
 import { CollectionModal } from '../components/collection/CollectionModal'
 import { CollectionCard } from '../components/collection/CollectionCard'
+import GlobalSearch from '../components/GlobalSearch'
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
   const { theme, toggle } = useTheme()
   const { toast } = useToast()
-  const { data: collections = [], isLoading, create, update, togglePin, remove, reorder } = useCollections()
+  const { openPalette } = useCommandPalette()
+  const {
+    data: collections = [], isLoading, create, update, togglePin, remove, reorder,
+    archive, duplicate, bulkRemove, bulkArchive, bulkSetPinned, bulkDuplicate,
+  } = useCollections()
   const { total: binTotal } = useRecycleBin()
+  const { total: archiveTotal } = useArchive()
+  const { data: stats = {} } = useCollectionStats()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const headerRef = useRef(null)
+  const searchInputRef = useRef(null)
 
   // ── Local state ──
   const [modal, setModal] = useState(null) // { type: 'create' } | { type: 'edit', col } | null
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
+
+  const selectedCount = selectedIds.size
+  const selectedCollections = useMemo(
+    () => collections.filter(c => selectedIds.has(c.id)),
+    [collections, selectedIds]
+  )
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelected = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const pageActions = useMemo(() => ({
+    onNewCollection: () => setModal({ type: 'create' }),
+    onExport: () => handleExportRef.current?.(),
+    onOpenSearch: () => setGlobalSearchOpen(true),
+    onEscape: () => {
+      setModal(null)
+      setDeleteConfirm(null)
+      setGlobalSearchOpen(false)
+      setMobileMenuOpen(false)
+      setBulkDeleteConfirm(null)
+      exitSelectMode()
+    },
+  }), [exitSelectMode])
+
+  useRegisterPageActions(pageActions)
+
+  const handleExportRef = useRef(null)
+
+  // Close mobile menu when clicking outside the header
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handlePointerDown = (e) => {
+      if (headerRef.current && !headerRef.current.contains(e.target)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [mobileMenuOpen])
+
   // ── Drag-and-drop state ──
   const [dragIndex, setDragIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
@@ -64,6 +135,7 @@ export default function DashboardPage() {
       console.error(err)
     }
   }
+  handleExportRef.current = handleExport
 
   const handleImport = async (e) => {
     const file = e.target.files[0]
@@ -71,9 +143,11 @@ export default function DashboardPage() {
 
     try {
       await importCollections(file, user.id)
+      await queryClient.invalidateQueries({ queryKey: ['collections'] })
+      await queryClient.invalidateQueries({ queryKey: ['bin'] })
       toast.success('Backup imported successfully')
     } catch (err) {
-      toast.error('Failed to import backup — invalid format')
+      toast.error('Failed to import backup - invalid format')
       console.error(err)
     }
 
@@ -83,7 +157,7 @@ export default function DashboardPage() {
 
   // ── Drag-and-drop handlers ──
   const handleDragStart = (index) => {
-    if (search) return // Disable dragging while searching
+    if (search || selectMode) return
     setDragIndex(index)
   }
 
@@ -93,16 +167,26 @@ export default function DashboardPage() {
     setDragOverIndex(index)
   }
 
-  const handleDrop = (index) => {
-    if (search || dragIndex === null || dragIndex === index) {
+  const handleDrop = (filteredIndex) => {
+    if (search || dragIndex === null || dragIndex === filteredIndex) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const fromId = filtered[dragIndex]?.id
+    const toId = filtered[filteredIndex]?.id
+    if (!fromId || !toId) {
       setDragIndex(null)
       setDragOverIndex(null)
       return
     }
 
     const reordered = [...collections]
-    const [moved] = reordered.splice(dragIndex, 1)
-    reordered.splice(index, 0, moved)
+    const fromIdx = reordered.findIndex(c => c.id === fromId)
+    const toIdx = reordered.findIndex(c => c.id === toId)
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
 
     reorder.mutate(reordered, {
       onError: () => toast.error('Failed to reorder collections'),
@@ -120,25 +204,32 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-bg-base">
       {/* ── Header ────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 glass">
+      <header ref={headerRef} className="sticky top-0 z-20 glass">
         <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           {/* Logo */}
-          <span className="text-lg font-semibold tracking-widest text-text-primary shrink-0">ARCHE</span>
+          <div className="shrink-0">
+            <span className="text-lg font-semibold tracking-widest text-text-primary">ARCHE</span>
+            {MULTI_USER_ENABLED && user?.email && (
+              <p className="text-[10px] text-text-muted truncate max-w-[140px] sm:max-w-[200px]">{user.email}</p>
+            )}
+          </div>
 
-          {/* Search — desktop */}
+          {/* Search - desktop */}
           <div className="flex-1 max-w-sm hidden sm:block">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
+                ref={searchInputRef}
                 placeholder="Search collections…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full bg-bg-elevated border border-bg-border rounded-xl pl-9 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
+                className="w-full bg-bg-elevated border border-bg-border rounded-xl pl-9 pr-12 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
               />
+              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono hidden sm:inline">/</kbd>
             </div>
           </div>
 
-          {/* Actions — desktop */}
+          {/* Actions - desktop */}
           <div className="hidden sm:flex items-center gap-2">
             <button
               onClick={toggle}
@@ -148,6 +239,38 @@ export default function DashboardPage() {
               {theme === 'dark' ? 'Light' : 'Dark'}
             </button>
             <button
+              type="button"
+              onClick={() => openPalette()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Commands (⌘K)"
+            >
+              <Command size={14} />
+              <span className="hidden md:inline">Commands</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalSearchOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Search everywhere (/)"
+            >
+              <Search size={14} />
+              <span className="hidden md:inline">Search</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/archive')}
+              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Archive size={14} />
+              Archive
+              {archiveTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1 leading-none">
+                  {archiveTotal > 99 ? '99+' : archiveTotal}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/recycle-bin')}
               className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
@@ -183,7 +306,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Actions — mobile right side */}
+          {/* Actions - mobile right side */}
           <div className="flex sm:hidden items-center gap-2">
             <button
               onClick={toggle}
@@ -203,6 +326,23 @@ export default function DashboardPage() {
               )}
             </button>
             <button
+              type="button"
+              onClick={() => openPalette()}
+              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              title="Commands (⌘K)"
+            >
+              <Command size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setGlobalSearchOpen(true)}
+              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              title="Search (/)"
+            >
+              <Search size={16} />
+            </button>
+            <button
+              type="button"
               onClick={() => setMobileMenuOpen(v => !v)}
               className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
             >
@@ -218,6 +358,13 @@ export default function DashboardPage() {
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
           <div className="sm:hidden border-t border-bg-border bg-bg-surface px-4 py-3 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => { navigate('/archive'); setMobileMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Archive size={15} /> Archive
+            </button>
             <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium cursor-pointer">
               <Upload size={15} /> Import backup
               <input type="file" accept=".json" onChange={handleImport} className="hidden" />
@@ -257,18 +404,37 @@ export default function DashboardPage() {
         </div>
 
         {/* Page heading */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
             <h2 className="text-xl font-semibold text-text-primary">Collections</h2>
-            <p className="text-text-muted text-sm mt-0.5">{collections.length} {collections.length === 1 ? 'collection' : 'collections'}</p>
+            <p className="text-text-muted text-sm mt-0.5">
+              {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
+            </p>
           </div>
-          <button
-            onClick={() => setModal({ type: 'create' })}
-            className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
-          >
-            <Plus size={16} />
-            New collection
-          </button>
+          <div className="flex items-center gap-2">
+            {filtered.length > 0 && (
+              <button
+                type="button"
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+                  selectMode
+                    ? 'border-accent bg-accent-muted text-accent'
+                    : 'border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <CheckSquare size={16} />
+                {selectMode ? 'Done' : 'Select'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setModal({ type: 'create' })}
+              className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
+            >
+              <Plus size={16} />
+              New collection
+            </button>
+          </div>
         </div>
 
         {/* Collections grid */}
@@ -311,13 +477,17 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-24">
             {filtered.map((col, index) => (
-              <CollectionCard 
+              <CollectionCard
                 key={col.id}
                 col={col}
                 index={index}
                 search={search}
+                stats={stats}
+                selectMode={selectMode}
+                selected={selectedIds.has(col.id)}
+                onToggleSelect={() => toggleSelected(col.id)}
                 dragIndex={dragIndex}
                 dragOverIndex={dragOverIndex}
                 handleDragStart={handleDragStart}
@@ -328,8 +498,79 @@ export default function DashboardPage() {
                 togglePin={togglePin}
                 setModal={setModal}
                 setDeleteConfirm={setDeleteConfirm}
+                onDuplicate={(id) => duplicate.mutate(id, {
+                  onSuccess: () => toast.success('Collection duplicated'),
+                  onError: () => toast.error('Failed to duplicate'),
+                })}
+                onArchive={(id) => archive.mutate(id, {
+                  onSuccess: () => toast.success('Collection archived'),
+                  onError: () => toast.error('Failed to archive'),
+                })}
               />
             ))}
+            <BulkSelectionBar
+              count={selectedCount}
+              total={filtered.length}
+              onClear={exitSelectMode}
+              onSelectAll={() => setSelectedIds(new Set(filtered.map(c => c.id)))}
+              actions={[
+                {
+                  id: 'pin',
+                  label: 'Pin',
+                  icon: BULK_ICONS.pin,
+                  onClick: async () => {
+                    try {
+                      await bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: true })
+                      toast.success(`Pinned ${selectedCount} collections`)
+                      exitSelectMode()
+                    } catch { toast.error('Failed to pin') }
+                  },
+                },
+                {
+                  id: 'unpin',
+                  label: 'Unpin',
+                  icon: BULK_ICONS.unpin,
+                  onClick: async () => {
+                    try {
+                      await bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: false })
+                      toast.success('Unpinned collections')
+                      exitSelectMode()
+                    } catch { toast.error('Failed to unpin') }
+                  },
+                },
+                {
+                  id: 'duplicate',
+                  label: 'Duplicate',
+                  icon: BULK_ICONS.copy,
+                  onClick: async () => {
+                    try {
+                      await bulkDuplicate.mutateAsync(selectedCollections)
+                      toast.success(`Duplicated ${selectedCount} collections`)
+                      exitSelectMode()
+                    } catch { toast.error('Failed to duplicate') }
+                  },
+                },
+                {
+                  id: 'archive',
+                  label: 'Archive',
+                  icon: BULK_ICONS.archive,
+                  onClick: async () => {
+                    try {
+                      await bulkArchive.mutateAsync([...selectedIds])
+                      toast.success(`Archived ${selectedCount} collections`)
+                      exitSelectMode()
+                    } catch { toast.error('Failed to archive') }
+                  },
+                },
+                {
+                  id: 'delete',
+                  label: 'Delete',
+                  icon: BULK_ICONS.trash,
+                  variant: 'danger',
+                  onClick: () => setBulkDeleteConfirm([...selectedIds]),
+                },
+              ]}
+            />
           </div>
         )}
       </main>
@@ -337,8 +578,8 @@ export default function DashboardPage() {
       {/* ── Modals ────────────────────────────────────── */}
       {modal?.type === 'create' && (
         <CollectionModal
-          onSave={({ name, description }) => {
-            create.mutate({ name, description }, {
+          onSave={({ name, description, color, tags }) => {
+            create.mutate({ name, description, color, tags }, {
               onSuccess: () => toast.success('Collection created'),
               onError: () => toast.error('Failed to create collection')
             })
@@ -349,8 +590,8 @@ export default function DashboardPage() {
       {modal?.type === 'edit' && (
         <CollectionModal
           initial={modal.col}
-          onSave={({ name, description }) => {
-            update.mutate({ id: modal.col.id, name, description }, {
+          onSave={({ name, description, color, tags }) => {
+            update.mutate({ id: modal.col.id, name, description, color, tags }, {
               onSuccess: () => toast.success('Collection updated'),
               onError: () => toast.error('Failed to update collection')
             })
@@ -358,6 +599,42 @@ export default function DashboardPage() {
           onClose={() => setModal(null)}
         />
       )}
+      {bulkDeleteConfirm && (
+        <Modal
+          title={`Move ${bulkDeleteConfirm.length} collections to bin?`}
+          onClose={() => setBulkDeleteConfirm(null)}
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirm(null)}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary rounded-xl border border-bg-border hover:bg-bg-elevated"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  bulkRemove.mutate(bulkDeleteConfirm, {
+                    onSuccess: () => {
+                      toast.success(`Moved ${bulkDeleteConfirm.length} collections to bin`)
+                      setBulkDeleteConfirm(null)
+                      exitSelectMode()
+                    },
+                    onError: () => toast.error('Failed to delete'),
+                  })
+                }}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger text-white rounded-xl"
+              >
+                Move to bin
+              </button>
+            </div>
+          }
+        >
+          <p className="text-text-secondary text-sm">All items inside these collections go to the bin as well.</p>
+        </Modal>
+      )}
+
       {deleteConfirm && (
         <Modal
           title="Move collection to bin?"
@@ -391,6 +668,8 @@ export default function DashboardPage() {
           </p>
         </Modal>
       )}
+
+      <GlobalSearch open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 /**
- * RecycleBinPage.jsx — Manage soft-deleted items and collections.
+ * RecycleBinPage.jsx - Manage soft-deleted items and collections.
  *
  * Soft-deleted records are kept here and can be permanently purged
  * or restored to their original location.
@@ -76,7 +76,7 @@ export default function RecycleBinPage() {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-text-primary">Recycle Bin</h1>
-            <p className="text-xs text-text-muted mt-0.5">{total} {total === 1 ? 'item' : 'items'} — deleted items are kept here until permanently removed</p>
+            <p className="text-xs text-text-muted mt-0.5">{total} {total === 1 ? 'item' : 'items'} - deleted items are kept here until permanently removed</p>
           </div>
 
           {total > 0 && (
@@ -115,7 +115,7 @@ export default function RecycleBinPage() {
                 </div>
                 <div className="space-y-2">
                   {collections.map(col => (
-                    <div key={col.id} className="bg-bg-surface border border-bg-border rounded-2xl p-4 flex items-center gap-3">
+                    <div key={col.id} className="bg-bg-surface border border-bg-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-text-primary truncate">{col.name}</p>
                         {col.description && (
@@ -123,7 +123,7 @@ export default function RecycleBinPage() {
                         )}
                         <p className="text-xs text-text-muted mt-1">Deleted {timeAgo(col.deleted_at)}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <button
                           onClick={() => restoreCollection.mutate(col.id, {
                             onSuccess: () => toast.success('Collection restored'),
@@ -156,9 +156,9 @@ export default function RecycleBinPage() {
                 </div>
                 <div className="space-y-2">
                   {items.map(item => (
-                    <div key={item.id} className="bg-bg-surface border border-bg-border rounded-2xl p-4 flex items-center gap-3">
+                    <div key={item.id} className="bg-bg-surface border border-bg-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-medium text-text-muted bg-bg-elevated px-2 py-0.5 rounded-md border border-bg-border">
                             {TYPE_LABELS[item.type]}
                           </span>
@@ -168,7 +168,7 @@ export default function RecycleBinPage() {
                         </div>
                         <p className="text-xs text-text-muted mt-1">Deleted {timeAgo(item.deleted_at)}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         <button
                           onClick={() => restoreItem.mutate(item.id, {
                             onSuccess: () => toast.success('Item restored'),

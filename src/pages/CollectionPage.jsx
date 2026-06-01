@@ -1,5 +1,5 @@
 /**
- * CollectionPage.jsx — View and manage items within a single collection.
+ * CollectionPage.jsx - View and manage items within a single collection.
  *
  * Features:
  *   - Inline header editing (name + description)
@@ -13,22 +13,30 @@
  * in the hooks layer. The page only calls `.mutate()` / `.mutateAsync()`.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useParams, useNavigate, useBlocker } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Pencil, Check, X,
-  AlignLeft, CheckSquare, List, LayoutList,
+  ArrowLeft, Plus, Pencil, Check, X, Download, CheckSquare,
+  AlignLeft, List, LayoutList,
 } from 'lucide-react'
 import { useCollections } from '../hooks/useCollections'
 import { useCollectionItems } from '../hooks/useCollectionItems'
 import { useToast } from '../context/ToastContext'
+import { useRegisterPageActions } from '../context/PageActionsContext'
+import {
+  downloadCollectionMarkdown,
+  downloadCollectionZip,
+  downloadCollectionJson,
+  fetchCollectionForExport,
+} from '../lib/exportCollection'
 import CollectionItem from '../components/CollectionItem'
+import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
 import { Spinner, Modal } from '../components/ui/UI'
 
 /** Item type definitions for the "Add item" modal */
 const ITEM_TYPES = [
   { type: 'textbox',       label: 'Note',      desc: 'Free-form text area (markdown)',  icon: AlignLeft,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-  { type: 'checkbox_list', label: 'Checklist',  desc: 'Items with checkboxes',           icon: CheckSquare, color: 'text-green-400',  bg: 'bg-green-400/10'  },
+  { type: 'checkbox_list', label: 'Checklist',  desc: 'Items with checkboxes',           icon: CheckSquare, color: 'text-green-400',  bg: 'bg-green-400/10' },
   { type: 'menu_list',     label: 'List',       desc: 'Simple bullet list',              icon: List,        color: 'text-purple-400', bg: 'bg-purple-400/10' },
   { type: 'card_list',     label: 'Cards',      desc: 'Title + description pairs',       icon: LayoutList,  color: 'text-amber-400',  bg: 'bg-amber-400/10'  },
 ]
@@ -52,6 +60,12 @@ export default function CollectionPage() {
     togglePin,
     remove,
     reorder,
+    archive,
+    duplicate,
+    bulkRemove,
+    bulkArchive,
+    bulkSetPinned,
+    bulkDuplicate,
   } = useCollectionItems(id)
 
   /** The collection object for this page */
@@ -62,8 +76,54 @@ export default function CollectionPage() {
   const [headerName, setHeaderName]       = useState('')
   const [headerDesc, setHeaderDesc]       = useState('')
   const [addModal, setAddModal]           = useState(false)
+  const [exportOpen, setExportOpen]       = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [dirtyItems, setDirtyItems]       = useState(new Set())
+  const [selectMode, setSelectMode]       = useState(false)
+  const [selectedIds, setSelectedIds]     = useState(() => new Set())
+  const [collapsedIds, setCollapsedIds] = useState(() => new Set())
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
+
+  const selectedCount = selectedIds.size
+  const selectedItems = useMemo(
+    () => items.filter(i => selectedIds.has(i.id)),
+    [items, selectedIds]
+  )
+
+  const exitSelectMode = useCallback(() => {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelected = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const setItemCollapsed = useCallback((id, collapsed) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev)
+      if (collapsed) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }, [])
+
+  const pageActions = useMemo(() => ({
+    onEscape: () => {
+      setAddModal(false)
+      setExportOpen(false)
+      setDeleteConfirm(null)
+      setBulkDeleteConfirm(null)
+      setEditingHeader(false)
+      exitSelectMode()
+    },
+  }), [exitSelectMode])
+  useRegisterPageActions(pageActions)
 
   // ── Drag-and-drop state ──
   const [dragIndex, setDragIndex]   = useState(null)
@@ -79,17 +139,21 @@ export default function CollectionPage() {
     })
   }, [])
 
-  // ── Warn on page close if unsaved edits exist ──
+  // ── Warn on page close / in-app navigation if unsaved edits exist ──
+  const hasUnsaved = dirtyItems.size > 0
+
   useEffect(() => {
     const handler = (e) => {
-      if (dirtyItems.size > 0) {
+      if (hasUnsaved) {
         e.preventDefault()
         e.returnValue = ''
       }
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [dirtyItems])
+  }, [hasUnsaved])
+
+  const navBlocker = useBlocker(hasUnsaved)
 
   // ── Header editing helpers ──
   const startEditHeader = () => {
@@ -124,10 +188,40 @@ export default function CollectionPage() {
     }
   }
 
+  const handleExportCollection = async (format) => {
+    setExportOpen(false)
+    if (!collection) return
+    try {
+      const exportItems = await fetchCollectionForExport(id)
+      if (format === 'md') downloadCollectionMarkdown(collection, exportItems)
+      else if (format === 'zip') await downloadCollectionZip(collection, exportItems)
+      else downloadCollectionJson(collection, exportItems)
+      toast.success('Export started')
+    } catch {
+      toast.error('Export failed')
+    }
+  }
+
   // ── Drag-and-drop handlers ──
   const handleDragStart = (index) => {
+    if (selectMode) return
     setDragIndex(index)
     dragItemRef.current = items[index]
+  }
+
+  const runBulkAction = async (fn) => {
+    if (selectedCount === 0) return
+    const dirtySelected = [...selectedIds].some(id => dirtyItems.has(id))
+    if (dirtySelected) {
+      toast.error('Save or discard unsaved changes before bulk actions')
+      return
+    }
+    try {
+      await fn()
+      exitSelectMode()
+    } catch {
+      toast.error('Bulk action failed')
+    }
   }
 
   const handleDragOver = (e, index) => {
@@ -204,15 +298,60 @@ export default function CollectionPage() {
           )}
 
           {/* Header actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 relative">
             <button
+              type="button"
+              onClick={() => setExportOpen(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Download size={13} />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            {exportOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] py-1 bg-bg-surface border border-bg-border rounded-xl shadow-xl">
+                  {[
+                    { id: 'md', label: 'Markdown (.md)' },
+                    { id: 'zip', label: 'Markdown zip' },
+                    { id: 'json', label: 'JSON' },
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handleExportCollection(opt.id)}
+                      className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <button
+              type="button"
               onClick={editingHeader ? cancelEdit : startEditHeader}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
               {editingHeader ? <><X size={13} /> Cancel</> : <><Pencil size={13} /> Edit</>}
             </button>
+            {items.length > 0 && !editingHeader && (
+              <button
+                type="button"
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                  selectMode
+                    ? 'border-accent bg-accent-muted text-accent'
+                    : 'border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated'
+                }`}
+              >
+                <CheckSquare size={14} />
+                <span className="hidden sm:inline">{selectMode ? 'Done' : 'Select'}</span>
+              </button>
+            )}
             {!editingHeader && (
               <button
+                type="button"
                 onClick={() => setAddModal(true)}
                 className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-3 py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
               >
@@ -302,34 +441,138 @@ export default function CollectionPage() {
           </div>
         ) : (
           /* Items list with drag-and-drop */
-          <div className="space-y-3">
+          <div className="space-y-3 pb-24">
             {items.map((item, index) => (
               <div
                 key={item.id}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={() => handleDrop(index)}
-                onDragEnd={handleDragEnd}
+                onDragOver={selectMode ? undefined : (e) => handleDragOver(e, index)}
+                onDrop={selectMode ? undefined : () => handleDrop(index)}
                 className={`transition-all duration-300 animate-fade-in-up ${
-                  dragOverIndex === index && dragIndex !== index
+                  !selectMode && dragOverIndex === index && dragIndex !== index
                     ? 'border-t-2 border-accent pt-1'
                     : ''
-                } ${dragIndex === index ? 'opacity-40 scale-95' : ''}`}
+                } ${!selectMode && dragIndex === index ? 'opacity-40 scale-95' : ''}`}
                 style={{ animationDelay: `${index * 40}ms` }}
               >
                 <CollectionItem
                   item={item}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(item.id)}
+                  onSelectedChange={() => toggleSelected(item.id)}
+                  collapsed={collapsedIds.has(item.id)}
+                  onCollapsedChange={(c) => setItemCollapsed(item.id, c)}
                   onUpdate={payload => update.mutateAsync(payload)}
                   onTogglePin={(itemId, pinned) => togglePin.mutate({ id: itemId, pinned })}
                   onDelete={itemId => setDeleteConfirm(itemId)}
+                  onDuplicate={(it) => duplicate.mutate(it, {
+                    onSuccess: () => toast.success('Item duplicated'),
+                    onError: () => toast.error('Failed to duplicate'),
+                  })}
+                  onArchive={(itemId) => archive.mutate(itemId, {
+                    onSuccess: () => toast.success('Item archived'),
+                    onError: () => toast.error('Failed to archive'),
+                  })}
                   onDirtyChange={handleDirtyChange}
-                  dragHandleProps={{
-                    onMouseDown: (e) => e.stopPropagation(),
+                  dragHandleProps={selectMode ? {} : {
+                    draggable: true,
+                    onDragStart: (e) => {
+                      e.stopPropagation()
+                      handleDragStart(index)
+                    },
+                    onDragEnd: handleDragEnd,
                   }}
                 />
               </div>
             ))}
+
+            <BulkSelectionBar
+              count={selectedCount}
+              total={items.length}
+              onClear={exitSelectMode}
+              onSelectAll={() => setSelectedIds(new Set(items.map(i => i.id)))}
+              actions={[
+                {
+                  id: 'pin',
+                  label: 'Pin',
+                  icon: BULK_ICONS.pin,
+                  onClick: () => runBulkAction(() =>
+                    bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: true }).then(() =>
+                      toast.success(`Pinned ${selectedCount} items`)
+                    )
+                  ),
+                },
+                {
+                  id: 'unpin',
+                  label: 'Unpin',
+                  icon: BULK_ICONS.unpin,
+                  onClick: () => runBulkAction(() =>
+                    bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: false }).then(() =>
+                      toast.success('Unpinned items')
+                    )
+                  ),
+                },
+                {
+                  id: 'collapse',
+                  label: 'Collapse',
+                  icon: BULK_ICONS.collapse,
+                  onClick: () => {
+                    setCollapsedIds(prev => {
+                      const next = new Set(prev)
+                      selectedIds.forEach(id => next.add(id))
+                      return next
+                    })
+                    toast.info(`Collapsed ${selectedCount} items`)
+                  },
+                },
+                {
+                  id: 'expand',
+                  label: 'Expand',
+                  icon: BULK_ICONS.expand,
+                  onClick: () => {
+                    setCollapsedIds(prev => {
+                      const next = new Set(prev)
+                      selectedIds.forEach(id => next.delete(id))
+                      return next
+                    })
+                    toast.info('Expanded items')
+                  },
+                },
+                {
+                  id: 'duplicate',
+                  label: 'Duplicate',
+                  icon: BULK_ICONS.copy,
+                  onClick: () => runBulkAction(() =>
+                    bulkDuplicate.mutateAsync(selectedItems).then(() =>
+                      toast.success(`Duplicated ${selectedCount} items`)
+                    )
+                  ),
+                },
+                {
+                  id: 'archive',
+                  label: 'Archive',
+                  icon: BULK_ICONS.archive,
+                  onClick: () => runBulkAction(() =>
+                    bulkArchive.mutateAsync([...selectedIds]).then(() =>
+                      toast.success(`Archived ${selectedCount} items`)
+                    )
+                  ),
+                },
+                {
+                  id: 'delete',
+                  label: 'Delete',
+                  icon: BULK_ICONS.trash,
+                  variant: 'danger',
+                  onClick: () => {
+                    const dirtySelected = [...selectedIds].some(id => dirtyItems.has(id))
+                    if (dirtySelected) {
+                      toast.error('Save or discard unsaved changes first')
+                      return
+                    }
+                    setBulkDeleteConfirm([...selectedIds])
+                  },
+                },
+              ]}
+            />
           </div>
         )}
 
@@ -352,6 +595,7 @@ export default function CollectionPage() {
             {ITEM_TYPES.map(({ type, label, desc, icon: Icon, color, bg }) => (
               <button
                 key={type}
+                type="button"
                 onClick={() => handleAddItem(type)}
                 className="flex flex-col gap-2 p-4 bg-bg-elevated hover:bg-bg-hover border border-bg-border hover:border-accent/30 rounded-xl text-left transition-all"
               >
@@ -365,6 +609,73 @@ export default function CollectionPage() {
               </button>
             ))}
           </div>
+        </Modal>
+      )}
+
+      {/* ── Unsaved changes navigation guard ─────────── */}
+      {navBlocker.state === 'blocked' && (
+        <Modal
+          title="Leave without saving?"
+          onClose={() => navBlocker.reset()}
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => navBlocker.reset()}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Stay
+              </button>
+              <button
+                onClick={() => navBlocker.proceed()}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                Leave anyway
+              </button>
+            </div>
+          }
+        >
+          <p className="text-text-secondary text-sm leading-relaxed">
+            You have {dirtyItems.size} {dirtyItems.size === 1 ? 'item' : 'items'} with unsaved changes.
+            Leaving now may discard edits that have not been saved yet.
+          </p>
+        </Modal>
+      )}
+
+      {bulkDeleteConfirm && (
+        <Modal
+          title={`Move ${bulkDeleteConfirm.length} items to bin?`}
+          onClose={() => setBulkDeleteConfirm(null)}
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setBulkDeleteConfirm(null)}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  bulkRemove.mutate(bulkDeleteConfirm, {
+                    onSuccess: () => {
+                      toast.success(`Moved ${bulkDeleteConfirm.length} items to bin`)
+                      setBulkDeleteConfirm(null)
+                      exitSelectMode()
+                    },
+                    onError: () => toast.error('Failed to delete items'),
+                  })
+                }}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                Move to bin
+              </button>
+            </div>
+          }
+        >
+          <p className="text-text-secondary text-sm leading-relaxed">
+            Selected items will be moved to the recycle bin. You can restore them later.
+          </p>
         </Modal>
       )}
 

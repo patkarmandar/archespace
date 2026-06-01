@@ -1,5 +1,5 @@
 -- ============================================================
--- Arche — Database Schema (Supabase / PostgreSQL)
+-- Arche - Database Schema (Supabase / PostgreSQL)
 -- ============================================================
 --
 -- This is the single, idempotent schema file for the Arche app.
@@ -237,3 +237,16 @@ BEGIN
   END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- ────────────────────────────────────────────────────────────
+-- 7. SCHEMA MIGRATIONS (safe to re-run)
+-- ────────────────────────────────────────────────────────────
+
+ALTER TABLE collections      ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
+ALTER TABLE collection_items ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS color text DEFAULT NULL;
+ALTER TABLE collections ADD COLUMN IF NOT EXISTS tags  jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE INDEX IF NOT EXISTS collections_archived_at_idx ON collections(archived_at) WHERE archived_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS items_archived_at_idx       ON collection_items(archived_at) WHERE archived_at IS NOT NULL;

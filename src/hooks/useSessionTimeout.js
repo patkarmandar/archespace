@@ -1,11 +1,11 @@
 /**
- * useSessionTimeout.js — Inactivity + absolute session timeout.
+ * useSessionTimeout.js - Inactivity + absolute session timeout.
  *
  * Signs the user out after 2 hours of zero interaction (no mouse
  * movement, keyboard input, clicks, touch, or scroll).
  *
  * Also enforces an absolute maximum session lifetime of 24 hours
- * regardless of activity — preventing indefinite sessions.
+ * regardless of activity - preventing indefinite sessions.
  *
  * Implementation notes:
  *   - The reset function is stored in useCallback so the event
@@ -23,13 +23,14 @@ export function useSessionTimeout() {
   const absoluteTimer = useRef(null)
 
   /**
-   * Stable reset function — clears the old inactivity timer and
+   * Stable reset function - clears the old inactivity timer and
    * starts a new one. Stored in useCallback so the reference
    * never changes between renders.
    */
   const reset = useCallback(() => {
     clearTimeout(inactivityTimer.current)
     inactivityTimer.current = setTimeout(async () => {
+      window.dispatchEvent(new CustomEvent('arche:session-expired', { detail: { reason: 'inactivity' } }))
       await supabase.auth.signOut()
     }, SESSION_INACTIVITY_MS)
   }, [])
@@ -48,6 +49,7 @@ export function useSessionTimeout() {
     // This timer fires regardless of activity. Once the session
     // has lasted 24 hours, the user must re-authenticate.
     absoluteTimer.current = setTimeout(async () => {
+      window.dispatchEvent(new CustomEvent('arche:session-expired', { detail: { reason: 'absolute' } }))
       await supabase.auth.signOut()
     }, SESSION_ABSOLUTE_MAX_MS)
 

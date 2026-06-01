@@ -1,5 +1,5 @@
 /**
- * useRecycleBin.js — Hook for managing soft-deleted items.
+ * useRecycleBin.js - Hook for managing soft-deleted items.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
@@ -16,11 +16,13 @@ export function useRecycleBin() {
             .from('collections')
             .select('*')
             .not('deleted_at', 'is', null)
+            .is('archived_at', null)
             .order('deleted_at', { ascending: false }),
           supabase
             .from('collection_items')
             .select('*')
             .not('deleted_at', 'is', null)
+            .is('archived_at', null)
             .order('deleted_at', { ascending: false }),
         ])
       if (e1) throw e1

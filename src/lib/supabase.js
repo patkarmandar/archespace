@@ -1,5 +1,5 @@
 /**
- * supabase.js — Supabase client singleton.
+ * supabase.js - Supabase client singleton.
  *
  * Reads the project URL and anonymous API key from Vite
  * environment variables (prefixed VITE_ so they are exposed
@@ -7,7 +7,7 @@
  * at the project root (see `.env.example`).
  *
  * The returned `supabase` instance is shared across the entire
- * app — never create a second client.
+ * app - never create a second client.
  */
 
 import { createClient } from '@supabase/supabase-js'

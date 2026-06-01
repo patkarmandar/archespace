@@ -1,11 +1,12 @@
 /**
- * exportImport.js — Data export and import utilities for Arche.
+ * exportImport.js - Data export and import utilities for Arche.
  *
  * Provides functions to export active collections as a JSON file,
  * and to import a JSON backup file with deep validation.
  */
 
 import { supabase } from './supabase'
+import { logAudit } from './auditLog'
 import {
   MAX_IMPORT_FILE_SIZE,
   MAX_IMPORT_COLLECTIONS,
@@ -20,7 +21,7 @@ import {
  * Export all active collections (and their non-deleted items)
  * as a JSON file download.
  *
- * @param {Array} collections — The current collections array
+ * @param {Array} collections - The current collections array
  */
 export async function exportCollections(collections) {
   try {
@@ -31,6 +32,7 @@ export async function exportCollections(collections) {
           .select('*')
           .eq('collection_id', c.id)
           .is('deleted_at', null)
+          .is('archived_at', null)
           .order('position')
         
         if (error) throw error
@@ -48,14 +50,13 @@ export async function exportCollections(collections) {
     a.click()
     URL.revokeObjectURL(url)
 
-    // Log export action
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
-      await supabase.from('audit_log').insert({
-        user_id: session.user.id,
+      await logAudit({
+        userId: session.user.id,
         action: 'export',
-        entity_type: 'collections',
-        details: { count: collections.length }
+        entityType: 'collections',
+        details: { count: collections.length },
       })
     }
   } catch (error) {
@@ -88,8 +89,8 @@ function validateItemContent(type, content) {
 /**
  * Import collections from a JSON backup file.
  *
- * @param {File} file — The .json File object from an <input>
- * @param {string} userId — The authenticated user's UUID
+ * @param {File} file - The .json File object from an <input>
+ * @param {string} userId - The authenticated user's UUID
  * @throws {Error} If the JSON is malformed or invalid
  */
 export async function importCollections(file, userId) {
@@ -181,11 +182,10 @@ export async function importCollections(file, userId) {
     }
   }
 
-  // Log import action
-  await supabase.from('audit_log').insert({
-    user_id: userId,
+  await logAudit({
+    userId,
     action: 'import',
-    entity_type: 'collections',
-    details: { collections_count: parsed.length, items_count: totalItemsImported }
+    entityType: 'collections',
+    details: { collections_count: parsed.length, items_count: totalItemsImported },
   })
 }

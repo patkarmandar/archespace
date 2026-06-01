@@ -1,5 +1,5 @@
 /**
- * ErrorBoundary.jsx — Catch-all error boundary for Arche.
+ * ErrorBoundary.jsx - Catch-all error boundary for Arche.
  *
  * Wraps the entire app so that a runtime crash in any child
  * component shows a friendly recovery screen instead of a blank
@@ -14,7 +14,7 @@ export default class ErrorBoundary extends Component {
     this.state = { hasError: false, error: null }
   }
 
-  /** React lifecycle — capture the thrown error */
+  /** React lifecycle - capture the thrown error */
   static getDerivedStateFromError(error) {
     return { hasError: true, error }
   }

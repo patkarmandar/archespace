@@ -1,12 +1,10 @@
 /**
- * useCollections.js — Hook for managing collections.
- *
- * Fetches all non-deleted collections for the current user.
- * Subscribes to Supabase Realtime for instant updates.
+ * useCollections.js - Hook for managing collections.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { parseTags } from '../lib/collectionColors'
 
 export function useCollections() {
   const qc = useQueryClient()
@@ -14,15 +12,18 @@ export function useCollections() {
   const query = useQuery({
     queryKey: ['collections'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('collections')
         .select('*')
         .is('deleted_at', null)
+        .is('archived_at', null)
         .order('pinned', { ascending: false })
         .order('position', { ascending: true })
         .order('created_at', { ascending: false })
+
+      const { data, error } = await q
       if (error) throw error
-      return data
+      return (data || []).map(c => ({ ...c, tags: parseTags(c.tags) }))
     },
   })
 
@@ -35,6 +36,9 @@ export function useCollections() {
         () => {
           qc.invalidateQueries({ queryKey: ['collections'] })
           qc.invalidateQueries({ queryKey: ['bin'] })
+          qc.invalidateQueries({ queryKey: ['archive'] })
+          qc.invalidateQueries({ queryKey: ['collection-stats'] })
+          qc.invalidateQueries({ queryKey: ['global-search-data'] })
         }
       )
       .subscribe()
@@ -42,7 +46,7 @@ export function useCollections() {
   }, [qc])
 
   const create = useMutation({
-    mutationFn: async ({ name, description }) => {
+    mutationFn: async ({ name, description, color, tags }) => {
       const { data: { session } } = await supabase.auth.getSession()
       const userId = session?.user?.id
       if (!userId) throw new Error('Not authenticated')
@@ -51,7 +55,14 @@ export function useCollections() {
 
       const { data, error } = await supabase
         .from('collections')
-        .insert({ name, description, user_id: userId, position })
+        .insert({
+          name,
+          description: description || '',
+          user_id: userId,
+          position,
+          color: color || null,
+          tags: parseTags(tags),
+        })
         .select()
         .single()
       if (error) throw error
@@ -61,17 +72,24 @@ export function useCollections() {
   })
 
   const update = useMutation({
-    mutationFn: async ({ id, name, description }) => {
+    mutationFn: async ({ id, name, description, color, tags }) => {
+      const payload = { name, description }
+      if (color !== undefined) payload.color = color
+      if (tags !== undefined) payload.tags = parseTags(tags)
+
       const { data, error } = await supabase
         .from('collections')
-        .update({ name, description })
+        .update(payload)
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
       return data
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['global-search-data'] })
+    },
   })
 
   const togglePin = useMutation({
@@ -98,10 +116,9 @@ export function useCollections() {
 
   const reorder = useMutation({
     mutationFn: async (orderedCollections) => {
-      // P1 Bugfix: N+1 update fixed using RPC bulk update
       const updates = orderedCollections.map((col, index) => ({
         id: col.id,
-        position: index
+        position: index,
       }))
       const { error } = await supabase.rpc('update_collection_positions', { updates })
       if (error) throw error
@@ -131,8 +148,203 @@ export function useCollections() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['collections'] })
       qc.invalidateQueries({ queryKey: ['bin'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
     },
   })
 
-  return { ...query, create, update, togglePin, remove, reorder }
+  const archive = useMutation({
+    mutationFn: async (id) => {
+      const now = new Date().toISOString()
+      const { error: e1 } = await supabase
+        .from('collections')
+        .update({ archived_at: now })
+        .eq('id', id)
+      if (e1) throw e1
+      await supabase
+        .from('collection_items')
+        .update({ archived_at: now })
+        .eq('collection_id', id)
+        .is('deleted_at', null)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['archive'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+    },
+  })
+
+  const duplicate = useMutation({
+    mutationFn: async (id) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      const source = query.data?.find(c => c.id === id)
+      if (!source) throw new Error('Collection not found')
+
+      const { data: newCol, error: colErr } = await supabase
+        .from('collections')
+        .insert({
+          name: `${source.name} (copy)`,
+          description: source.description || '',
+          user_id: userId,
+          position: (query.data?.length || 0),
+          color: source.color,
+          tags: source.tags || [],
+          pinned: false,
+        })
+        .select()
+        .single()
+      if (colErr) throw colErr
+
+      const { data: items, error: itemsErr } = await supabase
+        .from('collection_items')
+        .select('type, title, content, position, pinned')
+        .eq('collection_id', id)
+        .is('deleted_at', null)
+        .is('archived_at', null)
+        .order('position')
+      if (itemsErr) throw itemsErr
+
+      if (items?.length) {
+        const { error: insertErr } = await supabase.from('collection_items').insert(
+          items.map((item, i) => ({
+            collection_id: newCol.id,
+            user_id: userId,
+            type: item.type,
+            title: item.title,
+            content: item.content,
+            position: i,
+            pinned: item.pinned,
+          }))
+        )
+        if (insertErr) throw insertErr
+      }
+
+      return newCol
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    },
+  })
+
+  const invalidateCollections = () => {
+    qc.invalidateQueries({ queryKey: ['collections'] })
+    qc.invalidateQueries({ queryKey: ['bin'] })
+    qc.invalidateQueries({ queryKey: ['archive'] })
+    qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    qc.invalidateQueries({ queryKey: ['global-search-data'] })
+    qc.invalidateQueries({ queryKey: ['items'] })
+  }
+
+  const bulkRemove = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase
+        .from('collections')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: invalidateCollections,
+  })
+
+  const bulkArchive = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const now = new Date().toISOString()
+      for (const colId of ids) {
+        const { error: e1 } = await supabase
+          .from('collections')
+          .update({ archived_at: now })
+          .eq('id', colId)
+        if (e1) throw e1
+        await supabase
+          .from('collection_items')
+          .update({ archived_at: now })
+          .eq('collection_id', colId)
+          .is('deleted_at', null)
+      }
+    },
+    onSuccess: invalidateCollections,
+  })
+
+  const bulkSetPinned = useMutation({
+    mutationFn: async ({ ids, pinned }) => {
+      if (!ids?.length) return
+      const { error } = await supabase
+        .from('collections')
+        .update({ pinned })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: invalidateCollections,
+  })
+
+  const bulkDuplicate = useMutation({
+    mutationFn: async (cols) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      if (!userId) throw new Error('Not authenticated')
+
+      for (const source of cols) {
+        const { data: newCol, error: colErr } = await supabase
+          .from('collections')
+          .insert({
+            name: `${source.name} (copy)`,
+            description: source.description || '',
+            user_id: userId,
+            position: (query.data?.length || 0),
+            color: source.color,
+            tags: source.tags || [],
+            pinned: false,
+          })
+          .select()
+          .single()
+        if (colErr) throw colErr
+
+        const { data: items, error: itemsErr } = await supabase
+          .from('collection_items')
+          .select('type, title, content, position, pinned')
+          .eq('collection_id', source.id)
+          .is('deleted_at', null)
+          .is('archived_at', null)
+          .order('position')
+        if (itemsErr) throw itemsErr
+
+        if (items?.length) {
+          const { error: insertErr } = await supabase.from('collection_items').insert(
+            items.map((item, i) => ({
+              collection_id: newCol.id,
+              user_id: userId,
+              type: item.type,
+              title: item.title,
+              content: item.content,
+              position: i,
+              pinned: item.pinned,
+            }))
+          )
+          if (insertErr) throw insertErr
+        }
+      }
+    },
+    onSuccess: invalidateCollections,
+  })
+
+  return {
+    ...query,
+    create,
+    update,
+    togglePin,
+    remove,
+    reorder,
+    archive,
+    duplicate,
+    bulkRemove,
+    bulkArchive,
+    bulkSetPinned,
+    bulkDuplicate,
+  }
 }
