@@ -59,6 +59,44 @@ export function useArchive() {
     },
   })
 
+  const bulkUnarchiveCollections = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error: colErr } = await supabase
+        .from('collections')
+        .update({ archived_at: null })
+        .in('id', ids)
+      if (colErr) throw colErr
+      const { error: itemErr } = await supabase
+        .from('collection_items')
+        .update({ archived_at: null })
+        .in('collection_id', ids)
+      if (itemErr) throw itemErr
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['archive'] })
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    },
+  })
+
+  const bulkUnarchiveItems = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase
+        .from('collection_items')
+        .update({ archived_at: null })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['archive'] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    },
+  })
+
   const unarchiveItem = useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase
@@ -78,5 +116,12 @@ export function useArchive() {
     (query.data?.collections?.length || 0) +
     (query.data?.items?.length || 0)
 
-  return { ...query, unarchiveCollection, unarchiveItem, total }
+  return {
+    ...query,
+    unarchiveCollection,
+    unarchiveItem,
+    bulkUnarchiveCollections,
+    bulkUnarchiveItems,
+    total,
+  }
 }

@@ -1,7 +1,7 @@
 /**
  * BulkSelectionBar.jsx - Floating toolbar for bulk actions on selected rows.
  */
-import { X, Pin, PinOff, Copy, Trash2, Archive, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import { X, Pin, PinOff, Copy, Trash2, Archive, RotateCcw, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 
 /**
  * @param {{
@@ -67,6 +67,7 @@ export const BULK_ICONS = {
   copy: Copy,
   trash: Trash2,
   archive: Archive,
+  restore: RotateCcw,
   collapse: ChevronsDownUp,
   expand: ChevronsUpDown,
 }

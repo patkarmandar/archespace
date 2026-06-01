@@ -88,6 +88,56 @@ export function useRecycleBin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
   })
 
+  const bulkRestoreCollections = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase
+        .from('collections')
+        .update({ deleted_at: null })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['bin'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    },
+  })
+
+  const bulkRestoreItems = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase
+        .from('collection_items')
+        .update({ deleted_at: null })
+        .in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bin'] })
+      qc.invalidateQueries({ queryKey: ['items'] })
+      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    },
+  })
+
+  const bulkPurgeCollections = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase.from('collections').delete().in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+  })
+
+  const bulkPurgeItems = useMutation({
+    mutationFn: async (ids) => {
+      if (!ids?.length) return
+      const { error } = await supabase.from('collection_items').delete().in('id', ids)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+  })
+
   const emptyBin = useMutation({
     mutationFn: async () => {
       const { error: e1 } = await supabase
@@ -115,6 +165,10 @@ export function useRecycleBin() {
     purgeCollection,
     restoreItem,
     purgeItem,
+    bulkRestoreCollections,
+    bulkRestoreItems,
+    bulkPurgeCollections,
+    bulkPurgeItems,
     emptyBin,
     total,
   }
