@@ -11,11 +11,11 @@
  *   - Toggle dark/light theme
  */
 
-import { useState, useRef, useMemo, useCallback } from 'react'
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Search, Folder,
-  Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock,
+  Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock, Menu,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteContext'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const selectedCount = selectedIds.size
   const selectedCollections = useMemo(
@@ -87,12 +88,24 @@ export default function DashboardPage() {
       setModal(null)
       setDeleteConfirm(null)
       setGlobalSearchOpen(false)
+      setMobileMenuOpen(false)
       setBulkDeleteConfirm(null)
       exitSelectMode()
     },
   }), [exitSelectMode])
 
   useRegisterPageActions(pageActions)
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handlePointerDown = (e) => {
+      if (headerRef.current && !headerRef.current.contains(e.target)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [mobileMenuOpen])
 
   // ── Drag-and-drop state ──
   const [dragIndex, setDragIndex] = useState(null)
@@ -188,7 +201,7 @@ export default function DashboardPage() {
               title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              <span className="hidden md:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+              <span className="hidden nav:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
             </button>
             <button
               type="button"
@@ -197,7 +210,7 @@ export default function DashboardPage() {
               title="Search everywhere (/)"
             >
               <Search size={14} />
-              <span className="hidden md:inline">Search</span>
+              <span className="hidden nav:inline">Search</span>
             </button>
             <button
               type="button"
@@ -206,7 +219,7 @@ export default function DashboardPage() {
               title="Archive"
             >
               <Archive size={14} />
-              <span className="hidden md:inline">Archive</span>
+              <span className="hidden nav:inline">Archive</span>
               {archiveTotal > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1 leading-none">
                   {archiveTotal > 99 ? '99+' : archiveTotal}
@@ -220,7 +233,7 @@ export default function DashboardPage() {
               title="Recycle bin"
             >
               <Trash2 size={14} />
-              <span className="hidden md:inline">Bin</span>
+              <span className="hidden nav:inline">Bin</span>
               {binTotal > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1 leading-none">
                   {binTotal > 99 ? '99+' : binTotal}
@@ -234,7 +247,7 @@ export default function DashboardPage() {
               title="Commands (⌘K)"
             >
               <Command size={14} />
-              <span className="hidden md:inline">Commands</span>
+              <span className="hidden nav:inline">Commands</span>
             </button>
             {isUnlocked && (
               <button
@@ -247,7 +260,7 @@ export default function DashboardPage() {
                 title="Lock vault"
               >
                 <Lock size={14} />
-                <span className="hidden md:inline">Lock vault</span>
+                <span className="hidden nav:inline">Lock vault</span>
               </button>
             )}
             <button
@@ -257,7 +270,7 @@ export default function DashboardPage() {
               title="Settings"
             >
               <Settings size={14} />
-              <span className="hidden md:inline">Settings</span>
+              <span className="hidden nav:inline">Settings</span>
             </button>
           </div>
 
@@ -292,8 +305,66 @@ export default function DashboardPage() {
                 </span>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(v => !v)}
+              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              title="More"
+              aria-expanded={mobileMenuOpen}
+              aria-label="More actions"
+            >
+              <Menu size={16} />
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="sm:hidden border-t border-bg-border bg-bg-surface px-4 py-3 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => { navigate('/recycle-bin'); setMobileMenuOpen(false) }}
+              className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Trash2 size={15} />
+              Recycle bin
+              {binTotal > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1">
+                  {binTotal > 99 ? '99+' : binTotal}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { openPalette(); setMobileMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Command size={15} />
+              Commands
+            </button>
+            {isUnlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  lock()
+                  toast.info('Vault locked')
+                  setMobileMenuOpen(false)
+                }}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              >
+                <Lock size={15} />
+                Lock vault
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { navigate('/settings'); setMobileMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Settings size={15} />
+              Settings
+            </button>
+          </div>
+        )}
       </header>
 
       {/* ── Main content ──────────────────────────────── */}

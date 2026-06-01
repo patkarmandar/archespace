@@ -2,6 +2,9 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      screens: {
+        nav: '955px',
+      },
       fontFamily: {
         sans: ['"DM Sans"', 'sans-serif'],
       },
