@@ -300,9 +300,10 @@ export default function CollectionPage() {
             <button
               type="button"
               onClick={() => setExportOpen(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Export collection"
             >
-              <Download size={13} />
+              <Download size={15} />
               <span className="hidden sm:inline">Export</span>
             </button>
             {exportOpen && (
@@ -329,15 +330,17 @@ export default function CollectionPage() {
             <button
               type="button"
               onClick={editingHeader ? cancelEdit : startEditHeader}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title={editingHeader ? 'Cancel edit' : 'Edit collection'}
             >
-              {editingHeader ? <><X size={13} /> Cancel</> : <><Pencil size={13} /> Edit</>}
+              {editingHeader ? <X size={15} /> : <Pencil size={15} />}
+              <span className="hidden sm:inline">{editingHeader ? 'Cancel' : 'Edit'}</span>
             </button>
             {items.length > 0 && !editingHeader && (
               <button
                 type="button"
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border text-sm font-medium transition-all ${
                   selectMode
                     ? 'border-accent bg-accent-muted text-accent'
                     : 'border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated'
@@ -351,11 +354,11 @@ export default function CollectionPage() {
               <button
                 type="button"
                 onClick={() => setAddModal(true)}
-                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-3 py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
+                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl p-2 sm:px-3 sm:py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
+                title="Add item"
               >
                 <Plus size={15} />
                 <span className="hidden sm:inline">Add item</span>
-                <span className="sm:hidden">Add</span>
               </button>
             )}
           </div>

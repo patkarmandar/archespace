@@ -28,14 +28,18 @@ export default function AppChrome() {
   useShortcut('escape', () => pageActionsRef.current.onEscape?.(), !!user)
 
   useEffect(() => {
-    const onExpired = (e) => {
-      const reason = e.detail?.reason === 'absolute'
-        ? 'Session limit reached. Please sign in again.'
-        : 'Signed out due to inactivity.'
-      toast.info(reason)
+    const onExpired = () => {
+      toast.info('Session expired after one week. Please sign in again.')
+    }
+    const onVaultLocked = () => {
+      toast.info('Vault locked after 24 hours. Enter your PIN to unlock.')
     }
     window.addEventListener('arche:session-expired', onExpired)
-    return () => window.removeEventListener('arche:session-expired', onExpired)
+    window.addEventListener('arche:vault-auto-locked', onVaultLocked)
+    return () => {
+      window.removeEventListener('arche:session-expired', onExpired)
+      window.removeEventListener('arche:vault-auto-locked', onVaultLocked)
+    }
   }, [toast])
 
   if (!user) return null
@@ -43,7 +47,6 @@ export default function AppChrome() {
   return (
     <CommandPalette
       onNewCollection={() => pageActionsRef.current.onNewCollection?.()}
-      onExport={() => pageActionsRef.current.onExport?.()}
       onOpenSearch={() => pageActionsRef.current.onOpenSearch?.()}
     />
   )

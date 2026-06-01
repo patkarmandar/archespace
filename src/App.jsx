@@ -25,6 +25,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CollectionPage = lazy(() => import('./pages/CollectionPage'))
 const RecycleBinPage = lazy(() => import('./pages/RecycleBinPage'))
 const ArchivePage = lazy(() => import('./pages/ArchivePage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 1000 * 30, retry: 1 } },
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
       { path: '/collection/:id', element: <ProtectedRoute><CollectionPage /></ProtectedRoute> },
       { path: '/recycle-bin', element: <ProtectedRoute><RecycleBinPage /></ProtectedRoute> },
       { path: '/archive', element: <ProtectedRoute><ArchivePage /></ProtectedRoute> },
+      { path: '/settings', element: <ProtectedRoute><SettingsPage /></ProtectedRoute> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

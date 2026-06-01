@@ -7,18 +7,15 @@
  *   - Create / Edit / Delete collections
  *   - Pin collections to top
  *   - Search collections by name or description
- *   - Export / Import backup (JSON)
- *   - Access the Recycle Bin
+ *   - Access archive, recycle bin, settings
  *   - Toggle dark/light theme
- *   - Sign out
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import {
-  Plus, LogOut, Download, Upload, Search, Folder,
-  Trash2, Sun, Moon, Archive, Command, CheckSquare,
+  Plus, Search, Folder,
+  Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteContext'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
@@ -32,15 +29,14 @@ import { useCollections } from '../hooks/useCollections'
 import { useRecycleBin } from '../hooks/useRecycleBin'
 import { useArchive } from '../hooks/useArchive'
 import { useCollectionStats } from '../hooks/useCollectionStats'
-import { exportCollections, importCollections } from '../lib/exportImport'
 import { Modal } from '../components/ui/UI'
 import { CollectionModal } from '../components/collection/CollectionModal'
 import { CollectionCard } from '../components/collection/CollectionCard'
 import GlobalSearch from '../components/GlobalSearch'
 
 export default function DashboardPage() {
-  const { user, signOut } = useAuth()
-  const { cryptoKey } = useEncryption()
+  const { user } = useAuth()
+  const { lock, isUnlocked } = useEncryption()
   const { theme, toggle } = useTheme()
   const { toast } = useToast()
   const { openPalette } = useCommandPalette()
@@ -52,7 +48,6 @@ export default function DashboardPage() {
   const { total: archiveTotal } = useArchive()
   const { data: stats = {} } = useCollectionStats()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const headerRef = useRef(null)
   const searchInputRef = useRef(null)
 
@@ -60,7 +55,6 @@ export default function DashboardPage() {
   const [modal, setModal] = useState(null) // { type: 'create' } | { type: 'edit', col } | null
   const [search, setSearch] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
@@ -88,33 +82,17 @@ export default function DashboardPage() {
 
   const pageActions = useMemo(() => ({
     onNewCollection: () => setModal({ type: 'create' }),
-    onExport: () => handleExportRef.current?.(),
     onOpenSearch: () => setGlobalSearchOpen(true),
     onEscape: () => {
       setModal(null)
       setDeleteConfirm(null)
       setGlobalSearchOpen(false)
-      setMobileMenuOpen(false)
       setBulkDeleteConfirm(null)
       exitSelectMode()
     },
   }), [exitSelectMode])
 
   useRegisterPageActions(pageActions)
-
-  const handleExportRef = useRef(null)
-
-  // Close mobile menu when clicking outside the header
-  useEffect(() => {
-    if (!mobileMenuOpen) return
-    const handlePointerDown = (e) => {
-      if (headerRef.current && !headerRef.current.contains(e.target)) {
-        setMobileMenuOpen(false)
-      }
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
-  }, [mobileMenuOpen])
 
   // ── Drag-and-drop state ──
   const [dragIndex, setDragIndex] = useState(null)
@@ -127,36 +105,6 @@ export default function DashboardPage() {
   )
 
   // ── Actions ──
-  const handleExport = async () => {
-    try {
-      await exportCollections(collections, cryptoKey)
-      toast.success('Backup exported successfully')
-      setMobileMenuOpen(false)
-    } catch (err) {
-      toast.error('Failed to export backup')
-      console.error(err)
-    }
-  }
-  handleExportRef.current = handleExport
-
-  const handleImport = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    try {
-      await importCollections(file, user.id, cryptoKey)
-      await queryClient.invalidateQueries({ queryKey: ['collections'] })
-      await queryClient.invalidateQueries({ queryKey: ['bin'] })
-      toast.success('Backup imported successfully')
-    } catch (err) {
-      toast.error('Failed to import backup - invalid format')
-      console.error(err)
-    }
-
-    e.target.value = '' // reset input
-    setMobileMenuOpen(false)
-  }
-
   // ── Drag-and-drop handlers ──
   const handleDragStart = (index) => {
     if (search || selectMode) return
@@ -231,28 +179,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Actions - desktop */}
+          {/* Actions - desktop: theme, search, archive, bin, command, settings */}
           <div className="hidden sm:flex items-center gap-2">
             <button
+              type="button"
               onClick={toggle}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              {theme === 'dark' ? 'Light' : 'Dark'}
-            </button>
-            <button
-              type="button"
-              onClick={() => openPalette()}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title="Commands (⌘K)"
-            >
-              <Command size={14} />
-              <span className="hidden md:inline">Commands</span>
+              <span className="hidden md:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
             </button>
             <button
               type="button"
               onClick={() => setGlobalSearchOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Search everywhere (/)"
             >
               <Search size={14} />
@@ -261,10 +202,11 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/archive')}
-              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Archive"
             >
               <Archive size={14} />
-              Archive
+              <span className="hidden md:inline">Archive</span>
               {archiveTotal > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1 leading-none">
                   {archiveTotal > 99 ? '99+' : archiveTotal}
@@ -274,53 +216,11 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => navigate('/recycle-bin')}
-              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Recycle bin"
             >
               <Trash2 size={14} />
-              Bin
-              {binTotal > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1 leading-none">
-                  {binTotal > 99 ? '99+' : binTotal}
-                </span>
-              )}
-            </button>
-            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium cursor-pointer">
-              <Upload size={14} />
-              Import
-              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-            </label>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-            >
-              <Download size={14} />
-              Export
-            </button>
-            <button
-              onClick={() => {
-                signOut()
-                toast.info('Signed out')
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-danger transition-all text-sm font-medium"
-            >
-              <LogOut size={14} />
-              Sign out
-            </button>
-          </div>
-
-          {/* Actions - mobile right side */}
-          <div className="flex sm:hidden items-center gap-2">
-            <button
-              onClick={toggle}
-              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <button
-              onClick={() => navigate('/recycle-bin')}
-              className="relative p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
-            >
-              <Trash2 size={16} />
+              <span className="hidden md:inline">Bin</span>
               {binTotal > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1 leading-none">
                   {binTotal > 99 ? '99+' : binTotal}
@@ -330,10 +230,46 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => openPalette()}
-              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Commands (⌘K)"
             >
-              <Command size={16} />
+              <Command size={14} />
+              <span className="hidden md:inline">Commands</span>
+            </button>
+            {isUnlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  lock()
+                  toast.info('Vault locked')
+                }}
+                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+                title="Lock vault"
+              >
+                <Lock size={14} />
+                <span className="hidden md:inline">Lock vault</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Settings"
+            >
+              <Settings size={14} />
+              <span className="hidden md:inline">Settings</span>
+            </button>
+          </div>
+
+          {/* Actions - mobile: theme, search, archive only */}
+          <div className="flex sm:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={toggle}
+              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               type="button"
@@ -345,49 +281,19 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(v => !v)}
-              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              onClick={() => navigate('/archive')}
+              className="relative p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+              title="Archive"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="4" y1="6" x2="20" y2="6"/>
-                <line x1="4" y1="12" x2="20" y2="12"/>
-                <line x1="4" y1="18" x2="20" y2="18"/>
-              </svg>
+              <Archive size={16} />
+              {archiveTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1 leading-none">
+                  {archiveTotal > 99 ? '99+' : archiveTotal}
+                </span>
+              )}
             </button>
           </div>
         </div>
-
-        {/* Mobile menu dropdown */}
-        {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-bg-border bg-bg-surface px-4 py-3 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => { navigate('/archive'); setMobileMenuOpen(false) }}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-            >
-              <Archive size={15} /> Archive
-            </button>
-            <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium cursor-pointer">
-              <Upload size={15} /> Import backup
-              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-            </label>
-            <button
-              onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-            >
-              <Download size={15} /> Export backup
-            </button>
-            <button
-              onClick={() => {
-                signOut()
-                toast.info('Signed out')
-              }}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-danger transition-all text-sm font-medium"
-            >
-              <LogOut size={15} /> Sign out
-            </button>
-          </div>
-        )}
       </header>
 
       {/* ── Main content ──────────────────────────────── */}

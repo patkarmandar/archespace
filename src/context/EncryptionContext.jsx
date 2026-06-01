@@ -1,33 +1,77 @@
 /**
- * EncryptionContext.jsx - In-memory vault key for client-side E2E encryption.
+ * EncryptionContext.jsx - In-memory vault master key for client-side E2E encryption.
  *
- * The AES key is derived from the user's password (PBKDF2) and kept only
- * in memory for the session. It is never sent to Supabase.
+ * The master AES key is unlocked with a vault PIN (independent of login password).
+ * While signed in, the unlocked key is kept in sessionStorage so refresh does not
+ * require re-entering the PIN until manual lock or 24-hour auto-lock.
  */
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from './AuthContext'
-import { setupUserVault, unlockUserVault } from '../lib/crypto/vault'
+import {
+  setupUserVault,
+  unlockUserVault,
+  migrateVaultToPin,
+  changeVaultPinWithVerification,
+  getVaultStatus,
+} from '../lib/crypto/vault'
+import {
+  saveVaultSession,
+  loadVaultSession,
+  clearVaultSession,
+  VAULT_UNLOCKED_AT_KEY,
+} from '../lib/crypto/vaultSession'
+import { VAULT_AUTO_LOCK_MS } from '../lib/constants'
 
 const EncryptionContext = createContext(null)
 
 export function EncryptionProvider({ children }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [cryptoKey, setCryptoKey] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
+  const [sessionRestoring, setSessionRestoring] = useState(true)
   const [unlockError, setUnlockError] = useState('')
+  const [vaultStatus, setVaultStatus] = useState({
+    loading: true,
+    hasVault: false,
+    needsMigration: false,
+  })
+
+  const refreshVaultStatus = useCallback(async () => {
+    if (!user?.id) {
+      setVaultStatus({ loading: false, hasVault: false, needsMigration: false })
+      return
+    }
+    setVaultStatus(s => ({ ...s, loading: true }))
+    try {
+      const status = await getVaultStatus(user.id)
+      setVaultStatus({ loading: false, ...status })
+    } catch {
+      setVaultStatus({ loading: false, hasVault: false, needsMigration: false })
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    refreshVaultStatus()
+  }, [refreshVaultStatus])
 
   const lock = useCallback(() => {
+    clearVaultSession()
     setCryptoKey(null)
     setUnlockError('')
   }, [])
 
-  const unlock = useCallback(async (password) => {
+  const applyUnlockedKey = useCallback(async (key) => {
+    if (user?.id) await saveVaultSession(user.id, key)
+    setCryptoKey(key)
+  }, [user?.id])
+
+  const unlock = useCallback(async (pin) => {
     if (!user?.id) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
-      const key = await unlockUserVault(user.id, password)
-      setCryptoKey(key)
+      const key = await unlockUserVault(user.id, pin)
+      await applyUnlockedKey(key)
       return key
     } catch (err) {
       const msg = err?.message || 'Failed to unlock vault'
@@ -36,28 +80,106 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id])
+  }, [user?.id, applyUnlockedKey])
 
-  const setup = useCallback(async (password) => {
+  const setup = useCallback(async (pin) => {
     if (!user?.id) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
-      const key = await setupUserVault(user.id, password)
-      setCryptoKey(key)
+      const key = await setupUserVault(user.id, pin)
+      await applyUnlockedKey(key)
+      await refreshVaultStatus()
       return key
     } catch (err) {
-      const msg = err?.message || 'Failed to set up encryption'
+      const msg = err?.message || 'Failed to set up vault'
       setUnlockError(msg)
       throw err
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id])
+  }, [user?.id, applyUnlockedKey, refreshVaultStatus])
+
+  const migrateFromPassword = useCallback(async (password, pin) => {
+    if (!user?.id) throw new Error('Not signed in')
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      const key = await migrateVaultToPin(user.id, password, pin)
+      await applyUnlockedKey(key)
+      await refreshVaultStatus()
+      return key
+    } catch (err) {
+      const msg = err?.message || 'Failed to migrate vault'
+      setUnlockError(msg)
+      throw err
+    } finally {
+      setUnlocking(false)
+    }
+  }, [user?.id, applyUnlockedKey, refreshVaultStatus])
+
+  const updatePin = useCallback(async (currentPin, newPin) => {
+    if (!user?.id) throw new Error('Not signed in')
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      const key = await changeVaultPinWithVerification(user.id, currentPin, newPin)
+      await applyUnlockedKey(key)
+    } catch (err) {
+      const msg = err?.message || 'Failed to change PIN'
+      setUnlockError(msg)
+      throw err
+    } finally {
+      setUnlocking(false)
+    }
+  }, [user?.id, applyUnlockedKey])
+
+  // Wait for auth hydration before clearing or restoring vault session.
+  // Clearing while user is briefly null on refresh was wiping sessionStorage.
+  useEffect(() => {
+    if (authLoading) return
+
+    if (!user?.id) {
+      clearVaultSession()
+      setCryptoKey(null)
+      setSessionRestoring(false)
+      return
+    }
+
+    let cancelled = false
+    setSessionRestoring(true)
+    loadVaultSession(user.id).then(key => {
+      if (cancelled) return
+      if (key) setCryptoKey(key)
+      setSessionRestoring(false)
+    })
+    return () => { cancelled = true }
+  }, [user?.id, authLoading])
+
+  const lockRef = useRef(lock)
+  lockRef.current = lock
 
   useEffect(() => {
-    if (!user) lock()
-  }, [user, lock])
+    if (!cryptoKey) return
+
+    const stored = sessionStorage.getItem(VAULT_UNLOCKED_AT_KEY)
+    const unlockedAt = stored ? Number(stored) : Date.now()
+    if (!stored) sessionStorage.setItem(VAULT_UNLOCKED_AT_KEY, String(unlockedAt))
+
+    const remaining = VAULT_AUTO_LOCK_MS - (Date.now() - unlockedAt)
+    if (remaining <= 0) {
+      lockRef.current()
+      window.dispatchEvent(new CustomEvent('arche:vault-auto-locked'))
+      return
+    }
+
+    const timer = setTimeout(() => {
+      lockRef.current()
+      window.dispatchEvent(new CustomEvent('arche:vault-auto-locked'))
+    }, remaining)
+
+    return () => clearTimeout(timer)
+  }, [cryptoKey])
 
   const isUnlocked = !!cryptoKey && !!user
 
@@ -67,10 +189,15 @@ export function EncryptionProvider({ children }) {
         cryptoKey,
         isUnlocked,
         unlocking,
+        sessionRestoring,
         unlockError,
+        vaultStatus,
         unlock,
         setup,
+        migrateFromPassword,
+        updatePin,
         lock,
+        refreshVaultStatus,
         clearUnlockError: () => setUnlockError(''),
       }}
     >

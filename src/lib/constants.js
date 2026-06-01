@@ -16,11 +16,15 @@ export const MAX_LOGIN_ATTEMPTS = 5
 /** Cooldown duration after max login attempts (ms) */
 export const LOGIN_COOLDOWN_MS = 30_000
 
-/** Inactivity timeout before auto-logout (ms) - 2 hours */
-export const SESSION_INACTIVITY_MS = 2 * 60 * 60 * 1000
+/** Absolute maximum session lifetime (ms) - 1 week; no inactivity logout */
+export const SESSION_ABSOLUTE_MAX_MS = 7 * 24 * 60 * 60 * 1000
 
-/** Absolute maximum session lifetime (ms) - 24 hours */
-export const SESSION_ABSOLUTE_MAX_MS = 24 * 60 * 60 * 1000
+// ── Vault PIN ──────────────────────────────────────────────
+export const VAULT_PIN_MIN_LENGTH = 4
+export const VAULT_PIN_MAX_LENGTH = 12
+
+/** Auto-lock vault after this duration while signed in (ms) - 24 hours */
+export const VAULT_AUTO_LOCK_MS = 24 * 60 * 60 * 1000
 
 // ── Import / Export ────────────────────────────────────────
 /** Maximum import file size in bytes (10 MB) */

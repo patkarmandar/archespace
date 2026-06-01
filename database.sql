@@ -61,11 +61,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- User Encryption: per-user metadata for client-side encrypted vaults.
 -- Stores PBKDF2 salt + encrypted verifier, never the raw key.
 CREATE TABLE IF NOT EXISTS user_encryption (
-  user_id    uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  salt       text        NOT NULL,
-  key_check  text        NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
+  user_id      uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  salt         text        NOT NULL,
+  key_check    text        NOT NULL,
+  wrapped_key  text        DEFAULT NULL,
+  vault_format text        DEFAULT 'legacy',
+  created_at   timestamptz NOT NULL DEFAULT now()
 );
+
+-- PIN-wrapped vaults (run on existing projects):
+ALTER TABLE user_encryption ADD COLUMN IF NOT EXISTS wrapped_key text DEFAULT NULL;
+ALTER TABLE user_encryption ADD COLUMN IF NOT EXISTS vault_format text DEFAULT 'legacy';
 
 
 -- ────────────────────────────────────────────────────────────

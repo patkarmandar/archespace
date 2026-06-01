@@ -4,12 +4,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Home, Archive, Trash2, Sun, Moon, Download, Search,
+  Plus, Home, Archive, Trash2, Sun, Moon, Search, Settings,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteContext'
 import { useTheme } from '../context/ThemeContext'
 
-export default function CommandPalette({ onNewCollection, onExport, onOpenSearch }) {
+export default function CommandPalette({ onNewCollection, onOpenSearch }) {
   const { open, closePalette, extraCommands } = useCommandPalette()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -22,14 +22,14 @@ export default function CommandPalette({ onNewCollection, onExport, onOpenSearch
     { id: 'home', label: 'Go to dashboard', icon: Home, run: () => { closePalette(); navigate('/') } },
     { id: 'archive', label: 'Open archive', icon: Archive, run: () => { closePalette(); navigate('/archive') } },
     { id: 'bin', label: 'Open recycle bin', icon: Trash2, run: () => { closePalette(); navigate('/recycle-bin') } },
-    { id: 'export', label: 'Export backup', icon: Download, run: () => { closePalette(); onExport?.() } },
+    { id: 'settings', label: 'Settings', icon: Settings, run: () => { closePalette(); navigate('/settings') } },
     {
       id: 'theme',
       label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
       icon: theme === 'dark' ? Sun : Moon,
       run: () => { toggle(); closePalette() },
     },
-  ], [closePalette, navigate, onExport, onNewCollection, onOpenSearch, theme, toggle])
+  ], [closePalette, navigate, onNewCollection, onOpenSearch, theme, toggle])
 
   const commands = useMemo(() => [...baseCommands, ...extraCommands], [baseCommands, extraCommands])
 
