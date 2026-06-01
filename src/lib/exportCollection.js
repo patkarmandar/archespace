@@ -3,6 +3,7 @@
  */
 import JSZip from 'jszip'
 import { supabase } from './supabase'
+import { decryptItems } from './dataProtection'
 
 function itemToMarkdown(item) {
   const title = item.title || 'Untitled'
@@ -87,8 +88,9 @@ export function downloadCollectionJson(collection, items) {
   URL.revokeObjectURL(url)
 }
 
-/** Fetch items for export */
-export async function fetchCollectionForExport(collectionId) {
+/** Fetch and decrypt items for export */
+export async function fetchCollectionForExport(collectionId, cryptoKey) {
+  if (!cryptoKey) throw new Error('Vault must be unlocked to export')
   const { data: items, error } = await supabase
     .from('collection_items')
     .select('*')
@@ -97,7 +99,7 @@ export async function fetchCollectionForExport(collectionId) {
     .is('archived_at', null)
     .order('position')
   if (error) throw error
-  return items || []
+  return decryptItems(items || [], cryptoKey)
 }
 
 function sanitizeFilename(name) {

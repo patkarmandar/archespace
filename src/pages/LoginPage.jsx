@@ -3,6 +3,7 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useEncryption } from '../context/EncryptionContext'
 import { useTheme } from '../context/ThemeContext'
 import { Lock, Sun, Moon, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
@@ -10,6 +11,7 @@ import { MULTI_USER_ENABLED } from '../lib/appConfig'
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth()
+  const { unlock, setup } = useEncryption()
   const { theme, toggle } = useTheme()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -75,7 +77,12 @@ export default function LoginPage() {
         return
       }
       if (data.session) {
-        setInfo('Account created. Welcome!')
+        try {
+          await setup(password)
+          setInfo('Account created. Your vault is encrypted and ready.')
+        } catch (vaultErr) {
+          setError(vaultErr?.message || 'Account created but encryption setup failed.')
+        }
         return
       }
       setInfo('Account created. Check your email to confirm your address, then sign in.')
@@ -95,6 +102,14 @@ export default function LoginPage() {
         setCooldownEnd(Date.now() + LOGIN_COOLDOWN_MS)
         setError(`Too many failed attempts. Please wait ${Math.ceil(LOGIN_COOLDOWN_MS / 1000)} seconds.`)
       }
+      setLoading(false)
+      return
+    }
+
+    try {
+      await unlock(password)
+    } catch (vaultErr) {
+      setError(vaultErr?.message || 'Signed in but could not unlock your encrypted vault.')
     }
     setLoading(false)
   }

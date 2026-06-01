@@ -26,6 +26,8 @@ import {
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
+import { useEncryption } from '../context/EncryptionContext'
+import { encryptItem } from '../lib/dataProtection'
 
 /** Human-readable labels for each item type */
 const TYPE_LABELS = {
@@ -64,6 +66,8 @@ export default function CollectionItem({
   selected = false,
   onSelectedChange,
 }) {
+  const { cryptoKey } = useEncryption()
+
   // ── Local state ──
   const [editingTitle, setEditingTitle]   = useState(false)
   const [titleVal, setTitleVal]           = useState(item.title)
@@ -120,7 +124,18 @@ export default function CollectionItem({
     }
 
     if (!isOnline()) {
-      enqueueOffline({ type: 'item-update', payload })
+      const encrypted = await encryptItem(
+        { title: payload.title, content: payload.content },
+        cryptoKey
+      )
+      enqueueOffline({
+        type: 'item-update',
+        payload: {
+          id: payload.id,
+          title: encrypted.title,
+          content: encrypted.content,
+        },
+      })
       setIsDirty(false)
       setPendingSync(true)
       setCollapseGuard(false)
@@ -142,7 +157,7 @@ export default function CollectionItem({
     } finally {
       setSaving(false)
     }
-  }, [item.id, onUpdate])
+  }, [item.id, onUpdate, cryptoKey])
 
   useEffect(() => {
     const onFlush = () => { if (isDirty) performSave() }

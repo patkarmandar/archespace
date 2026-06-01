@@ -7,6 +7,8 @@ import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-rou
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { EncryptionProvider } from './context/EncryptionContext'
+import VaultUnlockGate from './components/VaultUnlockGate'
 import { ThemeProvider } from './context/ThemeContext'
 import { ToastProvider } from './context/ToastContext'
 import { CommandPaletteProvider } from './context/CommandPaletteContext'
@@ -43,9 +45,11 @@ function ProtectedRoute({ children }) {
   if (loading) return <PageLoader />
   if (!user) return <Navigate to="/login" replace />
   return (
-    <Suspense fallback={<PageLoader />}>
-      {children}
-    </Suspense>
+    <VaultUnlockGate>
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
+    </VaultUnlockGate>
   )
 }
 
@@ -95,7 +99,9 @@ export default function App() {
               <CommandPaletteProvider>
                 <PageActionsProvider>
                   <AuthProvider>
-                    <RouterProvider router={router} />
+                    <EncryptionProvider>
+                      <RouterProvider router={router} />
+                    </EncryptionProvider>
                   </AuthProvider>
                 </PageActionsProvider>
               </CommandPaletteProvider>

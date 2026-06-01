@@ -3,12 +3,16 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useEncryption } from '../context/EncryptionContext'
+import { decryptCollections, decryptItems } from '../lib/dataProtection'
 
 export function useRecycleBin() {
   const qc = useQueryClient()
+  const { cryptoKey } = useEncryption()
 
   const query = useQuery({
     queryKey: ['bin'],
+    enabled: !!cryptoKey,
     queryFn: async () => {
       const [{ data: collections, error: e1 }, { data: items, error: e2 }] =
         await Promise.all([
@@ -27,7 +31,10 @@ export function useRecycleBin() {
         ])
       if (e1) throw e1
       if (e2) throw e2
-      return { collections: collections || [], items: items || [] }
+      return {
+        collections: await decryptCollections(collections || [], cryptoKey),
+        items: await decryptItems(items || [], cryptoKey),
+      }
     },
   })
 

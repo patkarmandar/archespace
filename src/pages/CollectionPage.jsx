@@ -27,7 +27,6 @@ import {
   downloadCollectionMarkdown,
   downloadCollectionZip,
   downloadCollectionJson,
-  fetchCollectionForExport,
 } from '../lib/exportCollection'
 import CollectionItem from '../components/CollectionItem'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
@@ -192,10 +191,9 @@ export default function CollectionPage() {
     setExportOpen(false)
     if (!collection) return
     try {
-      const exportItems = await fetchCollectionForExport(id)
-      if (format === 'md') downloadCollectionMarkdown(collection, exportItems)
-      else if (format === 'zip') await downloadCollectionZip(collection, exportItems)
-      else downloadCollectionJson(collection, exportItems)
+      if (format === 'md') downloadCollectionMarkdown(collection, items)
+      else if (format === 'zip') await downloadCollectionZip(collection, items)
+      else downloadCollectionJson(collection, items)
       toast.success('Export started')
     } catch {
       toast.error('Export failed')

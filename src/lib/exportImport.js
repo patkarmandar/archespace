@@ -7,6 +7,8 @@
 
 import { supabase } from './supabase'
 import { logAudit } from './auditLog'
+import { encryptCollection, encryptItem, decryptItems } from './dataProtection'
+import { parseTags } from './collectionColors'
 import {
   MAX_IMPORT_FILE_SIZE,
   MAX_IMPORT_COLLECTIONS,
@@ -21,9 +23,12 @@ import {
  * Export all active collections (and their non-deleted items)
  * as a JSON file download.
  *
- * @param {Array} collections - The current collections array
+ * @param {Array} collections - The current collections array (decrypted)
+ * @param {CryptoKey} cryptoKey - Vault key for decrypting items from DB
  */
-export async function exportCollections(collections) {
+export async function exportCollections(collections, cryptoKey) {
+  if (!cryptoKey) throw new Error('Vault must be unlocked to export')
+
   try {
     const allData = await Promise.all(
       collections.map(async (c) => {
@@ -36,7 +41,8 @@ export async function exportCollections(collections) {
           .order('position')
         
         if (error) throw error
-        return { ...c, items: data || [] }
+        const items = await decryptItems(data || [], cryptoKey)
+        return { ...c, items }
       })
     )
 
@@ -91,9 +97,11 @@ function validateItemContent(type, content) {
  *
  * @param {File} file - The .json File object from an <input>
  * @param {string} userId - The authenticated user's UUID
+ * @param {CryptoKey} cryptoKey - Vault key for encrypting imported data
  * @throws {Error} If the JSON is malformed or invalid
  */
-export async function importCollections(file, userId) {
+export async function importCollections(file, userId, cryptoKey) {
+  if (!cryptoKey) throw new Error('Vault must be unlocked to import')
   // Validate file size
   if (file.size > MAX_IMPORT_FILE_SIZE) {
     throw new Error(`File is too large. Maximum size is ${MAX_IMPORT_FILE_SIZE / (1024 * 1024)}MB.`)
@@ -135,9 +143,21 @@ export async function importCollections(file, userId) {
       colData.description = ''
     }
 
+    const encryptedCol = await encryptCollection({
+      name: colData.name,
+      description: colData.description || '',
+      tags: parseTags(colData.tags),
+    }, cryptoKey)
+
     const { data: newCol, error: colErr } = await supabase
       .from('collections')
-      .insert({ ...colData, user_id: userId })
+      .insert({
+        ...colData,
+        name: encryptedCol.name,
+        description: encryptedCol.description,
+        tags: encryptedCol.tags,
+        user_id: userId,
+      })
       .select()
       .single()
 
@@ -160,12 +180,17 @@ export async function importCollections(file, userId) {
         let sanitizedTitle = typeof item.title === 'string' ? item.title.trim() : ''
         sanitizedTitle = sanitizedTitle.slice(0, MAX_TITLE_LENGTH)
 
+        const encryptedItem = await encryptItem({
+          title: sanitizedTitle,
+          content: item.content,
+        }, cryptoKey)
+
         itemsToInsert.push({
           collection_id: newCol.id,
           user_id: userId,
           type: item.type,
-          title: sanitizedTitle,
-          content: item.content,
+          title: encryptedItem.title,
+          content: encryptedItem.content,
           position: typeof item.position === 'number' ? item.position : itemsToInsert.length,
           pinned: !!item.pinned
         })

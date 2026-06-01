@@ -3,10 +3,15 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { useEncryption } from '../context/EncryptionContext'
+import { decryptCollections, decryptItems } from '../lib/dataProtection'
 
 export function useGlobalSearchData() {
+  const { cryptoKey } = useEncryption()
+
   return useQuery({
     queryKey: ['global-search-data'],
+    enabled: !!cryptoKey,
     queryFn: async () => {
       const [{ data: collections, error: e1 }, { data: items, error: e2 }] = await Promise.all([
         supabase
@@ -23,14 +28,17 @@ export function useGlobalSearchData() {
       if (e1) throw e1
       if (e2) throw e2
 
-      const colMap = Object.fromEntries((collections || []).map(c => [c.id, c.name]))
+      const decryptedCols = await decryptCollections(collections || [], cryptoKey)
+      const decryptedItems = await decryptItems(items || [], cryptoKey)
+
+      const colMap = Object.fromEntries(decryptedCols.map(c => [c.id, c.name]))
       const itemMeta = Object.fromEntries(
-        (items || []).map(i => [i.id, { collectionName: colMap[i.collection_id] || 'Unknown' }])
+        decryptedItems.map(i => [i.id, { collectionName: colMap[i.collection_id] || 'Unknown' }])
       )
 
       return {
-        collections: collections || [],
-        items: items || [],
+        collections: decryptedCols,
+        items: decryptedItems,
         itemMeta,
       }
     },

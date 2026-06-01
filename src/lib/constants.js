@@ -5,6 +5,10 @@
  * can be tuned from a single location.
  */
 
+// ── Encryption ─────────────────────────────────────────────
+/** PBKDF2 iterations for vault key derivation (OWASP 2023 aligned) */
+export const PBKDF2_ITERATIONS = 310_000
+
 // ── Auth & Session ─────────────────────────────────────────
 /** Max failed login attempts before cooldown */
 export const MAX_LOGIN_ATTEMPTS = 5

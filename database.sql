@@ -2,9 +2,9 @@
 -- Arche - Database Schema (Supabase / PostgreSQL)
 -- ============================================================
 --
--- This is the single, idempotent schema file for the Arche app.
--- Run it in the Supabase SQL Editor to set up (or update) all
--- tables, indexes, RLS policies, triggers, and realtime config.
+-- This is the baseline schema file for the Arche app.
+-- Run it in the Supabase SQL Editor to set up a new project with
+-- all tables, indexes, RLS policies, triggers, and realtime config.
 --
 -- Safe to re-run: every statement uses IF NOT EXISTS / IF EXISTS
 -- guards so nothing breaks if the objects already exist.
@@ -19,11 +19,14 @@
 CREATE TABLE IF NOT EXISTS collections (
   id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  name        text        NOT NULL CHECK (char_length(name) <= 255),
-  description text        NOT NULL DEFAULT '' CHECK (char_length(description) <= 2000),
+  name        text        NOT NULL,
+  description text        NOT NULL DEFAULT '',
   position    integer     NOT NULL DEFAULT 0,
   pinned      boolean     NOT NULL DEFAULT false,
+  color       text        DEFAULT NULL,
+  tags        jsonb       NOT NULL DEFAULT '[]'::jsonb,
   deleted_at  timestamptz DEFAULT NULL,          -- soft-delete; NULL = active
+  archived_at timestamptz DEFAULT NULL,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -34,11 +37,12 @@ CREATE TABLE IF NOT EXISTS collection_items (
   collection_id uuid        REFERENCES collections(id) ON DELETE CASCADE NOT NULL,
   user_id       uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   type          text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list')),
-  title         text        NOT NULL DEFAULT '' CHECK (char_length(title) <= 255),
+  title         text        NOT NULL DEFAULT '',
   content       jsonb       NOT NULL DEFAULT '{}'::jsonb,
   position      integer     NOT NULL DEFAULT 0,
   pinned        boolean     NOT NULL DEFAULT false,
   deleted_at    timestamptz DEFAULT NULL,
+  archived_at   timestamptz DEFAULT NULL,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -54,6 +58,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- User Encryption: per-user metadata for client-side encrypted vaults.
+-- Stores PBKDF2 salt + encrypted verifier, never the raw key.
+CREATE TABLE IF NOT EXISTS user_encryption (
+  user_id    uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  salt       text        NOT NULL,
+  key_check  text        NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 
 -- ────────────────────────────────────────────────────────────
 -- 2. INDEXES
@@ -64,6 +77,7 @@ CREATE INDEX IF NOT EXISTS collections_user_id_idx     ON collections(user_id);
 CREATE INDEX IF NOT EXISTS collections_position_idx    ON collections(user_id, position);
 CREATE INDEX IF NOT EXISTS collections_pinned_idx      ON collections(pinned)     WHERE pinned = true;
 CREATE INDEX IF NOT EXISTS collections_deleted_at_idx  ON collections(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS collections_archived_at_idx ON collections(archived_at) WHERE archived_at IS NOT NULL;
 
 -- Collection items
 CREATE INDEX IF NOT EXISTS items_collection_id_idx     ON collection_items(collection_id);
@@ -71,6 +85,7 @@ CREATE INDEX IF NOT EXISTS items_user_id_idx           ON collection_items(user_
 CREATE INDEX IF NOT EXISTS items_position_idx          ON collection_items(collection_id, position);
 CREATE INDEX IF NOT EXISTS collection_items_pinned_idx ON collection_items(pinned)     WHERE pinned = true;
 CREATE INDEX IF NOT EXISTS items_deleted_at_idx        ON collection_items(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS items_archived_at_idx       ON collection_items(archived_at) WHERE archived_at IS NOT NULL;
 
 -- Audit log
 CREATE INDEX IF NOT EXISTS audit_log_user_id_idx       ON audit_log(user_id);
@@ -136,6 +151,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ALTER TABLE collections      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collection_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_encryption  ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_encryption TO authenticated;
 
 -- Collections: full CRUD for the owning user only.
 DO $$ BEGIN
@@ -153,9 +171,6 @@ END $$;
 
 -- Collection items: full CRUD for the owning user only.
 DO $$ BEGIN
-  -- Remove the old join-based policy if it was ever created.
-  DROP POLICY IF EXISTS "Users can manage items in their collections" ON collection_items;
-
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE tablename = 'collection_items'
@@ -188,6 +203,20 @@ DO $$ BEGIN
     CREATE POLICY "Users can read their own audit logs"
       ON audit_log FOR SELECT
       USING (auth.uid() = user_id);
+  END IF;
+END $$;
+
+-- User encryption metadata: full CRUD for the owning user only.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'user_encryption'
+      AND policyname = 'Users manage own encryption metadata'
+  ) THEN
+    CREATE POLICY "Users manage own encryption metadata"
+      ON user_encryption FOR ALL
+      USING     (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
@@ -237,16 +266,3 @@ BEGIN
   END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- ────────────────────────────────────────────────────────────
--- 7. SCHEMA MIGRATIONS (safe to re-run)
--- ────────────────────────────────────────────────────────────
-
-ALTER TABLE collections      ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
-ALTER TABLE collection_items ADD COLUMN IF NOT EXISTS archived_at timestamptz DEFAULT NULL;
-ALTER TABLE collections ADD COLUMN IF NOT EXISTS color text DEFAULT NULL;
-ALTER TABLE collections ADD COLUMN IF NOT EXISTS tags  jsonb NOT NULL DEFAULT '[]'::jsonb;
-
-CREATE INDEX IF NOT EXISTS collections_archived_at_idx ON collections(archived_at) WHERE archived_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS items_archived_at_idx       ON collection_items(archived_at) WHERE archived_at IS NOT NULL;

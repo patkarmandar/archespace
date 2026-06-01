@@ -4,6 +4,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useEncryption } from '../context/EncryptionContext'
+import { encryptItem, decryptItem, decryptItems } from '../lib/dataProtection'
 
 const defaultContent = {
   textbox: { text: '' },
@@ -16,9 +18,11 @@ const defaultContent = {
 
 export function useCollectionItems(collectionId) {
   const qc = useQueryClient()
+  const { cryptoKey } = useEncryption()
 
   const query = useQuery({
     queryKey: ['items', collectionId],
+    enabled: !!collectionId && !!cryptoKey,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('collection_items')
@@ -29,9 +33,8 @@ export function useCollectionItems(collectionId) {
         .order('pinned', { ascending: false })
         .order('position', { ascending: true })
       if (error) throw error
-      return data
+      return decryptItems(data || [], cryptoKey)
     },
-    enabled: !!collectionId,
   })
 
   useEffect(() => {
@@ -62,20 +65,26 @@ export function useCollectionItems(collectionId) {
     mutationFn: async ({ type, title, content }) => {
       const items = query.data || []
       const position = items.length
+      const plain = {
+        type,
+        title: title || '',
+        content: content ?? defaultContent[type] ?? {},
+      }
+      const encrypted = await encryptItem(plain, cryptoKey)
 
       const { data, error } = await supabase
         .from('collection_items')
         .insert({
           collection_id: collectionId,
-          type,
-          title: title || '',
-          content: content ?? defaultContent[type] ?? {},
+          type: plain.type,
+          title: encrypted.title,
+          content: encrypted.content,
           position,
         })
         .select()
         .single()
       if (error) throw error
-      return data
+      return decryptItem(data, cryptoKey)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['items', collectionId] })
@@ -85,14 +94,15 @@ export function useCollectionItems(collectionId) {
 
   const update = useMutation({
     mutationFn: async ({ id, title, content }) => {
+      const encrypted = await encryptItem({ title, content }, cryptoKey)
       const { data, error } = await supabase
         .from('collection_items')
-        .update({ title, content })
+        .update({ title: encrypted.title, content: encrypted.content })
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
-      return data
+      return decryptItem(data, cryptoKey)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['items', collectionId] }),
   })
@@ -155,20 +165,26 @@ export function useCollectionItems(collectionId) {
   const duplicate = useMutation({
     mutationFn: async (item) => {
       const items = query.data || []
+      const plain = {
+        type: item.type,
+        title: item.title ? `${item.title} (copy)` : 'Untitled (copy)',
+        content: structuredClone(item.content),
+      }
+      const encrypted = await encryptItem(plain, cryptoKey)
       const { data, error } = await supabase
         .from('collection_items')
         .insert({
           collection_id: collectionId,
-          type: item.type,
-          title: item.title ? `${item.title} (copy)` : 'Untitled (copy)',
-          content: structuredClone(item.content),
+          type: plain.type,
+          title: encrypted.title,
+          content: encrypted.content,
           position: items.length,
           pinned: false,
         })
         .select()
         .single()
       if (error) throw error
-      return data
+      return decryptItem(data, cryptoKey)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['items', collectionId] })
@@ -247,14 +263,23 @@ export function useCollectionItems(collectionId) {
     mutationFn: async (itemsToCopy) => {
       if (!itemsToCopy?.length) return
       const basePos = query.data?.length || 0
-      const rows = itemsToCopy.map((item, i) => ({
-        collection_id: collectionId,
-        type: item.type,
-        title: item.title ? `${item.title} (copy)` : 'Untitled (copy)',
-        content: structuredClone(item.content),
-        position: basePos + i,
-        pinned: false,
-      }))
+      const rows = await Promise.all(
+        itemsToCopy.map(async (item, i) => {
+          const plain = {
+            title: item.title ? `${item.title} (copy)` : 'Untitled (copy)',
+            content: structuredClone(item.content),
+          }
+          const encrypted = await encryptItem(plain, cryptoKey)
+          return {
+            collection_id: collectionId,
+            type: item.type,
+            title: encrypted.title,
+            content: encrypted.content,
+            position: basePos + i,
+            pinned: false,
+          }
+        })
+      )
       const { error } = await supabase.from('collection_items').insert(rows)
       if (error) throw error
     },

@@ -5,14 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { parseTags } from '../lib/collectionColors'
+import { useEncryption } from '../context/EncryptionContext'
+import { encryptCollection, decryptCollection, decryptCollections } from '../lib/dataProtection'
 
 export function useCollections() {
   const qc = useQueryClient()
+  const { cryptoKey } = useEncryption()
 
   const query = useQuery({
     queryKey: ['collections'],
+    enabled: !!cryptoKey,
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from('collections')
         .select('*')
         .is('deleted_at', null)
@@ -21,9 +25,8 @@ export function useCollections() {
         .order('position', { ascending: true })
         .order('created_at', { ascending: false })
 
-      const { data, error } = await q
       if (error) throw error
-      return (data || []).map(c => ({ ...c, tags: parseTags(c.tags) }))
+      return decryptCollections(data || [], cryptoKey)
     },
   })
 
@@ -53,20 +56,27 @@ export function useCollections() {
 
       const position = query.data?.length || 0
 
+      const encrypted = await encryptCollection({
+        name,
+        description: description || '',
+        color: color || null,
+        tags: parseTags(tags),
+      }, cryptoKey)
+
       const { data, error } = await supabase
         .from('collections')
         .insert({
-          name,
-          description: description || '',
+          name: encrypted.name,
+          description: encrypted.description,
           user_id: userId,
           position,
           color: color || null,
-          tags: parseTags(tags),
+          tags: encrypted.tags,
         })
         .select()
         .single()
       if (error) throw error
-      return data
+      return decryptCollection(data, cryptoKey)
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
   })
@@ -77,14 +87,18 @@ export function useCollections() {
       if (color !== undefined) payload.color = color
       if (tags !== undefined) payload.tags = parseTags(tags)
 
+      const encrypted = await encryptCollection(payload, cryptoKey)
+      const dbPayload = { ...payload, name: encrypted.name, description: encrypted.description }
+      if (tags !== undefined) dbPayload.tags = encrypted.tags
+
       const { data, error } = await supabase
         .from('collections')
-        .update(payload)
+        .update(dbPayload)
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
-      return data
+      return decryptCollection(data, cryptoKey)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['collections'] })
@@ -183,15 +197,21 @@ export function useCollections() {
       const source = query.data?.find(c => c.id === id)
       if (!source) throw new Error('Collection not found')
 
+      const encCol = await encryptCollection({
+        name: `${source.name} (copy)`,
+        description: source.description || '',
+        tags: source.tags || [],
+      }, cryptoKey)
+
       const { data: newCol, error: colErr } = await supabase
         .from('collections')
         .insert({
-          name: `${source.name} (copy)`,
-          description: source.description || '',
+          name: encCol.name,
+          description: encCol.description,
           user_id: userId,
           position: (query.data?.length || 0),
           color: source.color,
-          tags: source.tags || [],
+          tags: encCol.tags,
           pinned: false,
         })
         .select()
@@ -222,7 +242,7 @@ export function useCollections() {
         if (insertErr) throw insertErr
       }
 
-      return newCol
+      return decryptCollection(newCol, cryptoKey)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['collections'] })
@@ -290,15 +310,21 @@ export function useCollections() {
       if (!userId) throw new Error('Not authenticated')
 
       for (const source of cols) {
+        const encCol = await encryptCollection({
+          name: `${source.name} (copy)`,
+          description: source.description || '',
+          tags: source.tags || [],
+        }, cryptoKey)
+
         const { data: newCol, error: colErr } = await supabase
           .from('collections')
           .insert({
-            name: `${source.name} (copy)`,
-            description: source.description || '',
+            name: encCol.name,
+            description: encCol.description,
             user_id: userId,
             position: (query.data?.length || 0),
             color: source.color,
-            tags: source.tags || [],
+            tags: encCol.tags,
             pinned: false,
           })
           .select()

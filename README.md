@@ -21,6 +21,24 @@ A private, single-user workspace for organising notes, checklists, lists, and ca
 - **Dark & light mode** with persisted preference
 - **Realtime sync** across tabs
 - **Session security**: Inactivity logout (2h), max session (24h), login rate limit
+- **End-to-end encryption**: Collection names, descriptions, tags, item titles, and item content are encrypted in the browser (AES-256-GCM) before Supabase stores them. Only ciphertext is on the server.
+
+## Encryption (private workspace)
+
+Sensitive data is encrypted **client-side** with a key derived from your account password (PBKDF2, 310k iterations). Supabase and operators only see encrypted blobs (prefixed with `arc1:`).
+
+| Stored encrypted | Left plaintext (for queries/UI structure) |
+|------------------|-------------------------------------------|
+| Collection name, description, tags | `id`, `user_id`, `position`, `pinned`, `color`, timestamps |
+| Item title, content | `id`, `collection_id`, `type`, `position`, `pinned`, soft-delete/archive fields |
+
+**Flow**
+
+1. Sign in (or create account) - your password unlocks the vault for this session.
+2. After a full page reload, enter your password again on the **Unlock vault** screen (the key is never persisted to disk).
+3. Export/import backups are plaintext JSON on your machine; re-import encrypts before upload.
+
+For a new Supabase project, run the full `database.sql` file before signing in.
 
 ## Tech stack
 
@@ -34,15 +52,14 @@ A private, single-user workspace for organising notes, checklists, lists, and ca
 
 1. **Clone & install**
    ```bash
-   git clone <your-repo>
+   git clone https://github.com/patkarmandar/Arche
    cd Arche
    npm install
    ```
 
 2. **Supabase**
    - Create a project at [supabase.com](https://supabase.com)
-   - Run the full `database.sql` in the SQL Editor (includes migrations for archive, color, tags)
-   - If you already ran an older schema, re-run section **7. SCHEMA MIGRATIONS** from `database.sql`
+   - Run the full `database.sql` in the SQL Editor
 
 3. **Environment**
    ```env
@@ -65,7 +82,8 @@ A private, single-user workspace for organising notes, checklists, lists, and ca
 - `src/context/` - Auth, theme, toasts, shortcuts, command palette, page actions
 - `src/hooks/` - Collections, items, archive, recycle bin, stats, offline sync
 - `src/pages/` - Dashboard, collection, archive, recycle bin, login
-- `src/lib/` - Supabase, export/import, offline queue, search
+- `src/lib/crypto/` - AES-GCM cipher, PBKDF2 key derivation, vault setup/unlock
+- `src/lib/` - Supabase, export/import, offline queue, search, encrypt/decrypt helpers
 
 ## Keyboard shortcuts
 

@@ -24,6 +24,7 @@ import { useCommandPalette } from '../context/CommandPaletteContext'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
 import { useAuth } from '../context/AuthContext'
+import { useEncryption } from '../context/EncryptionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import { useRegisterPageActions } from '../context/PageActionsContext'
@@ -39,6 +40,7 @@ import GlobalSearch from '../components/GlobalSearch'
 
 export default function DashboardPage() {
   const { user, signOut } = useAuth()
+  const { cryptoKey } = useEncryption()
   const { theme, toggle } = useTheme()
   const { toast } = useToast()
   const { openPalette } = useCommandPalette()
@@ -127,7 +129,7 @@ export default function DashboardPage() {
   // ── Actions ──
   const handleExport = async () => {
     try {
-      await exportCollections(collections)
+      await exportCollections(collections, cryptoKey)
       toast.success('Backup exported successfully')
       setMobileMenuOpen(false)
     } catch (err) {
@@ -142,7 +144,7 @@ export default function DashboardPage() {
     if (!file) return
 
     try {
-      await importCollections(file, user.id)
+      await importCollections(file, user.id, cryptoKey)
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
       await queryClient.invalidateQueries({ queryKey: ['bin'] })
       toast.success('Backup imported successfully')
