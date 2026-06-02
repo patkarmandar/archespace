@@ -16,18 +16,13 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useBlocker } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Pencil, Check, X, Download, CheckSquare,
+  ArrowLeft, Plus, CheckSquare,
   AlignLeft, List, LayoutList,
 } from 'lucide-react'
 import { useCollections } from '../hooks/useCollections'
 import { useCollectionItems } from '../hooks/useCollectionItems'
 import { useToast } from '../context/ToastContext'
 import { useRegisterPageActions } from '../context/PageActionsContext'
-import {
-  downloadCollectionMarkdown,
-  downloadCollectionZip,
-  downloadCollectionJson,
-} from '../lib/exportCollection'
 import CollectionItem from '../components/CollectionItem'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
 import { Spinner, Modal } from '../components/ui/UI'
@@ -46,10 +41,7 @@ export default function CollectionPage() {
   const { toast } = useToast()
 
   // Single call to useCollections (avoids duplicate subscriptions)
-  const {
-    data: collections = [],
-    update: updateCollection,
-  } = useCollections()
+  const { data: collections = [] } = useCollections()
 
   const {
     data: items = [],
@@ -71,11 +63,7 @@ export default function CollectionPage() {
   const collection = collections.find(c => c.id === id)
 
   // ── Local UI state ──
-  const [editingHeader, setEditingHeader] = useState(false)
-  const [headerName, setHeaderName]       = useState('')
-  const [headerDesc, setHeaderDesc]       = useState('')
   const [addModal, setAddModal]           = useState(false)
-  const [exportOpen, setExportOpen]       = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [dirtyItems, setDirtyItems]       = useState(new Set())
   const [selectMode, setSelectMode]       = useState(false)
@@ -115,10 +103,8 @@ export default function CollectionPage() {
   const pageActions = useMemo(() => ({
     onEscape: () => {
       setAddModal(false)
-      setExportOpen(false)
       setDeleteConfirm(null)
       setBulkDeleteConfirm(null)
-      setEditingHeader(false)
       exitSelectMode()
     },
   }), [exitSelectMode])
@@ -154,28 +140,6 @@ export default function CollectionPage() {
 
   const navBlocker = useBlocker(hasUnsaved)
 
-  // ── Header editing helpers ──
-  const startEditHeader = () => {
-    setHeaderName(collection?.name || '')
-    setHeaderDesc(collection?.description || '')
-    setEditingHeader(true)
-  }
-
-  const saveHeader = () => {
-    if (headerName.trim()) {
-      updateCollection.mutate(
-        { id, name: headerName.trim(), description: headerDesc.trim() },
-        {
-          onSuccess: () => toast.success('Collection updated'),
-          onError: () => toast.error('Failed to update collection'),
-        }
-      )
-    }
-    setEditingHeader(false)
-  }
-
-  const cancelEdit = () => setEditingHeader(false)
-
   // ── Add item ──
   const handleAddItem = async (type) => {
     setAddModal(false)
@@ -184,19 +148,6 @@ export default function CollectionPage() {
       toast.success(`${ITEM_TYPES.find(t => t.type === type)?.label || 'Item'} added`)
     } catch {
       toast.error('Failed to add item')
-    }
-  }
-
-  const handleExportCollection = async (format) => {
-    setExportOpen(false)
-    if (!collection) return
-    try {
-      if (format === 'md') downloadCollectionMarkdown(collection, items)
-      else if (format === 'zip') await downloadCollectionZip(collection, items)
-      else downloadCollectionJson(collection, items)
-      toast.success('Export started')
-    } catch {
-      toast.error('Export failed')
     }
   }
 
@@ -297,46 +248,7 @@ export default function CollectionPage() {
 
           {/* Header actions */}
           <div className="flex items-center gap-2 shrink-0 relative">
-            <button
-              type="button"
-              onClick={() => setExportOpen(v => !v)}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title="Export collection"
-            >
-              <Download size={15} />
-              <span className="hidden sm:inline">Export</span>
-            </button>
-            {exportOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] py-1 bg-bg-surface border border-bg-border rounded-xl shadow-xl">
-                  {[
-                    { id: 'md', label: 'Markdown (.md)' },
-                    { id: 'zip', label: 'Markdown zip' },
-                    { id: 'json', label: 'JSON' },
-                  ].map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleExportCollection(opt.id)}
-                      className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={editingHeader ? cancelEdit : startEditHeader}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title={editingHeader ? 'Cancel edit' : 'Edit collection'}
-            >
-              {editingHeader ? <X size={15} /> : <Pencil size={15} />}
-              <span className="hidden sm:inline">{editingHeader ? 'Cancel' : 'Edit'}</span>
-            </button>
-            {items.length > 0 && !editingHeader && (
+            {items.length > 0 && (
               <button
                 type="button"
                 onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
@@ -350,65 +262,18 @@ export default function CollectionPage() {
                 <span className="hidden sm:inline">{selectMode ? 'Done' : 'Select'}</span>
               </button>
             )}
-            {!editingHeader && (
-              <button
-                type="button"
-                onClick={() => setAddModal(true)}
-                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl p-2 sm:px-3 sm:py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
-                title="Add item"
-              >
-                <Plus size={15} />
-                <span className="hidden sm:inline">Add item</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setAddModal(true)}
+              className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl p-2 sm:px-3 sm:py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
+              title="Add item"
+            >
+              <Plus size={15} />
+              <span className="hidden sm:inline">Add item</span>
+            </button>
           </div>
         </div>
       </header>
-
-      {/* ── Inline header edit panel ──────────────────── */}
-      {editingHeader && (
-        <div className="bg-bg-surface border-b border-bg-border">
-          <div className="max-w-3xl mx-auto px-4 py-4 space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1.5">Collection name</label>
-              <input
-                autoFocus
-                value={headerName}
-                onChange={e => setHeaderName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveHeader(); if (e.key === 'Escape') cancelEdit() }}
-                className="w-full bg-bg-elevated border border-accent/50 focus:border-accent rounded-xl px-4 py-2.5 text-sm font-medium text-text-primary focus:outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                Description <span className="text-text-muted font-normal">(optional)</span>
-              </label>
-              <input
-                value={headerDesc}
-                onChange={e => setHeaderDesc(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveHeader() }}
-                placeholder="What's this collection for?"
-                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={saveHeader}
-                disabled={!headerName.trim()}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-semibold transition-colors disabled:opacity-50"
-              >
-                <Check size={14} /> Save changes
-              </button>
-              <button
-                onClick={cancelEdit}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-hover text-text-secondary text-sm font-medium transition-colors"
-              >
-                <X size={14} /> Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Main content ─────────────────────────────── */}
       <main className="max-w-3xl mx-auto px-4 py-6">

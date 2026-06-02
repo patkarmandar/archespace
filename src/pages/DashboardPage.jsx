@@ -6,7 +6,7 @@
  * Features:
  *   - Create / Edit / Delete collections
  *   - Pin collections to top
- *   - Search collections by name or description
+ *   - Search collections and item content
  *   - Access archive, recycle bin, settings
  *   - Toggle dark/light theme
  */
@@ -14,7 +14,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Search, Folder,
+  Plus, Search, Folder, FileText,
   Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock, Menu,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteContext'
@@ -29,12 +29,20 @@ import { useCollections } from '../hooks/useCollections'
 import { useRecycleBin } from '../hooks/useRecycleBin'
 import { useArchive } from '../hooks/useArchive'
 import { useCollectionStats } from '../hooks/useCollectionStats'
+import { useGlobalSearchData } from '../hooks/useGlobalSearch'
+import { filterGlobalSearch } from '../lib/search'
 import { Modal } from '../components/ui/UI'
 import { CollectionModal } from '../components/collection/CollectionModal'
 import { CollectionCard } from '../components/collection/CollectionCard'
-import GlobalSearch from '../components/GlobalSearch'
 
 export default function DashboardPage() {
+  const TYPE_LABELS = {
+    textbox: 'Note',
+    checkbox_list: 'Checklist',
+    menu_list: 'List',
+    card_list: 'Cards',
+  }
+
   const { user } = useAuth()
   const { lock, isUnlocked } = useEncryption()
   const { theme, toggle } = useTheme()
@@ -47,15 +55,17 @@ export default function DashboardPage() {
   const { total: binTotal } = useRecycleBin()
   const { total: archiveTotal } = useArchive()
   const { data: stats = {} } = useCollectionStats()
+  const { data: globalSearchData } = useGlobalSearchData()
   const navigate = useNavigate()
   const headerRef = useRef(null)
   const searchInputRef = useRef(null)
+  const mobileSearchInputRef = useRef(null)
 
   // ── Local state ──
   const [modal, setModal] = useState(null) // { type: 'create' } | { type: 'edit', col } | null
   const [search, setSearch] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-  const [globalSearchOpen, setGlobalSearchOpen] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
@@ -81,18 +91,24 @@ export default function DashboardPage() {
     })
   }, [])
 
+  const focusMainSearch = useCallback(() => {
+    setMobileMenuOpen(false)
+    const isMobile = window.matchMedia('(max-width: 639px)').matches
+    const ref = isMobile ? mobileSearchInputRef : searchInputRef
+    setTimeout(() => ref.current?.focus(), 0)
+  }, [])
+
   const pageActions = useMemo(() => ({
     onNewCollection: () => setModal({ type: 'create' }),
-    onOpenSearch: () => setGlobalSearchOpen(true),
+    onOpenSearch: () => focusMainSearch(),
     onEscape: () => {
       setModal(null)
       setDeleteConfirm(null)
-      setGlobalSearchOpen(false)
       setMobileMenuOpen(false)
       setBulkDeleteConfirm(null)
       exitSelectMode()
     },
-  }), [exitSelectMode])
+  }), [exitSelectMode, focusMainSearch])
 
   useRegisterPageActions(pageActions)
 
@@ -112,10 +128,32 @@ export default function DashboardPage() {
   const [dragOverIndex, setDragOverIndex] = useState(null)
 
   // ── Derived state ──
-  const filtered = collections.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.description?.toLowerCase().includes(search.toLowerCase())
-  )
+  const globalMatches = useMemo(() => (
+    filterGlobalSearch({
+      collections: globalSearchData?.collections || [],
+      items: globalSearchData?.items || [],
+      itemMeta: globalSearchData?.itemMeta || {},
+    }, search)
+  ), [globalSearchData, search])
+
+  const filtered = useMemo(() => {
+    const q = search.trim()
+    if (!q) return collections
+
+    const matchedCollectionIds = new Set([
+      ...globalMatches.collections.map(c => c.id),
+      ...globalMatches.items.map(i => i.collection_id),
+    ])
+    return collections.filter(c => matchedCollectionIds.has(c.id))
+  }, [collections, globalMatches, search])
+
+  const showSearchResults = search.trim().length > 0 && searchFocused
+
+  const goCollectionFromSearch = useCallback((collectionId) => {
+    setSearchFocused(false)
+    setSearch('')
+    navigate(`/collection/${collectionId}`)
+  }, [navigate])
 
   // ── Actions ──
   // ── Drag-and-drop handlers ──
@@ -183,16 +221,76 @@ export default function DashboardPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
                 ref={searchInputRef}
-                placeholder="Search collections…"
+                placeholder="Search…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
                 className="w-full bg-bg-elevated border border-bg-border rounded-xl pl-9 pr-12 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono hidden sm:inline">/</kbd>
+              {showSearchResults && (
+                <div className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
+                  {globalMatches.collections.length === 0 && globalMatches.items.length === 0 ? (
+                    <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
+                  ) : (
+                    <>
+                      {globalMatches.collections.length > 0 && (
+                        <section>
+                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Collections</p>
+                          <ul className="space-y-1">
+                            {globalMatches.collections.map(c => (
+                              <li key={c.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => goCollectionFromSearch(c.id)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                                >
+                                  <Folder size={14} className="text-accent shrink-0" />
+                                  <span className="font-medium text-text-primary truncate">{c.name}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
+                      {globalMatches.items.length > 0 && (
+                        <section>
+                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Items</p>
+                          <ul className="space-y-1">
+                            {globalMatches.items.slice(0, 30).map(item => (
+                              <li key={item.id}>
+                                <button
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => goCollectionFromSearch(item.collection_id)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                                >
+                                  <FileText size={14} className="text-text-muted shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
+                                    <p className="text-xs text-text-muted truncate">
+                                      {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.collectionName}
+                                    </p>
+                                  </div>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          {globalMatches.items.length > 30 && (
+                            <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - 30} more items</p>
+                          )}
+                        </section>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Actions - desktop: theme, search, archive, bin, command, settings */}
+          {/* Actions - desktop: theme, archive, bin, lock, command, settings */}
           <div className="hidden sm:flex items-center gap-2">
             <button
               type="button"
@@ -202,15 +300,6 @@ export default function DashboardPage() {
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               <span className="hidden nav:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGlobalSearchOpen(true)}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title="Search everywhere (/)"
-            >
-              <Search size={14} />
-              <span className="hidden nav:inline">Search</span>
             </button>
             <button
               type="button"
@@ -240,15 +329,6 @@ export default function DashboardPage() {
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => openPalette()}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title="Commands (⌘K)"
-            >
-              <Command size={14} />
-              <span className="hidden nav:inline">Commands</span>
-            </button>
             {isUnlocked && (
               <button
                 type="button"
@@ -265,6 +345,15 @@ export default function DashboardPage() {
             )}
             <button
               type="button"
+              onClick={() => openPalette()}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Commands (⌘K)"
+            >
+              <Command size={14} />
+              <span className="hidden nav:inline">Commands</span>
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/settings')}
               className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Settings"
@@ -274,7 +363,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Actions - mobile: theme, search, archive only */}
+          {/* Actions - mobile: theme, archive + menu (search is the bar below) */}
           <div className="flex sm:hidden items-center gap-2">
             <button
               type="button"
@@ -283,14 +372,6 @@ export default function DashboardPage() {
               title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setGlobalSearchOpen(true)}
-              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
-              title="Search (/)"
-            >
-              <Search size={16} />
             </button>
             <button
               type="button"
@@ -333,14 +414,6 @@ export default function DashboardPage() {
                 </span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => { openPalette(); setMobileMenuOpen(false) }}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-            >
-              <Command size={15} />
-              Commands
-            </button>
             {isUnlocked && (
               <button
                 type="button"
@@ -355,6 +428,14 @@ export default function DashboardPage() {
                 Lock vault
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => { openPalette(); setMobileMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Command size={15} />
+              Commands
+            </button>
             <button
               type="button"
               onClick={() => { navigate('/settings'); setMobileMenuOpen(false) }}
@@ -374,11 +455,72 @@ export default function DashboardPage() {
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
-              placeholder="Search collections…"
+              ref={mobileSearchInputRef}
+              placeholder="Search…"
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
               className="w-full bg-bg-surface border border-bg-border rounded-xl pl-9 pr-3 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
             />
+            {showSearchResults && (
+              <div className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
+                {globalMatches.collections.length === 0 && globalMatches.items.length === 0 ? (
+                  <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
+                ) : (
+                  <>
+                    {globalMatches.collections.length > 0 && (
+                      <section>
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Collections</p>
+                        <ul className="space-y-1">
+                          {globalMatches.collections.map(c => (
+                            <li key={c.id}>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => goCollectionFromSearch(c.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                              >
+                                <Folder size={14} className="text-accent shrink-0" />
+                                <span className="font-medium text-text-primary truncate">{c.name}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    )}
+                    {globalMatches.items.length > 0 && (
+                      <section>
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Items</p>
+                        <ul className="space-y-1">
+                          {globalMatches.items.slice(0, 30).map(item => (
+                            <li key={item.id}>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => goCollectionFromSearch(item.collection_id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                              >
+                                <FileText size={14} className="text-text-muted shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
+                                  <p className="text-xs text-text-muted truncate">
+                                    {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.collectionName}
+                                  </p>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        {globalMatches.items.length > 30 && (
+                          <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - 30} more items</p>
+                        )}
+                      </section>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -647,8 +789,6 @@ export default function DashboardPage() {
           </p>
         </Modal>
       )}
-
-      <GlobalSearch open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
     </div>
   )
 }

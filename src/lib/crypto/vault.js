@@ -17,7 +17,6 @@ import { validateVaultPin } from './vaultPin'
 
 const VAULT_CHECK_PLAINTEXT = 'ARCHE_VAULT_V1_OK'
 export const VAULT_FORMAT_PIN_WRAPPED = 'pin_wrapped'
-export const VAULT_FORMAT_LEGACY = 'legacy'
 
 function assertValidPin(pin) {
   const err = validateVaultPin(pin)
@@ -159,15 +158,6 @@ export async function changeVaultPinWithVerification(userId, currentPin, newPin)
   return masterKey
 }
 
-/**
- * Change vault PIN when master key is already in memory.
- */
-export async function changeVaultPin(userId, newPin, masterKey) {
-  assertValidPin(newPin)
-  await persistPinWrappedVault(userId, newPin, masterKey)
-  return masterKey
-}
-
 async function persistPinWrappedVault(userId, pin, masterKey) {
   const pinSalt = generateSalt()
   const pinKey = await deriveEncryptionKey(pin, pinSalt)
@@ -197,7 +187,3 @@ async function unlockPinWrappedVault(meta, pin) {
   return masterKey
 }
 
-export async function userHasVault(userId) {
-  const meta = await fetchVaultMeta(userId)
-  return !!meta
-}

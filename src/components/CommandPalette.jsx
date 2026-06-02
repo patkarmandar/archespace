@@ -18,7 +18,7 @@ export default function CommandPalette({ onNewCollection, onOpenSearch }) {
 
   const baseCommands = useMemo(() => [
     { id: 'new', label: 'New collection', hint: 'N', icon: Plus, run: () => { closePalette(); onNewCollection?.() } },
-    { id: 'search', label: 'Search everywhere', hint: '/', icon: Search, run: () => { closePalette(); onOpenSearch?.() } },
+    { id: 'search', label: 'Search', hint: '/', icon: Search, run: () => { closePalette(); onOpenSearch?.() } },
     { id: 'home', label: 'Go to dashboard', icon: Home, run: () => { closePalette(); navigate('/') } },
     { id: 'archive', label: 'Open archive', icon: Archive, run: () => { closePalette(); navigate('/archive') } },
     { id: 'bin', label: 'Open recycle bin', icon: Trash2, run: () => { closePalette(); navigate('/recycle-bin') } },
@@ -53,6 +53,7 @@ export default function CommandPalette({ onNewCollection, onOpenSearch }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); closePalette() }
       if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, filtered.length - 1)) }
       if (e.key === 'ArrowUp') { e.preventDefault(); setActive(a => Math.max(a - 1, 0)) }
       if (e.key === 'Enter' && filtered[active]) {
