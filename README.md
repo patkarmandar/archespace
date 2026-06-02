@@ -1,44 +1,53 @@
 # Arche
 
-A private, single-user workspace for organising notes, checklists, lists, and cards with Supabase-powered sync.
+A private, encrypted workspace for organising notes, checklists, lists, and cards with Supabase-powered sync.
 
 ## Features
 
-- **Four item types**: Markdown notes, checklists, bullet lists, and title+description cards
-- **Pin & reorder**: Pin collections and items; drag to reorder
-- **Auto-save**: Debounced saves with “Saved” / offline “Pending sync” feedback
-- **Global search**: Search collection names, tags, and item content (`/` or header button)
-- **Command palette**: Quick actions via `⌘K` / `Ctrl+K`
-- **Keyboard shortcuts**: `N` new collection, `/` search, `⌘S` flush saves, `Esc` close modals
-- **Archive**: Hide collections without deleting (separate from recycle bin)
-- **Duplicate**: Copy collections or individual items
-- **Bulk select**: Select multiple collections or items for pin, duplicate, archive, delete, collapse/expand
-- **Labels**: Collection colors and comma-separated tags
-- **Checklist progress**: Collapsed checklists show `3/7 done`
-- **Export**: Full JSON backup, or per-collection Markdown / ZIP / JSON
-- **Recycle bin**: Soft-delete with restore or permanent purge
-- **PWA**: Installable app with offline shell (edits queue when offline)
-- **Dark & light mode** with persisted preference
-- **Realtime sync** across tabs
-- **Session security**: Inactivity logout (2h), max session (24h), login rate limit
-- **End-to-end encryption**: Collection names, descriptions, tags, item titles, and item content are encrypted in the browser (AES-256-GCM) before Supabase stores them. Only ciphertext is on the server.
+- **Encrypted vault with PIN unlock**: Data is encrypted client-side (AES-256-GCM). Login password and vault PIN are separate.
+- **Vault migration support**: Legacy password-derived vaults are upgraded once to PIN-based vaults.
+- **Session + vault security**:
+  - Login session persists until manual logout or max 1 week.
+  - Vault auto-locks after 24 hours.
+  - Vault can be manually locked from dashboard.
+- **Unified search**: One dashboard search bar that searches collections, tags, and item content (notes/checklists/lists/cards) with rich results.
+- **Four item types**: Markdown notes, checklists, bullet lists, and title+description cards.
+- **Pin & reorder**: Pin collections/items and drag to reorder.
+- **Bulk actions**:
+  - Dashboard collections: pin/unpin, duplicate, archive, delete.
+  - Collection items: pin/unpin, duplicate, archive, delete, collapse/expand.
+  - Recycle bin/archive: multi-select restore (and purge in recycle bin).
+- **Archive + recycle bin**:
+  - Archive hides without deleting.
+  - Recycle bin supports restore and permanent delete.
+- **Auto-save + offline queue**: Debounced saves with offline pending sync behavior.
+- **Command palette**: Quick actions via `⌘K` / `Ctrl+K`.
+- **Compact settings page**: Accordion sections for password, PIN, and backup import/export.
+- **PWA**: Installable app with offline shell.
+- **Realtime sync** across tabs.
+- **Dark/light mode** with persisted preference.
 
-## Encryption (private workspace)
+## Keyboard shortcuts
 
-Sensitive data is encrypted **client-side** with a key derived from your account password (PBKDF2, 310k iterations). Supabase and operators only see encrypted blobs (prefixed with `arc1:`).
+| Shortcut | Action |
+|----------|--------|
+| `⌘K` / `Ctrl+K` | Command palette |
+| `N` | New collection (dashboard) |
+| `/` | Focus dashboard search |
+| `⌘S` / `Ctrl+S` | Save all dirty items on current page |
+| `Esc` | Close modals / menus |
 
-| Stored encrypted | Left plaintext (for queries/UI structure) |
-|------------------|-------------------------------------------|
-| Collection name, description, tags | `id`, `user_id`, `position`, `pinned`, `color`, timestamps |
-| Item title, content | `id`, `collection_id`, `type`, `position`, `pinned`, soft-delete/archive fields |
+## Security model
 
-**Flow**
+- Sensitive data is encrypted in the browser before Supabase storage.
+- Encrypted at rest in DB:
+  - Collection: name, description, tags
+  - Item: title, content
+- Plaintext metadata for structure/querying:
+  - IDs, positions, pinned flags, type, timestamps, soft-delete/archive flags
+- Backup files are JSON on your machine; imported data is encrypted before upload.
 
-1. Sign in (or create account) - your password unlocks the vault for this session.
-2. After a full page reload, enter your password again on the **Unlock vault** screen (the key is never persisted to disk).
-3. Export/import backups are plaintext JSON on your machine; re-import encrypts before upload.
-
-For a new Supabase project, run the full `database.sql` file before signing in.
+For a new Supabase project, run the full `database.sql` before signing in.
 
 ## Tech stack
 
@@ -46,7 +55,7 @@ For a new Supabase project, run the full `database.sql` file before signing in.
 - Tailwind CSS + CSS variables
 - TanStack Query
 - Supabase (PostgreSQL, RLS, Realtime)
-- vite-plugin-pwa + JSZip
+- vite-plugin-pwa
 
 ## Setup
 
@@ -76,24 +85,20 @@ For a new Supabase project, run the full `database.sql` file before signing in.
    - **Single-user (default)**: Create a user in Supabase Auth dashboard; sign in only.
    - **Multi-user**: Set `VITE_ALLOW_SIGNUP=true` in `.env`, enable **Email** provider in Supabase Auth → Providers, and allow sign-ups. Each user gets an isolated workspace (RLS enforces `user_id`).
 
+6. **Schema update for existing projects**
+   - Ensure `user_encryption` includes:
+     - `wrapped_key` (nullable text)
+     - `vault_format` (text, default `'legacy'`)
+   - These are included in `database.sql`.
+
 ## Project structure
 
-- `src/components/` - UI, editors, command palette, global search
+- `src/components/` - UI, editors, command palette
 - `src/context/` - Auth, theme, toasts, shortcuts, command palette, page actions
-- `src/hooks/` - Collections, items, archive, recycle bin, stats, offline sync
-- `src/pages/` - Dashboard, collection, archive, recycle bin, login
-- `src/lib/crypto/` - AES-GCM cipher, PBKDF2 key derivation, vault setup/unlock
+- `src/hooks/` - Collections, items, archive, recycle bin, global search data, stats, offline sync
+- `src/pages/` - Dashboard, collection, archive, recycle bin, login, settings
+- `src/lib/crypto/` - AES-GCM cipher, PBKDF2 key derivation, vault PIN/session handling
 - `src/lib/` - Supabase, export/import, offline queue, search, encrypt/decrypt helpers
-
-## Keyboard shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `⌘K` / `Ctrl+K` | Command palette |
-| `N` | New collection (dashboard) |
-| `/` | Focus collection search / open global search |
-| `⌘S` / `Ctrl+S` | Save all dirty items on current page |
-| `Esc` | Close modals / menus |
 
 ## License
 
