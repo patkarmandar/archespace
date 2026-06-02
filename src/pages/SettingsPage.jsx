@@ -4,7 +4,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download, Upload, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Download, Upload, Eye, EyeOff, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useEncryption } from '../context/EncryptionContext'
 import { useToast } from '../context/ToastContext'
@@ -35,6 +35,7 @@ export default function SettingsPage() {
 
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [pinLoading, setPinLoading] = useState(false)
+  const [openSection, setOpenSection] = useState('password')
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
@@ -129,149 +130,199 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-8 space-y-8">
-        <section className="bg-bg-surface border border-bg-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Login password</h2>
-          <p className="text-text-muted text-xs">Used to sign in. Separate from your vault PIN.</p>
-          <form onSubmit={handleChangePassword} className="space-y-3">
-            <div>
-              <label htmlFor="current-password" className="block text-xs font-medium text-text-secondary mb-1.5">
-                Current password
-              </label>
-              <div className="relative">
-                <input
-                  id="current-password"
-                  type={showPasswords ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPasswords(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+      <main className="max-w-lg mx-auto px-4 py-8">
+        <div className="bg-bg-surface border border-bg-border rounded-2xl overflow-hidden">
+          <section className="border-b border-bg-border">
+            <button
+              type="button"
+              onClick={() => setOpenSection(s => (s === 'password' ? '' : 'password'))}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-bg-elevated/40 transition-colors"
+            >
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Login password</h2>
+                <p className="text-text-muted text-xs mt-0.5">Used to sign in. Separate from your vault PIN.</p>
               </div>
-            </div>
-            <div>
-              <label htmlFor="new-password" className="block text-xs font-medium text-text-secondary mb-1.5">
-                New password
-              </label>
-              <input
-                id="new-password"
-                type={showPasswords ? 'text' : 'password'}
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-                className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+              <ChevronDown
+                size={16}
+                className={`text-text-muted transition-transform ${openSection === 'password' ? 'rotate-180' : ''}`}
               />
-            </div>
-            <div>
-              <label htmlFor="confirm-password" className="block text-xs font-medium text-text-secondary mb-1.5">
-                Confirm new password
-              </label>
-              <input
-                id="confirm-password"
-                type={showPasswords ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={passwordLoading}
-              className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
-            >
-              {passwordLoading ? 'Updating…' : 'Change login password'}
             </button>
-          </form>
-        </section>
+            {openSection === 'password' && (
+              <div className="px-4 pb-4">
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <div>
+                    <label htmlFor="current-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                      Current password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="current-password"
+                        type={showPasswords ? 'text' : 'password'}
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                        className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                        aria-label="Toggle password visibility"
+                      >
+                        {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="new-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                      New password
+                    </label>
+                    <input
+                      id="new-password"
+                      type={showPasswords ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                      className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="confirm-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                      Confirm new password
+                    </label>
+                    <input
+                      id="confirm-password"
+                      type={showPasswords ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {passwordLoading ? 'Updating…' : 'Change login password'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
 
-        <section className="bg-bg-surface border border-bg-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Vault PIN</h2>
-          <p className="text-text-muted text-xs">
-            Unlocks your encrypted data after sign-in. {VAULT_PIN_MIN_LENGTH}–{VAULT_PIN_MAX_LENGTH} digits.
-          </p>
-          <form onSubmit={handleChangePin} className="space-y-3">
-            <PinInput
-              id="settings-current-pin"
-              label="Current vault PIN"
-              value={currentPin}
-              onChange={setCurrentPin}
-              disabled={pinLoading || unlocking}
-            />
-            <PinInput
-              id="settings-new-pin"
-              label="New vault PIN"
-              value={newPin}
-              onChange={setNewPin}
-              disabled={pinLoading || unlocking}
-            />
-            <PinInput
-              id="settings-confirm-pin"
-              label="Confirm new vault PIN"
-              value={confirmPin}
-              onChange={setConfirmPin}
-              disabled={pinLoading || unlocking}
-            />
-            <button
-              type="submit"
-              disabled={pinLoading || unlocking}
-              className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
-            >
-              {pinLoading || unlocking ? 'Updating…' : 'Change vault PIN'}
-            </button>
-          </form>
-        </section>
-
-        <section className="bg-bg-surface border border-bg-border rounded-2xl p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-text-primary">Backup</h2>
-          <p className="text-text-muted text-xs">Export or import all collections as JSON.</p>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <section className="border-b border-bg-border">
             <button
               type="button"
-              onClick={handleExport}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
+              onClick={() => setOpenSection(s => (s === 'pin' ? '' : 'pin'))}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-bg-elevated/40 transition-colors"
             >
-              <Download size={15} />
-              Export backup
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Vault PIN</h2>
+                <p className="text-text-muted text-xs mt-0.5">
+                  Unlocks encrypted data. {VAULT_PIN_MIN_LENGTH}–{VAULT_PIN_MAX_LENGTH} digits.
+                </p>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`text-text-muted transition-transform ${openSection === 'pin' ? 'rotate-180' : ''}`}
+              />
             </button>
+            {openSection === 'pin' && (
+              <div className="px-4 pb-4">
+                <form onSubmit={handleChangePin} className="space-y-3">
+                  <PinInput
+                    id="settings-current-pin"
+                    label="Current vault PIN"
+                    value={currentPin}
+                    onChange={setCurrentPin}
+                    disabled={pinLoading || unlocking}
+                  />
+                  <PinInput
+                    id="settings-new-pin"
+                    label="New vault PIN"
+                    value={newPin}
+                    onChange={setNewPin}
+                    disabled={pinLoading || unlocking}
+                  />
+                  <PinInput
+                    id="settings-confirm-pin"
+                    label="Confirm new vault PIN"
+                    value={confirmPin}
+                    onChange={setConfirmPin}
+                    disabled={pinLoading || unlocking}
+                  />
+                  <button
+                    type="submit"
+                    disabled={pinLoading || unlocking}
+                    className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {pinLoading || unlocking ? 'Updating…' : 'Change vault PIN'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </section>
+
+          <section>
             <button
               type="button"
-              onClick={() => importRef.current?.click()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
+              onClick={() => setOpenSection(s => (s === 'backup' ? '' : 'backup'))}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-bg-elevated/40 transition-colors"
             >
-              <Upload size={15} />
-              Import backup
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">Backup</h2>
+                <p className="text-text-muted text-xs mt-0.5">Export or import all collections as JSON.</p>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`text-text-muted transition-transform ${openSection === 'backup' ? 'rotate-180' : ''}`}
+              />
             </button>
-            <input
-              ref={importRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              className="hidden"
-            />
-          </div>
-        </section>
+            {openSection === 'backup' && (
+              <div className="px-4 pb-4">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExport}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
+                  >
+                    <Upload size={15} />
+                    Export backup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => importRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
+                  >
+                    <Download size={15} />
+                    Import backup
+                  </button>
+                  <input
+                    ref={importRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
 
-        <section className="text-center">
+        <section className="mt-6">
           <button
             type="button"
             onClick={() => {
               signOut()
               toast.info('Signed out')
             }}
-            className="text-sm text-text-muted hover:text-danger transition-colors"
+            className="w-full px-4 py-3 rounded-xl border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 text-sm font-semibold text-text-secondary hover:text-danger transition-colors"
           >
             Sign out
           </button>
