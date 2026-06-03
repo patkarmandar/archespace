@@ -199,7 +199,7 @@ export default function VaultUnlockGate({ children }) {
           <button
             type="button"
             onClick={() => signOut()}
-            className="w-full text-text-muted hover:text-text-secondary text-xs py-2"
+            className="w-full px-4 py-3 rounded-xl border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 text-sm font-semibold text-text-secondary hover:text-danger transition-colors"
           >
             Sign out
           </button>
