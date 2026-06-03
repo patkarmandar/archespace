@@ -1,11 +1,11 @@
 /**
- * CollectionModal.jsx - Modal for creating or editing a collection.
+ * SpaceModal.jsx - Modal for creating or editing a space.
  */
 import { useState } from 'react'
 import { Modal, Spinner } from '../ui/UI'
-import { COLLECTION_COLORS, parseTags } from '../../lib/collectionColors'
+import { SPACE_COLORS, parseTags } from '../../lib/spaceColors'
 
-export function CollectionModal({ initial, onSave, onClose }) {
+export function SpaceModal({ initial, onSave, onClose }) {
   const [name, setName] = useState(initial?.name || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [color, setColor] = useState(initial?.color || null)
@@ -28,13 +28,13 @@ export function CollectionModal({ initial, onSave, onClose }) {
   }
 
   return (
-    <Modal title={initial ? 'Edit collection' : 'New collection'} onClose={onClose}>
+    <Modal title={initial ? 'Edit space' : 'New space'} onClose={onClose}>
       <div className="space-y-3">
         <div>
           <label className="block text-xs font-medium text-text-secondary mb-1.5">Name</label>
           <input
             autoFocus
-            placeholder="Collection name"
+            placeholder="Space name"
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSave()}
@@ -46,7 +46,7 @@ export function CollectionModal({ initial, onSave, onClose }) {
             Description <span className="text-text-muted font-normal">(optional)</span>
           </label>
           <textarea
-            placeholder="What's this collection for?"
+            placeholder="What's this space for?"
             value={description}
             onChange={e => setDescription(e.target.value)}
             rows={2}
@@ -64,7 +64,7 @@ export function CollectionModal({ initial, onSave, onClose }) {
               } bg-bg-elevated`}
               title="Default"
             />
-            {COLLECTION_COLORS.map(c => (
+            {SPACE_COLORS.map(c => (
               <button
                 key={c.id}
                 type="button"

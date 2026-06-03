@@ -1,27 +1,27 @@
 /**
- * useCollectionStats.js - Item counts per collection for dashboard cards.
+ * useSpaceStats.js - Item counts per space for dashboard cards.
  */
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
-export function useCollectionStats() {
+export function useSpaceStats() {
   return useQuery({
-    queryKey: ['collection-stats'],
+    queryKey: ['space-stats'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('collection_items')
-        .select('collection_id, pinned')
+        .from('space_items')
+        .select('space_id, pinned')
         .is('deleted_at', null)
         .is('archived_at', null)
       if (error) throw error
 
       const stats = {}
       for (const row of data || []) {
-        if (!stats[row.collection_id]) {
-          stats[row.collection_id] = { total: 0, pinned: 0 }
+        if (!stats[row.space_id]) {
+          stats[row.space_id] = { total: 0, pinned: 0 }
         }
-        stats[row.collection_id].total++
-        if (row.pinned) stats[row.collection_id].pinned++
+        stats[row.space_id].total++
+        if (row.pinned) stats[row.space_id].pinned++
       }
       return stats
     },

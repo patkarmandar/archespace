@@ -1,7 +1,7 @@
 /**
- * collectionColors.js - Preset accent colors for collections.
+ * spaceColors.js - Preset accent colors for spaces.
  */
-export const COLLECTION_COLORS = [
+export const SPACE_COLORS = [
   { id: 'violet', label: 'Violet', value: '#7c6af7', ring: 'ring-accent', dot: 'bg-accent' },
   { id: 'blue', label: 'Blue', value: '#60a5fa', ring: 'ring-blue-400', dot: 'bg-blue-400' },
   { id: 'green', label: 'Green', value: '#34d399', ring: 'ring-emerald-400', dot: 'bg-emerald-400' },
@@ -11,7 +11,7 @@ export const COLLECTION_COLORS = [
 ]
 
 export function getColorPreset(id) {
-  return COLLECTION_COLORS.find(c => c.id === id) || null
+  return SPACE_COLORS.find(c => c.id === id) || null
 }
 
 export function parseTags(raw) {

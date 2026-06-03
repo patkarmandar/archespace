@@ -8,8 +8,8 @@ import { ArrowLeft, Download, Upload, Eye, EyeOff, ChevronDown } from 'lucide-re
 import { useAuth } from '../context/AuthContext'
 import { useEncryption } from '../context/EncryptionContext'
 import { useToast } from '../context/ToastContext'
-import { useCollections } from '../hooks/useCollections'
-import { exportCollections, importCollections } from '../lib/exportImport'
+import { useSpaces } from '../hooks/useSpaces'
+import { exportSpaces, importSpaces } from '../lib/exportImport'
 import { supabase } from '../lib/supabase'
 import PinInput from '../components/PinInput'
 import { validateVaultPin } from '../lib/crypto/vaultPin'
@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const { user, signIn, signOut } = useAuth()
   const { cryptoKey, updatePin, unlocking } = useEncryption()
   const { toast } = useToast()
-  const { data: collections = [] } = useCollections()
+  const { data: spaces = [] } = useSpaces()
   const queryClient = useQueryClient()
   const importRef = useRef(null)
 
@@ -92,7 +92,7 @@ export default function SettingsPage() {
 
   const handleExport = async () => {
     try {
-      await exportCollections(collections, cryptoKey)
+      await exportSpaces(spaces, cryptoKey)
       toast.success('Backup exported successfully')
     } catch {
       toast.error('Failed to export backup')
@@ -103,8 +103,8 @@ export default function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      await importCollections(file, user.id, cryptoKey)
-      await queryClient.invalidateQueries({ queryKey: ['collections'] })
+      await importSpaces(file, user.id, cryptoKey)
+      await queryClient.invalidateQueries({ queryKey: ['spaces'] })
       await queryClient.invalidateQueries({ queryKey: ['bin'] })
       toast.success('Backup imported successfully')
     } catch (err) {
@@ -276,7 +276,7 @@ export default function SettingsPage() {
             >
               <div>
                 <h2 className="text-sm font-semibold text-text-primary">Backup</h2>
-                <p className="text-text-muted text-xs mt-0.5">Export or import all collections as JSON.</p>
+                <p className="text-text-muted text-xs mt-0.5">Export or import all spaces as JSON.</p>
               </div>
               <ChevronDown
                 size={16}

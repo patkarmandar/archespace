@@ -48,7 +48,7 @@ sessionStorage.removeItem('chunk_reload')
 
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
 const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage'))
-const CollectionPage = lazyWithRetry(() => import('./pages/CollectionPage'))
+const SpacePage = lazyWithRetry(() => import('./pages/SpacePage'))
 const RecycleBinPage = lazyWithRetry(() => import('./pages/RecycleBinPage'))
 const ArchivePage = lazyWithRetry(() => import('./pages/ArchivePage'))
 const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage'))
@@ -173,7 +173,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <PublicRoute><LoginPage /></PublicRoute> },
       { path: '/', element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
-      { path: '/collection/:id', element: <ProtectedRoute><CollectionPage /></ProtectedRoute> },
+      { path: '/space/:id', element: <ProtectedRoute><SpacePage /></ProtectedRoute> },
       { path: '/recycle-bin', element: <ProtectedRoute><RecycleBinPage /></ProtectedRoute> },
       { path: '/archive', element: <ProtectedRoute><ArchivePage /></ProtectedRoute> },
       { path: '/settings', element: <ProtectedRoute><SettingsPage /></ProtectedRoute> },

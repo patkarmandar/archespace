@@ -1,15 +1,15 @@
 /**
- * dataProtection.js - Encrypt/decrypt collections & items for storage.
+ * dataProtection.js - Encrypt/decrypt spaces & items for storage.
  *
  * Sensitive fields are encrypted client-side before Supabase.
  * Only ciphertext is stored server-side; decryption requires the user's vault key.
  */
 import { encryptString, decryptString, encryptJson, decryptJson, isEncrypted } from './crypto/cipher'
-import { parseTags } from './collectionColors'
+import { parseTags } from './spaceColors'
 
-// ── Collections ─────────────────────────────────────────────
+// ── Spaces ─────────────────────────────────────────────
 
-export async function encryptCollection(row, key) {
+export async function encryptSpace(row, key) {
   if (!key || !row) return row
   const tags = parseTags(row.tags)
   return {
@@ -20,7 +20,7 @@ export async function encryptCollection(row, key) {
   }
 }
 
-export async function decryptCollection(row, key) {
+export async function decryptSpace(row, key) {
   if (!row) return row
   if (!key) {
     if (row.name && isEncrypted(row.name)) {
@@ -46,17 +46,17 @@ export async function decryptCollection(row, key) {
   }
 }
 
-export async function decryptCollections(rows, key) {
+export async function decryptSpaces(rows, key) {
   if (!rows?.length) return []
-  return Promise.all(rows.map(r => decryptCollection(r, key)))
+  return Promise.all(rows.map(r => decryptSpace(r, key)))
 }
 
-export async function encryptCollections(rows, key) {
+export async function encryptSpaces(rows, key) {
   if (!rows?.length || !key) return rows
-  return Promise.all(rows.map(r => encryptCollection(r, key)))
+  return Promise.all(rows.map(r => encryptSpace(r, key)))
 }
 
-// ── Collection items ────────────────────────────────────────
+// ── Space items ────────────────────────────────────────
 
 export async function encryptItem(row, key) {
   if (!key || !row) return row

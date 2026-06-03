@@ -23,7 +23,7 @@ export default function AppChrome() {
 
   useShortcut('palette', () => openPalette(), !!user)
   useShortcut('search', () => pageActionsRef.current.onOpenSearch?.(), !!user)
-  useShortcut('new-collection', () => pageActionsRef.current.onNewCollection?.(), !!user)
+  useShortcut('new-space', () => pageActionsRef.current.onNewSpace?.(), !!user)
   useShortcut('save', () => window.dispatchEvent(new CustomEvent('arche:flush-saves')), !!user)
   useShortcut('escape', () => pageActionsRef.current.onEscape?.(), !!user)
 
@@ -46,7 +46,7 @@ export default function AppChrome() {
 
   return (
     <CommandPalette
-      onNewCollection={() => pageActionsRef.current.onNewCollection?.()}
+      onNewSpace={() => pageActionsRef.current.onNewSpace?.()}
       onOpenSearch={() => pageActionsRef.current.onOpenSearch?.()}
     />
   )

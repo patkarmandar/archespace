@@ -1,12 +1,12 @@
 /**
  * DashboardPage.jsx - Main entry point for authenticated users.
  *
- * Displays a grid of the user's collections.
+ * Displays a grid of the user's spaces.
  *
  * Features:
- *   - Create / Edit / Delete collections
- *   - Pin collections to top
- *   - Search collections and item content
+ *   - Create / Edit / Delete spaces
+ *   - Pin spaces to top
+ *   - Search spaces and item content
  *   - Access archive, recycle bin, settings
  *   - Toggle dark/light theme
  */
@@ -25,15 +25,15 @@ import { useEncryption } from '../context/EncryptionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useToast } from '../context/ToastContext'
 import { useRegisterPageActions } from '../context/PageActionsContext'
-import { useCollections } from '../hooks/useCollections'
+import { useSpaces } from '../hooks/useSpaces'
 import { useRecycleBin } from '../hooks/useRecycleBin'
 import { useArchive } from '../hooks/useArchive'
-import { useCollectionStats } from '../hooks/useCollectionStats'
+import { useSpaceStats } from '../hooks/useSpaceStats'
 import { useGlobalSearchData } from '../hooks/useGlobalSearch'
 import { filterGlobalSearch } from '../lib/search'
 import { Modal } from '../components/ui/UI'
-import { CollectionModal } from '../components/collection/CollectionModal'
-import { CollectionCard } from '../components/collection/CollectionCard'
+import { SpaceModal } from '../components/space/SpaceModal'
+import { SpaceCard } from '../components/space/SpaceCard'
 
 export default function DashboardPage() {
   const TYPE_LABELS = {
@@ -49,12 +49,12 @@ export default function DashboardPage() {
   const { toast } = useToast()
   const { openPalette } = useCommandPalette()
   const {
-    data: collections = [], isLoading, create, update, togglePin, remove, reorder,
+    data: spaces = [], isLoading, create, update, togglePin, remove, reorder,
     archive, duplicate, bulkRemove, bulkArchive, bulkSetPinned, bulkDuplicate,
-  } = useCollections()
+  } = useSpaces()
   const { total: binTotal } = useRecycleBin()
   const { total: archiveTotal } = useArchive()
-  const { data: stats = {} } = useCollectionStats()
+  const { data: stats = {} } = useSpaceStats()
   const { data: globalSearchData } = useGlobalSearchData()
   const navigate = useNavigate()
   const headerRef = useRef(null)
@@ -72,9 +72,9 @@ export default function DashboardPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const selectedCount = selectedIds.size
-  const selectedCollections = useMemo(
-    () => collections.filter(c => selectedIds.has(c.id)),
-    [collections, selectedIds]
+  const selectedSpaces = useMemo(
+    () => spaces.filter(c => selectedIds.has(c.id)),
+    [spaces, selectedIds]
   )
 
   const exitSelectMode = useCallback(() => {
@@ -99,7 +99,7 @@ export default function DashboardPage() {
   }, [])
 
   const pageActions = useMemo(() => ({
-    onNewCollection: () => setModal({ type: 'create' }),
+    onNewSpace: () => setModal({ type: 'create' }),
     onOpenSearch: () => focusMainSearch(),
     onEscape: () => {
       setModal(null)
@@ -130,7 +130,7 @@ export default function DashboardPage() {
   // ── Derived state ──
   const globalMatches = useMemo(() => (
     filterGlobalSearch({
-      collections: globalSearchData?.collections || [],
+      spaces: globalSearchData?.spaces || [],
       items: globalSearchData?.items || [],
       itemMeta: globalSearchData?.itemMeta || {},
     }, search)
@@ -138,21 +138,21 @@ export default function DashboardPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim()
-    if (!q) return collections
+    if (!q) return spaces
 
-    const matchedCollectionIds = new Set([
-      ...globalMatches.collections.map(c => c.id),
-      ...globalMatches.items.map(i => i.collection_id),
+    const matchedSpaceIds = new Set([
+      ...globalMatches.spaces.map(c => c.id),
+      ...globalMatches.items.map(i => i.space_id),
     ])
-    return collections.filter(c => matchedCollectionIds.has(c.id))
-  }, [collections, globalMatches, search])
+    return spaces.filter(c => matchedSpaceIds.has(c.id))
+  }, [spaces, globalMatches, search])
 
   const showSearchResults = search.trim().length > 0 && searchFocused
 
-  const goCollectionFromSearch = useCallback((collectionId) => {
+  const goSpaceFromSearch = useCallback((spaceId) => {
     setSearchFocused(false)
     setSearch('')
-    navigate(`/collection/${collectionId}`)
+    navigate(`/space/${spaceId}`)
   }, [navigate])
 
   // ── Actions ──
@@ -183,14 +183,14 @@ export default function DashboardPage() {
       return
     }
 
-    const reordered = [...collections]
+    const reordered = [...spaces]
     const fromIdx = reordered.findIndex(c => c.id === fromId)
     const toIdx = reordered.findIndex(c => c.id === toId)
     const [moved] = reordered.splice(fromIdx, 1)
     reordered.splice(toIdx, 0, moved)
 
     reorder.mutate(reordered, {
-      onError: () => toast.error('Failed to reorder collections'),
+      onError: () => toast.error('Failed to reorder spaces'),
     })
 
     setDragIndex(null)
@@ -231,20 +231,20 @@ export default function DashboardPage() {
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono hidden sm:inline">/</kbd>
               {showSearchResults && (
                 <div className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
-                  {globalMatches.collections.length === 0 && globalMatches.items.length === 0 ? (
+                  {globalMatches.spaces.length === 0 && globalMatches.items.length === 0 ? (
                     <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
                   ) : (
                     <>
-                      {globalMatches.collections.length > 0 && (
+                      {globalMatches.spaces.length > 0 && (
                         <section>
-                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Collections</p>
+                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Spaces</p>
                           <ul className="space-y-1">
-                            {globalMatches.collections.map(c => (
+                            {globalMatches.spaces.map(c => (
                               <li key={c.id}>
                                 <button
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => goCollectionFromSearch(c.id)}
+                                  onClick={() => goSpaceFromSearch(c.id)}
                                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                                 >
                                   <Folder size={14} className="text-accent shrink-0" />
@@ -264,14 +264,14 @@ export default function DashboardPage() {
                                 <button
                                   type="button"
                                   onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => goCollectionFromSearch(item.collection_id)}
+                                  onClick={() => goSpaceFromSearch(item.space_id)}
                                   className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                                 >
                                   <FileText size={14} className="text-text-muted shrink-0" />
                                   <div className="min-w-0 flex-1">
                                     <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
                                     <p className="text-xs text-text-muted truncate">
-                                      {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.collectionName}
+                                      {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.spaceName}
                                     </p>
                                   </div>
                                 </button>
@@ -465,20 +465,20 @@ export default function DashboardPage() {
             />
             {showSearchResults && (
               <div className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
-                {globalMatches.collections.length === 0 && globalMatches.items.length === 0 ? (
+                {globalMatches.spaces.length === 0 && globalMatches.items.length === 0 ? (
                   <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
                 ) : (
                   <>
-                    {globalMatches.collections.length > 0 && (
+                    {globalMatches.spaces.length > 0 && (
                       <section>
-                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Collections</p>
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Spaces</p>
                         <ul className="space-y-1">
-                          {globalMatches.collections.map(c => (
+                          {globalMatches.spaces.map(c => (
                             <li key={c.id}>
                               <button
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => goCollectionFromSearch(c.id)}
+                                onClick={() => goSpaceFromSearch(c.id)}
                                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                               >
                                 <Folder size={14} className="text-accent shrink-0" />
@@ -498,14 +498,14 @@ export default function DashboardPage() {
                               <button
                                 type="button"
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => goCollectionFromSearch(item.collection_id)}
+                                onClick={() => goSpaceFromSearch(item.space_id)}
                                 className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                               >
                                 <FileText size={14} className="text-text-muted shrink-0" />
                                 <div className="min-w-0 flex-1">
                                   <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
                                   <p className="text-xs text-text-muted truncate">
-                                    {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.collectionName}
+                                    {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.spaceName}
                                   </p>
                                 </div>
                               </button>
@@ -527,9 +527,9 @@ export default function DashboardPage() {
         {/* Page heading */}
         <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
-            <h2 className="text-xl font-semibold text-text-primary">Collections</h2>
+            <h2 className="text-xl font-semibold text-text-primary">Spaces</h2>
             <p className="text-text-muted text-sm mt-0.5">
-              {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
+              {spaces.length} {spaces.length === 1 ? 'space' : 'spaces'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -553,12 +553,12 @@ export default function DashboardPage() {
               className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
             >
               <Plus size={16} />
-              New collection
+              New space
             </button>
           </div>
         </div>
 
-        {/* Collections grid */}
+        {/* Spaces grid */}
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[...Array(6)].map((_, i) => (
@@ -586,21 +586,21 @@ export default function DashboardPage() {
             <div className="w-14 h-14 rounded-2xl bg-bg-surface border border-bg-border flex items-center justify-center mx-auto mb-4">
               <Folder size={24} className="text-text-muted" />
             </div>
-            <p className="text-text-secondary font-medium">{search ? 'No collections match your search' : 'No collections yet'}</p>
-            <p className="text-text-muted text-sm mt-1">{search ? 'Try a different search term' : 'Create your first collection to get started'}</p>
+            <p className="text-text-secondary font-medium">{search ? 'No spaces match your search' : 'No spaces yet'}</p>
+            <p className="text-text-muted text-sm mt-1">{search ? 'Try a different search term' : 'Create your first space to get started'}</p>
             {!search && (
               <button
                 onClick={() => setModal({ type: 'create' })}
                 className="mt-4 inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
               >
-                <Plus size={15} /> New collection
+                <Plus size={15} /> New space
               </button>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pb-24">
             {filtered.map((col, index) => (
-              <CollectionCard
+              <SpaceCard
                 key={col.id}
                 col={col}
                 index={index}
@@ -620,11 +620,11 @@ export default function DashboardPage() {
                 setModal={setModal}
                 setDeleteConfirm={setDeleteConfirm}
                 onDuplicate={(id) => duplicate.mutate(id, {
-                  onSuccess: () => toast.success('Collection duplicated'),
+                  onSuccess: () => toast.success('Space duplicated'),
                   onError: () => toast.error('Failed to duplicate'),
                 })}
                 onArchive={(id) => archive.mutate(id, {
-                  onSuccess: () => toast.success('Collection archived'),
+                  onSuccess: () => toast.success('Space archived'),
                   onError: () => toast.error('Failed to archive'),
                 })}
               />
@@ -642,7 +642,7 @@ export default function DashboardPage() {
                   onClick: async () => {
                     try {
                       await bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: true })
-                      toast.success(`Pinned ${selectedCount} collections`)
+                      toast.success(`Pinned ${selectedCount} spaces`)
                       exitSelectMode()
                     } catch { toast.error('Failed to pin') }
                   },
@@ -654,7 +654,7 @@ export default function DashboardPage() {
                   onClick: async () => {
                     try {
                       await bulkSetPinned.mutateAsync({ ids: [...selectedIds], pinned: false })
-                      toast.success('Unpinned collections')
+                      toast.success('Unpinned spaces')
                       exitSelectMode()
                     } catch { toast.error('Failed to unpin') }
                   },
@@ -665,8 +665,8 @@ export default function DashboardPage() {
                   icon: BULK_ICONS.copy,
                   onClick: async () => {
                     try {
-                      await bulkDuplicate.mutateAsync(selectedCollections)
-                      toast.success(`Duplicated ${selectedCount} collections`)
+                      await bulkDuplicate.mutateAsync(selectedSpaces)
+                      toast.success(`Duplicated ${selectedCount} spaces`)
                       exitSelectMode()
                     } catch { toast.error('Failed to duplicate') }
                   },
@@ -678,7 +678,7 @@ export default function DashboardPage() {
                   onClick: async () => {
                     try {
                       await bulkArchive.mutateAsync([...selectedIds])
-                      toast.success(`Archived ${selectedCount} collections`)
+                      toast.success(`Archived ${selectedCount} spaces`)
                       exitSelectMode()
                     } catch { toast.error('Failed to archive') }
                   },
@@ -698,23 +698,23 @@ export default function DashboardPage() {
 
       {/* ── Modals ────────────────────────────────────── */}
       {modal?.type === 'create' && (
-        <CollectionModal
+        <SpaceModal
           onSave={({ name, description, color, tags }) => {
             create.mutate({ name, description, color, tags }, {
-              onSuccess: () => toast.success('Collection created'),
-              onError: () => toast.error('Failed to create collection')
+              onSuccess: () => toast.success('Space created'),
+              onError: () => toast.error('Failed to create space')
             })
           }}
           onClose={() => setModal(null)}
         />
       )}
       {modal?.type === 'edit' && (
-        <CollectionModal
+        <SpaceModal
           initial={modal.col}
           onSave={({ name, description, color, tags }) => {
             update.mutate({ id: modal.col.id, name, description, color, tags }, {
-              onSuccess: () => toast.success('Collection updated'),
-              onError: () => toast.error('Failed to update collection')
+              onSuccess: () => toast.success('Space updated'),
+              onError: () => toast.error('Failed to update space')
             })
           }}
           onClose={() => setModal(null)}
@@ -722,7 +722,7 @@ export default function DashboardPage() {
       )}
       {bulkDeleteConfirm && (
         <Modal
-          title={`Move ${bulkDeleteConfirm.length} collections to bin?`}
+          title={`Move ${bulkDeleteConfirm.length} spaces to bin?`}
           onClose={() => setBulkDeleteConfirm(null)}
           footer={
             <div className="flex gap-2 justify-end">
@@ -738,7 +738,7 @@ export default function DashboardPage() {
                 onClick={() => {
                   bulkRemove.mutate(bulkDeleteConfirm, {
                     onSuccess: () => {
-                      toast.success(`Moved ${bulkDeleteConfirm.length} collections to bin`)
+                      toast.success(`Moved ${bulkDeleteConfirm.length} spaces to bin`)
                       setBulkDeleteConfirm(null)
                       exitSelectMode()
                     },
@@ -752,13 +752,13 @@ export default function DashboardPage() {
             </div>
           }
         >
-          <p className="text-text-secondary text-sm">All items inside these collections go to the bin as well.</p>
+          <p className="text-text-secondary text-sm">All items inside these spaces go to the bin as well.</p>
         </Modal>
       )}
 
       {deleteConfirm && (
         <Modal
-          title="Move collection to bin?"
+          title="Move space to bin?"
           onClose={() => setDeleteConfirm(null)}
           footer={
             <div className="flex gap-2 justify-end">
@@ -771,8 +771,8 @@ export default function DashboardPage() {
               <button
                 onClick={() => {
                   remove.mutate(deleteConfirm, {
-                    onSuccess: () => toast.success('Collection moved to bin'),
-                    onError: () => toast.error('Failed to delete collection')
+                    onSuccess: () => toast.success('Space moved to bin'),
+                    onError: () => toast.error('Failed to delete space')
                   })
                   setDeleteConfirm(null)
                 }}
@@ -784,7 +784,7 @@ export default function DashboardPage() {
           }
         >
           <p className="text-text-secondary text-sm leading-relaxed">
-            This collection and all its items will be moved to the recycle bin.
+            This space and all its items will be moved to the recycle bin.
             You can restore them later or permanently delete them from there.
           </p>
         </Modal>

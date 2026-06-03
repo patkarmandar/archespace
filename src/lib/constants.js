@@ -30,11 +30,11 @@ export const VAULT_AUTO_LOCK_MS = 24 * 60 * 60 * 1000
 /** Maximum import file size in bytes (10 MB) */
 export const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024
 
-/** Maximum number of collections per import */
-export const MAX_IMPORT_COLLECTIONS = 500
+/** Maximum number of spaces per import */
+export const MAX_IMPORT_SPACES = 500
 
-/** Maximum number of items per collection in an import */
-export const MAX_IMPORT_ITEMS_PER_COLLECTION = 1000
+/** Maximum number of items per space in an import */
+export const MAX_IMPORT_ITEMS_PER_SPACE = 1000
 
 // ── Item Types ─────────────────────────────────────────────
 /** Allowed item type values (must match DB CHECK constraint) */

@@ -1,5 +1,5 @@
 /**
- * ArchivePage.jsx - Archived collections and items (reversible).
+ * ArchivePage.jsx - Archived spaces and items (reversible).
  */
 import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -54,44 +54,44 @@ export default function ArchivePage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const {
-    data, isLoading, unarchiveCollection, unarchiveItem,
-    bulkUnarchiveCollections, bulkUnarchiveItems, total,
+    data, isLoading, unarchiveSpace, unarchiveItem,
+    bulkUnarchiveSpaces, bulkUnarchiveItems, total,
   } = useArchive()
 
   const [selectMode, setSelectMode] = useState(false)
-  const [selectedCollectionIds, setSelectedCollectionIds] = useState(() => new Set())
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState(() => new Set())
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set())
 
-  const collections = data?.collections || []
+  const spaces = data?.spaces || []
   const items = data?.items || []
-  const selectableTotal = collections.length + items.length
-  const selectedCount = selectedCollectionIds.size + selectedItemIds.size
+  const selectableTotal = spaces.length + items.length
+  const selectedCount = selectedSpaceIds.size + selectedItemIds.size
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
-    setSelectedCollectionIds(new Set())
+    setSelectedSpaceIds(new Set())
     setSelectedItemIds(new Set())
   }, [])
 
   const selectAll = useCallback(() => {
-    setSelectedCollectionIds(new Set(collections.map(c => c.id)))
+    setSelectedSpaceIds(new Set(spaces.map(c => c.id)))
     setSelectedItemIds(new Set(items.map(i => i.id)))
-  }, [collections, items])
+  }, [spaces, items])
 
   const runBulkUnarchive = useCallback(async () => {
-    const colIds = [...selectedCollectionIds]
+    const colIds = [...selectedSpaceIds]
     const itemIds = [...selectedItemIds]
     const count = colIds.length + itemIds.length
     if (!count) return
     try {
-      if (colIds.length) await bulkUnarchiveCollections.mutateAsync(colIds)
+      if (colIds.length) await bulkUnarchiveSpaces.mutateAsync(colIds)
       if (itemIds.length) await bulkUnarchiveItems.mutateAsync(itemIds)
       toast.success(`Restored ${count} ${count === 1 ? 'item' : 'items'} from archive`)
       exitSelectMode()
     } catch {
       toast.error('Failed to restore selection')
     }
-  }, [selectedCollectionIds, selectedItemIds, bulkUnarchiveCollections, bulkUnarchiveItems, exitSelectMode, toast])
+  }, [selectedSpaceIds, selectedItemIds, bulkUnarchiveSpaces, bulkUnarchiveItems, exitSelectMode, toast])
 
   const bulkActions = useMemo(() => [
     {
@@ -146,24 +146,24 @@ export default function ArchivePage() {
               <Archive size={22} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Archive is empty</p>
-            <p className="text-text-muted text-sm mt-1">Archive collections from the dashboard menu</p>
+            <p className="text-text-muted text-sm mt-1">Archive spaces from the dashboard menu</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {collections.length > 0 && (
+            {spaces.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Folder size={14} className="text-text-muted" />
-                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Collections</h2>
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Spaces</h2>
                 </div>
                 <div className="space-y-2">
-                  {collections.map(col => (
+                  {spaces.map(col => (
                     <SelectableRow
                       key={col.id}
                       selectMode={selectMode}
-                      selected={selectedCollectionIds.has(col.id)}
+                      selected={selectedSpaceIds.has(col.id)}
                       onToggle={() => {
-                        setSelectedCollectionIds(prev => {
+                        setSelectedSpaceIds(prev => {
                           const next = new Set(prev)
                           if (next.has(col.id)) next.delete(col.id)
                           else next.add(col.id)
@@ -173,8 +173,8 @@ export default function ArchivePage() {
                       actions={
                         <button
                           type="button"
-                          onClick={() => unarchiveCollection.mutate(col.id, {
-                            onSuccess: () => toast.success('Collection restored from archive'),
+                          onClick={() => unarchiveSpace.mutate(col.id, {
+                            onSuccess: () => toast.success('Space restored from archive'),
                             onError: () => toast.error('Failed to restore'),
                           })}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border hover:bg-success/10 hover:text-success text-text-secondary text-xs font-medium"

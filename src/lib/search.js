@@ -19,13 +19,13 @@ function itemSearchText(item) {
 }
 
 /**
- * @returns {{ collections: Array, items: Array }}
+ * @returns {{ spaces: Array, items: Array }}
  */
-export function filterGlobalSearch({ collections, items, itemMeta }, query) {
+export function filterGlobalSearch({ spaces, items, itemMeta }, query) {
   const q = norm(query.trim())
-  if (!q) return { collections: [], items: [] }
+  if (!q) return { spaces: [], items: [] }
 
-  const matchedCollections = collections.filter(c =>
+  const matchedSpaces = spaces.filter(c =>
     norm(c.name).includes(q) || norm(c.description).includes(q) ||
     (Array.isArray(c.tags) && c.tags.some(t => norm(t).includes(q)))
   )
@@ -33,9 +33,9 @@ export function filterGlobalSearch({ collections, items, itemMeta }, query) {
   const matchedItems = items.filter(item => {
     if (itemSearchText(item).includes(q)) return true
     const meta = itemMeta?.[item.id]
-    if (meta && norm(meta.collectionName).includes(q)) return true
+    if (meta && norm(meta.spaceName).includes(q)) return true
     return false
   })
 
-  return { collections: matchedCollections, items: matchedItems }
+  return { spaces: matchedSpaces, items: matchedItems }
 }

@@ -1,18 +1,18 @@
 /**
  * exportImport.js - Data export and import utilities for Arche.
  *
- * Provides functions to export active collections as a JSON file,
+ * Provides functions to export active spaces as a JSON file,
  * and to import a JSON backup file with deep validation.
  */
 
 import { supabase } from './supabase'
 import { logAudit } from './auditLog'
-import { encryptCollection, encryptItem, decryptItems } from './dataProtection'
-import { parseTags } from './collectionColors'
+import { encryptSpace, encryptItem, decryptItems } from './dataProtection'
+import { parseTags } from './spaceColors'
 import {
   MAX_IMPORT_FILE_SIZE,
-  MAX_IMPORT_COLLECTIONS,
-  MAX_IMPORT_ITEMS_PER_COLLECTION,
+  MAX_IMPORT_SPACES,
+  MAX_IMPORT_ITEMS_PER_SPACE,
   ITEM_TYPES,
   MAX_NAME_LENGTH,
   MAX_DESCRIPTION_LENGTH,
@@ -20,22 +20,22 @@ import {
 } from './constants'
 
 /**
- * Export all active collections (and their non-deleted items)
+ * Export all active spaces (and their non-deleted items)
  * as a JSON file download.
  *
- * @param {Array} collections - The current collections array (decrypted)
+ * @param {Array} spaces - The current spaces array (decrypted)
  * @param {CryptoKey} cryptoKey - Vault key for decrypting items from DB
  */
-export async function exportCollections(collections, cryptoKey) {
+export async function exportSpaces(spaces, cryptoKey) {
   if (!cryptoKey) throw new Error('Vault must be unlocked to export')
 
   try {
     const allData = await Promise.all(
-      collections.map(async (c) => {
+      spaces.map(async (c) => {
         const { data, error } = await supabase
-          .from('collection_items')
+          .from('space_items')
           .select('*')
-          .eq('collection_id', c.id)
+          .eq('space_id', c.id)
           .is('deleted_at', null)
           .is('archived_at', null)
           .order('position')
@@ -61,8 +61,8 @@ export async function exportCollections(collections, cryptoKey) {
       await logAudit({
         userId: session.user.id,
         action: 'export',
-        entityType: 'collections',
-        details: { count: collections.length },
+        entityType: 'spaces',
+        details: { count: spaces.length },
       })
     }
   } catch (error) {
@@ -93,14 +93,14 @@ function validateItemContent(type, content) {
 }
 
 /**
- * Import collections from a JSON backup file.
+ * Import spaces from a JSON backup file.
  *
  * @param {File} file - The .json File object from an <input>
  * @param {string} userId - The authenticated user's UUID
  * @param {CryptoKey} cryptoKey - Vault key for encrypting imported data
  * @throws {Error} If the JSON is malformed or invalid
  */
-export async function importCollections(file, userId, cryptoKey) {
+export async function importSpaces(file, userId, cryptoKey) {
   if (!cryptoKey) throw new Error('Vault must be unlocked to import')
   // Validate file size
   if (file.size > MAX_IMPORT_FILE_SIZE) {
@@ -116,25 +116,25 @@ export async function importCollections(file, userId, cryptoKey) {
   }
 
   if (!Array.isArray(parsed)) {
-    throw new Error('Invalid backup format: Expected an array of collections.')
+    throw new Error('Invalid backup format: Expected an array of spaces.')
   }
 
-  if (parsed.length > MAX_IMPORT_COLLECTIONS) {
-    throw new Error(`Too many collections. Maximum allowed is ${MAX_IMPORT_COLLECTIONS}.`)
+  if (parsed.length > MAX_IMPORT_SPACES) {
+    throw new Error(`Too many spaces. Maximum allowed is ${MAX_IMPORT_SPACES}.`)
   }
 
   let totalItemsImported = 0
 
   for (const col of parsed) {
     if (typeof col !== 'object' || col === null) {
-      throw new Error('Invalid backup format: Collection must be an object.')
+      throw new Error('Invalid backup format: Space must be an object.')
     }
 
     const { items, id, created_at, updated_at, user_id, deleted_at, pinned, position, ...colData } = col
 
-    // Validate and sanitize collection data
-    let sanitizedName = typeof colData.name === 'string' ? colData.name.trim() : 'Imported Collection'
-    if (!sanitizedName) sanitizedName = 'Imported Collection'
+    // Validate and sanitize space data
+    let sanitizedName = typeof colData.name === 'string' ? colData.name.trim() : 'Imported Space'
+    if (!sanitizedName) sanitizedName = 'Imported Space'
     colData.name = sanitizedName.slice(0, MAX_NAME_LENGTH)
 
     if (typeof colData.description === 'string') {
@@ -143,14 +143,14 @@ export async function importCollections(file, userId, cryptoKey) {
       colData.description = ''
     }
 
-    const encryptedCol = await encryptCollection({
+    const encryptedCol = await encryptSpace({
       name: colData.name,
       description: colData.description || '',
       tags: parseTags(colData.tags),
     }, cryptoKey)
 
     const { data: newCol, error: colErr } = await supabase
-      .from('collections')
+      .from('spaces')
       .insert({
         ...colData,
         name: encryptedCol.name,
@@ -164,8 +164,8 @@ export async function importCollections(file, userId, cryptoKey) {
     if (colErr) throw colErr
 
     if (Array.isArray(items) && items.length > 0) {
-      if (items.length > MAX_IMPORT_ITEMS_PER_COLLECTION) {
-        throw new Error(`Too many items in collection "${colData.name}". Maximum allowed is ${MAX_IMPORT_ITEMS_PER_COLLECTION}.`)
+      if (items.length > MAX_IMPORT_ITEMS_PER_SPACE) {
+        throw new Error(`Too many items in space "${colData.name}". Maximum allowed is ${MAX_IMPORT_ITEMS_PER_SPACE}.`)
       }
 
       const itemsToInsert = []
@@ -186,7 +186,7 @@ export async function importCollections(file, userId, cryptoKey) {
         }, cryptoKey)
 
         itemsToInsert.push({
-          collection_id: newCol.id,
+          space_id: newCol.id,
           user_id: userId,
           type: item.type,
           title: encryptedItem.title,
@@ -199,7 +199,7 @@ export async function importCollections(file, userId, cryptoKey) {
       if (itemsToInsert.length > 0) {
         // Batch insert items
         const { error: itemErr } = await supabase
-          .from('collection_items')
+          .from('space_items')
           .insert(itemsToInsert)
         if (itemErr) throw itemErr
         totalItemsImported += itemsToInsert.length
@@ -210,7 +210,7 @@ export async function importCollections(file, userId, cryptoKey) {
   await logAudit({
     userId,
     action: 'import',
-    entityType: 'collections',
-    details: { collections_count: parsed.length, items_count: totalItemsImported },
+    entityType: 'spaces',
+    details: { spaces_count: parsed.length, items_count: totalItemsImported },
   })
 }

@@ -1,23 +1,23 @@
 /**
- * useCollections.js - Hook for managing collections.
+ * useSpaces.js - Hook for managing spaces.
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { parseTags } from '../lib/collectionColors'
+import { parseTags } from '../lib/spaceColors'
 import { useEncryption } from '../context/EncryptionContext'
-import { encryptCollection, decryptCollection, decryptCollections } from '../lib/dataProtection'
+import { encryptSpace, decryptSpace, decryptSpaces } from '../lib/dataProtection'
 
-export function useCollections() {
+export function useSpaces() {
   const qc = useQueryClient()
   const { cryptoKey } = useEncryption()
 
   const query = useQuery({
-    queryKey: ['collections'],
+    queryKey: ['spaces'],
     enabled: !!cryptoKey,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('collections')
+        .from('spaces')
         .select('*')
         .is('deleted_at', null)
         .is('archived_at', null)
@@ -26,21 +26,21 @@ export function useCollections() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return decryptCollections(data || [], cryptoKey)
+      return decryptSpaces(data || [], cryptoKey)
     },
   })
 
   useEffect(() => {
     const channel = supabase
-      .channel('collections-realtime')
+      .channel('spaces-realtime')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'collections' },
+        { event: '*', schema: 'public', table: 'spaces' },
         () => {
-          qc.invalidateQueries({ queryKey: ['collections'] })
+          qc.invalidateQueries({ queryKey: ['spaces'] })
           qc.invalidateQueries({ queryKey: ['bin'] })
           qc.invalidateQueries({ queryKey: ['archive'] })
-          qc.invalidateQueries({ queryKey: ['collection-stats'] })
+          qc.invalidateQueries({ queryKey: ['space-stats'] })
           qc.invalidateQueries({ queryKey: ['global-search-data'] })
         }
       )
@@ -56,7 +56,7 @@ export function useCollections() {
 
       const position = query.data?.length || 0
 
-      const encrypted = await encryptCollection({
+      const encrypted = await encryptSpace({
         name,
         description: description || '',
         color: color || null,
@@ -64,7 +64,7 @@ export function useCollections() {
       }, cryptoKey)
 
       const { data, error } = await supabase
-        .from('collections')
+        .from('spaces')
         .insert({
           name: encrypted.name,
           description: encrypted.description,
@@ -76,9 +76,9 @@ export function useCollections() {
         .select()
         .single()
       if (error) throw error
-      return decryptCollection(data, cryptoKey)
+      return decryptSpace(data, cryptoKey)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
   })
 
   const update = useMutation({
@@ -87,21 +87,21 @@ export function useCollections() {
       if (color !== undefined) payload.color = color
       if (tags !== undefined) payload.tags = parseTags(tags)
 
-      const encrypted = await encryptCollection(payload, cryptoKey)
+      const encrypted = await encryptSpace(payload, cryptoKey)
       const dbPayload = { ...payload, name: encrypted.name, description: encrypted.description }
       if (tags !== undefined) dbPayload.tags = encrypted.tags
 
       const { data, error } = await supabase
-        .from('collections')
+        .from('spaces')
         .update(dbPayload)
         .eq('id', id)
         .select()
         .single()
       if (error) throw error
-      return decryptCollection(data, cryptoKey)
+      return decryptSpace(data, cryptoKey)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['spaces'] })
       qc.invalidateQueries({ queryKey: ['global-search-data'] })
     },
   })
@@ -109,60 +109,60 @@ export function useCollections() {
   const togglePin = useMutation({
     mutationFn: async ({ id, pinned }) => {
       const { error } = await supabase
-        .from('collections')
+        .from('spaces')
         .update({ pinned: !pinned })
         .eq('id', id)
       if (error) throw error
     },
     onMutate: async ({ id, pinned }) => {
-      await qc.cancelQueries({ queryKey: ['collections'] })
-      const previous = qc.getQueryData(['collections'])
-      qc.setQueryData(['collections'], (old) =>
+      await qc.cancelQueries({ queryKey: ['spaces'] })
+      const previous = qc.getQueryData(['spaces'])
+      qc.setQueryData(['spaces'], (old) =>
         old?.map(c => c.id === id ? { ...c, pinned: !pinned } : c)
       )
       return { previous }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['collections'], context.previous)
+      if (context?.previous) qc.setQueryData(['spaces'], context.previous)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
   })
 
   const reorder = useMutation({
-    mutationFn: async (orderedCollections) => {
-      const updates = orderedCollections.map((col, index) => ({
+    mutationFn: async (orderedSpaces) => {
+      const updates = orderedSpaces.map((col, index) => ({
         id: col.id,
         position: index,
       }))
-      const { error } = await supabase.rpc('update_collection_positions', { updates })
+      const { error } = await supabase.rpc('update_space_positions', { updates })
       if (error) throw error
     },
-    onMutate: async (orderedCollections) => {
-      await qc.cancelQueries({ queryKey: ['collections'] })
-      const previous = qc.getQueryData(['collections'])
-      qc.setQueryData(['collections'], orderedCollections.map((col, i) => ({
+    onMutate: async (orderedSpaces) => {
+      await qc.cancelQueries({ queryKey: ['spaces'] })
+      const previous = qc.getQueryData(['spaces'])
+      qc.setQueryData(['spaces'], orderedSpaces.map((col, i) => ({
         ...col, position: i,
       })))
       return { previous }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['collections'], context.previous)
+      if (context?.previous) qc.setQueryData(['spaces'], context.previous)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['collections'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
   })
 
   const remove = useMutation({
     mutationFn: async (id) => {
       const { error } = await supabase
-        .from('collections')
+        .from('spaces')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['spaces'] })
       qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+      qc.invalidateQueries({ queryKey: ['space-stats'] })
     },
   })
 
@@ -170,20 +170,20 @@ export function useCollections() {
     mutationFn: async (id) => {
       const now = new Date().toISOString()
       const { error: e1 } = await supabase
-        .from('collections')
+        .from('spaces')
         .update({ archived_at: now })
         .eq('id', id)
       if (e1) throw e1
       await supabase
-        .from('collection_items')
+        .from('space_items')
         .update({ archived_at: now })
-        .eq('collection_id', id)
+        .eq('space_id', id)
         .is('deleted_at', null)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['spaces'] })
       qc.invalidateQueries({ queryKey: ['archive'] })
-      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+      qc.invalidateQueries({ queryKey: ['space-stats'] })
       qc.invalidateQueries({ queryKey: ['items'] })
     },
   })
@@ -195,16 +195,16 @@ export function useCollections() {
       if (!userId) throw new Error('Not authenticated')
 
       const source = query.data?.find(c => c.id === id)
-      if (!source) throw new Error('Collection not found')
+      if (!source) throw new Error('Space not found')
 
-      const encCol = await encryptCollection({
+      const encCol = await encryptSpace({
         name: `${source.name} (copy)`,
         description: source.description || '',
         tags: source.tags || [],
       }, cryptoKey)
 
       const { data: newCol, error: colErr } = await supabase
-        .from('collections')
+        .from('spaces')
         .insert({
           name: encCol.name,
           description: encCol.description,
@@ -219,18 +219,18 @@ export function useCollections() {
       if (colErr) throw colErr
 
       const { data: items, error: itemsErr } = await supabase
-        .from('collection_items')
+        .from('space_items')
         .select('type, title, content, position, pinned')
-        .eq('collection_id', id)
+        .eq('space_id', id)
         .is('deleted_at', null)
         .is('archived_at', null)
         .order('position')
       if (itemsErr) throw itemsErr
 
       if (items?.length) {
-        const { error: insertErr } = await supabase.from('collection_items').insert(
+        const { error: insertErr } = await supabase.from('space_items').insert(
           items.map((item, i) => ({
-            collection_id: newCol.id,
+            space_id: newCol.id,
             user_id: userId,
             type: item.type,
             title: item.title,
@@ -242,19 +242,19 @@ export function useCollections() {
         if (insertErr) throw insertErr
       }
 
-      return decryptCollection(newCol, cryptoKey)
+      return decryptSpace(newCol, cryptoKey)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['collections'] })
-      qc.invalidateQueries({ queryKey: ['collection-stats'] })
+      qc.invalidateQueries({ queryKey: ['spaces'] })
+      qc.invalidateQueries({ queryKey: ['space-stats'] })
     },
   })
 
-  const invalidateCollections = () => {
-    qc.invalidateQueries({ queryKey: ['collections'] })
+  const invalidateSpaces = () => {
+    qc.invalidateQueries({ queryKey: ['spaces'] })
     qc.invalidateQueries({ queryKey: ['bin'] })
     qc.invalidateQueries({ queryKey: ['archive'] })
-    qc.invalidateQueries({ queryKey: ['collection-stats'] })
+    qc.invalidateQueries({ queryKey: ['space-stats'] })
     qc.invalidateQueries({ queryKey: ['global-search-data'] })
     qc.invalidateQueries({ queryKey: ['items'] })
   }
@@ -263,12 +263,12 @@ export function useCollections() {
     mutationFn: async (ids) => {
       if (!ids?.length) return
       const { error } = await supabase
-        .from('collections')
+        .from('spaces')
         .update({ deleted_at: new Date().toISOString() })
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateCollections,
+    onSuccess: invalidateSpaces,
   })
 
   const bulkArchive = useMutation({
@@ -277,30 +277,30 @@ export function useCollections() {
       const now = new Date().toISOString()
       for (const colId of ids) {
         const { error: e1 } = await supabase
-          .from('collections')
+          .from('spaces')
           .update({ archived_at: now })
           .eq('id', colId)
         if (e1) throw e1
         await supabase
-          .from('collection_items')
+          .from('space_items')
           .update({ archived_at: now })
-          .eq('collection_id', colId)
+          .eq('space_id', colId)
           .is('deleted_at', null)
       }
     },
-    onSuccess: invalidateCollections,
+    onSuccess: invalidateSpaces,
   })
 
   const bulkSetPinned = useMutation({
     mutationFn: async ({ ids, pinned }) => {
       if (!ids?.length) return
       const { error } = await supabase
-        .from('collections')
+        .from('spaces')
         .update({ pinned })
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateCollections,
+    onSuccess: invalidateSpaces,
   })
 
   const bulkDuplicate = useMutation({
@@ -310,14 +310,14 @@ export function useCollections() {
       if (!userId) throw new Error('Not authenticated')
 
       for (const source of cols) {
-        const encCol = await encryptCollection({
+        const encCol = await encryptSpace({
           name: `${source.name} (copy)`,
           description: source.description || '',
           tags: source.tags || [],
         }, cryptoKey)
 
         const { data: newCol, error: colErr } = await supabase
-          .from('collections')
+          .from('spaces')
           .insert({
             name: encCol.name,
             description: encCol.description,
@@ -332,18 +332,18 @@ export function useCollections() {
         if (colErr) throw colErr
 
         const { data: items, error: itemsErr } = await supabase
-          .from('collection_items')
+          .from('space_items')
           .select('type, title, content, position, pinned')
-          .eq('collection_id', source.id)
+          .eq('space_id', source.id)
           .is('deleted_at', null)
           .is('archived_at', null)
           .order('position')
         if (itemsErr) throw itemsErr
 
         if (items?.length) {
-          const { error: insertErr } = await supabase.from('collection_items').insert(
+          const { error: insertErr } = await supabase.from('space_items').insert(
             items.map((item, i) => ({
-              collection_id: newCol.id,
+              space_id: newCol.id,
               user_id: userId,
               type: item.type,
               title: item.title,
@@ -356,7 +356,7 @@ export function useCollections() {
         }
       }
     },
-    onSuccess: invalidateCollections,
+    onSuccess: invalidateSpaces,
   })
 
   return {

@@ -1,10 +1,10 @@
 /**
- * CollectionCard.jsx - Individual collection card for the dashboard grid.
+ * SpaceCard.jsx - Individual space card for the dashboard grid.
  */
 import { ChevronRight, Pin, PinOff, Pencil, Trash2, Copy, Archive, CheckSquare, Square } from 'lucide-react'
-import { getColorPreset } from '../../lib/collectionColors'
+import { getColorPreset } from '../../lib/spaceColors'
 
-export function CollectionCard({
+export function SpaceCard({
   col, index, search, dragIndex, dragOverIndex,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd,
   navigate, togglePin, setModal, setDeleteConfirm, onDuplicate, onArchive,
@@ -26,7 +26,7 @@ export function CollectionCard({
       onDragOver={(e) => !selectMode && handleDragOver(e, index)}
       onDrop={() => !selectMode && handleDrop(index)}
       onDragEnd={handleDragEnd}
-      onClick={() => (selectMode ? onToggleSelect?.() : navigate(`/collection/${col.id}`))}
+      onClick={() => (selectMode ? onToggleSelect?.() : navigate(`/space/${col.id}`))}
       className={`group border rounded-2xl p-4 cursor-pointer hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up overflow-hidden ${
         selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
         col.pinned ? 'bg-accent/5 border-accent hover:border-accent/80' : 'bg-bg-surface border-bg-border hover:border-accent/40'

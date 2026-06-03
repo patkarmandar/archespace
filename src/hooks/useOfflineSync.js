@@ -20,7 +20,7 @@ export function useOfflineSync() {
         if (entry.type === 'item-update') {
           const { id, title, content } = entry.payload
           const { error } = await supabase
-            .from('collection_items')
+            .from('space_items')
             .update({ title, content })
             .eq('id', id)
           return !error

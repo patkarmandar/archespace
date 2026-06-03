@@ -4,7 +4,7 @@
  * Provides a `useToast()` hook that exposes a `toast` function.
  * Usage:
  *   const { toast } = useToast()
- *   toast.success('Collection created')
+ *   toast.success('Space created')
  *   toast.error('Import failed')
  *
  * Toasts auto-dismiss after 3 seconds and stack vertically in the

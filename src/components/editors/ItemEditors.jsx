@@ -1,5 +1,5 @@
 /**
- * ItemEditors.jsx - Content editors for each collection-item type.
+ * ItemEditors.jsx - Content editors for each space-item type.
  *
  * Exports four editor components, one per item type:
  *   - TextboxEditor    - Free-form text area (Note) with markdown preview

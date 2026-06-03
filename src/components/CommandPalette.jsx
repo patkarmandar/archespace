@@ -9,7 +9,7 @@ import {
 import { useCommandPalette } from '../context/CommandPaletteContext'
 import { useTheme } from '../context/ThemeContext'
 
-export default function CommandPalette({ onNewCollection, onOpenSearch }) {
+export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const { open, closePalette, extraCommands } = useCommandPalette()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -17,7 +17,7 @@ export default function CommandPalette({ onNewCollection, onOpenSearch }) {
   const { theme, toggle } = useTheme()
 
   const baseCommands = useMemo(() => [
-    { id: 'new', label: 'New collection', hint: 'N', icon: Plus, run: () => { closePalette(); onNewCollection?.() } },
+    { id: 'new', label: 'New space', hint: 'N', icon: Plus, run: () => { closePalette(); onNewSpace?.() } },
     { id: 'search', label: 'Search', hint: '/', icon: Search, run: () => { closePalette(); onOpenSearch?.() } },
     { id: 'home', label: 'Go to dashboard', icon: Home, run: () => { closePalette(); navigate('/') } },
     { id: 'archive', label: 'Open archive', icon: Archive, run: () => { closePalette(); navigate('/archive') } },
@@ -29,7 +29,7 @@ export default function CommandPalette({ onNewCollection, onOpenSearch }) {
       icon: theme === 'dark' ? Sun : Moon,
       run: () => { toggle(); closePalette() },
     },
-  ], [closePalette, navigate, onNewCollection, onOpenSearch, theme, toggle])
+  ], [closePalette, navigate, onNewSpace, onOpenSearch, theme, toggle])
 
   const commands = useMemo(() => [...baseCommands, ...extraCommands], [baseCommands, extraCommands])
 

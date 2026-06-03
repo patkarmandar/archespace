@@ -15,8 +15,8 @@
 -- 1. TABLES
 -- ────────────────────────────────────────────────────────────
 
--- Collections: top-level containers owned by a single user.
-CREATE TABLE IF NOT EXISTS collections (
+-- Spaces: top-level containers owned by a single user.
+CREATE TABLE IF NOT EXISTS spaces (
   id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name        text        NOT NULL,
@@ -31,10 +31,10 @@ CREATE TABLE IF NOT EXISTS collections (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- Collection Items: individual content blocks inside a collection.
-CREATE TABLE IF NOT EXISTS collection_items (
+-- Space Items: individual content blocks inside a space.
+CREATE TABLE IF NOT EXISTS space_items (
   id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
-  collection_id uuid        REFERENCES collections(id) ON DELETE CASCADE NOT NULL,
+  space_id uuid        REFERENCES spaces(id) ON DELETE CASCADE NOT NULL,
   user_id       uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   type          text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list')),
   title         text        NOT NULL DEFAULT '',
@@ -78,20 +78,20 @@ ALTER TABLE user_encryption ADD COLUMN IF NOT EXISTS vault_format text DEFAULT '
 -- 2. INDEXES
 -- ────────────────────────────────────────────────────────────
 
--- Collections
-CREATE INDEX IF NOT EXISTS collections_user_id_idx     ON collections(user_id);
-CREATE INDEX IF NOT EXISTS collections_position_idx    ON collections(user_id, position);
-CREATE INDEX IF NOT EXISTS collections_pinned_idx      ON collections(pinned)     WHERE pinned = true;
-CREATE INDEX IF NOT EXISTS collections_deleted_at_idx  ON collections(deleted_at) WHERE deleted_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS collections_archived_at_idx ON collections(archived_at) WHERE archived_at IS NOT NULL;
+-- Spaces
+CREATE INDEX IF NOT EXISTS spaces_user_id_idx     ON spaces(user_id);
+CREATE INDEX IF NOT EXISTS spaces_position_idx    ON spaces(user_id, position);
+CREATE INDEX IF NOT EXISTS spaces_pinned_idx      ON spaces(pinned)     WHERE pinned = true;
+CREATE INDEX IF NOT EXISTS spaces_deleted_at_idx  ON spaces(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS spaces_archived_at_idx ON spaces(archived_at) WHERE archived_at IS NOT NULL;
 
--- Collection items
-CREATE INDEX IF NOT EXISTS items_collection_id_idx     ON collection_items(collection_id);
-CREATE INDEX IF NOT EXISTS items_user_id_idx           ON collection_items(user_id);
-CREATE INDEX IF NOT EXISTS items_position_idx          ON collection_items(collection_id, position);
-CREATE INDEX IF NOT EXISTS collection_items_pinned_idx ON collection_items(pinned)     WHERE pinned = true;
-CREATE INDEX IF NOT EXISTS items_deleted_at_idx        ON collection_items(deleted_at) WHERE deleted_at IS NOT NULL;
-CREATE INDEX IF NOT EXISTS items_archived_at_idx       ON collection_items(archived_at) WHERE archived_at IS NOT NULL;
+-- Space items
+CREATE INDEX IF NOT EXISTS items_space_id_idx     ON space_items(space_id);
+CREATE INDEX IF NOT EXISTS items_user_id_idx           ON space_items(user_id);
+CREATE INDEX IF NOT EXISTS items_position_idx          ON space_items(space_id, position);
+CREATE INDEX IF NOT EXISTS space_items_pinned_idx ON space_items(pinned)     WHERE pinned = true;
+CREATE INDEX IF NOT EXISTS items_deleted_at_idx        ON space_items(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS items_archived_at_idx       ON space_items(archived_at) WHERE archived_at IS NOT NULL;
 
 -- Audit log
 CREATE INDEX IF NOT EXISTS audit_log_user_id_idx       ON audit_log(user_id);
@@ -111,32 +111,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_collections_updated_at ON collections;
-CREATE TRIGGER trg_collections_updated_at
-  BEFORE UPDATE ON collections
+DROP TRIGGER IF EXISTS trg_spaces_updated_at ON spaces;
+CREATE TRIGGER trg_spaces_updated_at
+  BEFORE UPDATE ON spaces
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-DROP TRIGGER IF EXISTS trg_collection_items_updated_at ON collection_items;
-CREATE TRIGGER trg_collection_items_updated_at
-  BEFORE UPDATE ON collection_items
+DROP TRIGGER IF EXISTS trg_space_items_updated_at ON space_items;
+CREATE TRIGGER trg_space_items_updated_at
+  BEFORE UPDATE ON space_items
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- Auto-populate user_id on collection_items from the parent collection.
+-- Auto-populate user_id on space_items from the parent space.
 CREATE OR REPLACE FUNCTION populate_item_user_id()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.user_id IS NULL THEN
     SELECT user_id INTO NEW.user_id
-    FROM collections
-    WHERE id = NEW.collection_id;
+    FROM spaces
+    WHERE id = NEW.space_id;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_populate_item_user_id ON collection_items;
+DROP TRIGGER IF EXISTS trg_populate_item_user_id ON space_items;
 CREATE TRIGGER trg_populate_item_user_id
-  BEFORE INSERT ON collection_items
+  BEFORE INSERT ON space_items
   FOR EACH ROW EXECUTE FUNCTION populate_item_user_id();
 
 -- Hard-delete records soft-deleted for more than 30 days.
@@ -144,8 +144,8 @@ CREATE TRIGGER trg_populate_item_user_id
 CREATE OR REPLACE FUNCTION purge_old_deleted_records()
 RETURNS void AS $$
 BEGIN
-  DELETE FROM collection_items WHERE deleted_at < now() - interval '30 days';
-  DELETE FROM collections       WHERE deleted_at < now() - interval '30 days';
+  DELETE FROM space_items WHERE deleted_at < now() - interval '30 days';
+  DELETE FROM spaces       WHERE deleted_at < now() - interval '30 days';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -154,36 +154,36 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 4. ROW LEVEL SECURITY (RLS)
 -- ────────────────────────────────────────────────────────────
 
-ALTER TABLE collections      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE collection_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spaces      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE space_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_encryption  ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_encryption TO authenticated;
 
--- Collections: full CRUD for the owning user only.
+-- Spaces: full CRUD for the owning user only.
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE tablename = 'collections'
-      AND policyname = 'Users can manage their own collections'
+    WHERE tablename = 'spaces'
+      AND policyname = 'Users can manage their own spaces'
   ) THEN
-    CREATE POLICY "Users can manage their own collections"
-      ON collections FOR ALL
+    CREATE POLICY "Users can manage their own spaces"
+      ON spaces FOR ALL
       USING     (auth.uid() = user_id)
       WITH CHECK (auth.uid() = user_id);
   END IF;
 END $$;
 
--- Collection items: full CRUD for the owning user only.
+-- Space items: full CRUD for the owning user only.
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE tablename = 'collection_items'
+    WHERE tablename = 'space_items'
       AND policyname = 'Users can manage their own items'
   ) THEN
     CREATE POLICY "Users can manage their own items"
-      ON collection_items FOR ALL
+      ON space_items FOR ALL
       USING     (auth.uid() = user_id)
       WITH CHECK (auth.uid() = user_id);
   END IF;
@@ -233,16 +233,16 @@ END $$;
 
 DROP PUBLICATION IF EXISTS supabase_realtime;
 CREATE PUBLICATION supabase_realtime;
-ALTER  PUBLICATION supabase_realtime ADD TABLE collections;
-ALTER  PUBLICATION supabase_realtime ADD TABLE collection_items;
+ALTER  PUBLICATION supabase_realtime ADD TABLE spaces;
+ALTER  PUBLICATION supabase_realtime ADD TABLE space_items;
 
 
 -- ────────────────────────────────────────────────────────────
 -- 6. RPC FUNCTIONS FOR BULK UPDATES
 -- ────────────────────────────────────────────────────────────
 
--- Bulk-update collection positions (ownership enforced via auth.uid()).
-CREATE OR REPLACE FUNCTION update_collection_positions(updates jsonb)
+-- Bulk-update space positions (ownership enforced via auth.uid()).
+CREATE OR REPLACE FUNCTION update_space_positions(updates jsonb)
 RETURNS void AS $$
 DECLARE
   r record;
@@ -250,7 +250,7 @@ BEGIN
   FOR r IN
     SELECT * FROM jsonb_to_recordset(updates) AS x(id uuid, position integer)
   LOOP
-    UPDATE collections
+    UPDATE spaces
        SET position = r.position
      WHERE id = r.id AND user_id = auth.uid();
   END LOOP;
@@ -266,7 +266,7 @@ BEGIN
   FOR r IN
     SELECT * FROM jsonb_to_recordset(updates) AS x(id uuid, position integer)
   LOOP
-    UPDATE collection_items
+    UPDATE space_items
        SET position = r.position
      WHERE id = r.id AND user_id = auth.uid();
   END LOOP;

@@ -1,5 +1,5 @@
 /**
- * CollectionItem.jsx - A single item card inside a collection.
+ * SpaceItem.jsx - A single item card inside a space.
  *
  * Renders a collapsible card with:
  *   - Type badge (Note / Checklist / List / Cards)
@@ -51,7 +51,7 @@ const AUTO_SAVE_DELAY = 2000
 /**
  * @param {{ item: Object, onUpdate: Function, onTogglePin: Function, onDelete: Function, onDirtyChange?: Function, dragHandleProps?: Object }} props
  */
-export default function CollectionItem({
+export default function SpaceItem({
   item,
   onUpdate,
   onTogglePin,

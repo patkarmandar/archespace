@@ -10,12 +10,12 @@ A private, encrypted workspace for organising notes, checklists, lists, and card
   - Login session persists until manual logout or max 1 week.
   - Vault auto-locks after 24 hours.
   - Vault can be manually locked from dashboard.
-- **Unified search**: One dashboard search bar that searches collections, tags, and item content (notes/checklists/lists/cards) with rich results.
+- **Unified search**: One dashboard search bar that searches spaces, tags, and item content (notes/checklists/lists/cards) with rich results.
 - **Four item types**: Markdown notes, checklists, bullet lists, and title+description cards.
-- **Pin & reorder**: Pin collections/items and drag to reorder.
+- **Pin & reorder**: Pin spaces/items and drag to reorder.
 - **Bulk actions**:
-  - Dashboard collections: pin/unpin, duplicate, archive, delete.
-  - Collection items: pin/unpin, duplicate, archive, delete, collapse/expand.
+  - Dashboard spaces: pin/unpin, duplicate, archive, delete.
+  - Space items: pin/unpin, duplicate, archive, delete, collapse/expand.
   - Recycle bin/archive: multi-select restore (and purge in recycle bin).
 - **Archive + recycle bin**:
   - Archive hides without deleting.
@@ -32,7 +32,7 @@ A private, encrypted workspace for organising notes, checklists, lists, and card
 | Shortcut | Action |
 |----------|--------|
 | `⌘K` / `Ctrl+K` | Command palette |
-| `N` | New collection (dashboard) |
+| `N` | New space (dashboard) |
 | `/` | Focus dashboard search |
 | `⌘S` / `Ctrl+S` | Save all dirty items on current page |
 | `Esc` | Close modals / menus |
@@ -41,7 +41,7 @@ A private, encrypted workspace for organising notes, checklists, lists, and card
 
 - Sensitive data is encrypted in the browser before Supabase storage.
 - Encrypted at rest in DB:
-  - Collection: name, description, tags
+  - Space: name, description, tags
   - Item: title, content
 - Plaintext metadata for structure/querying:
   - IDs, positions, pinned flags, type, timestamps, soft-delete/archive flags
@@ -95,8 +95,8 @@ For a new Supabase project, run the full `database.sql` before signing in.
 
 - `src/components/` - UI, editors, command palette
 - `src/context/` - Auth, theme, toasts, shortcuts, command palette, page actions
-- `src/hooks/` - Collections, items, archive, recycle bin, global search data, stats, offline sync
-- `src/pages/` - Dashboard, collection, archive, recycle bin, login, settings
+- `src/hooks/` - Spaces, items, archive, recycle bin, global search data, stats, offline sync
+- `src/pages/` - Dashboard, space, archive, recycle bin, login, settings
 - `src/lib/crypto/` - AES-GCM cipher, PBKDF2 key derivation, vault PIN/session handling
 - `src/lib/` - Supabase, export/import, offline queue, search, encrypt/decrypt helpers
 

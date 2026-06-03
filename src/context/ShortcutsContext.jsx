@@ -47,7 +47,7 @@ export function ShortcutsProvider({ children }) {
       }
 
       if (e.key === 'n' && !mod && !e.shiftKey) {
-        const fn = handlersRef.current.get('new-collection')
+        const fn = handlersRef.current.get('new-space')
         if (fn) {
           e.preventDefault()
           fn()

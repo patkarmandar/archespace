@@ -1,5 +1,5 @@
 /**
- * CollectionPage.jsx - View and manage items within a single collection.
+ * SpacePage.jsx - View and manage items within a single space.
  *
  * Features:
  *   - Inline header editing (name + description)
@@ -9,7 +9,7 @@
  *   - Unsaved-changes badge + beforeunload warning
  *   - Delete confirmation modal (soft-delete → recycle bin)
  *
- * All data operations come from useCollections / useCollectionItems
+ * All data operations come from useSpaces / useSpaceItems
  * in the hooks layer. The page only calls `.mutate()` / `.mutateAsync()`.
  */
 
@@ -19,11 +19,11 @@ import {
   ArrowLeft, Plus, CheckSquare,
   AlignLeft, List, LayoutList,
 } from 'lucide-react'
-import { useCollections } from '../hooks/useCollections'
-import { useCollectionItems } from '../hooks/useCollectionItems'
+import { useSpaces } from '../hooks/useSpaces'
+import { useSpaceItems } from '../hooks/useSpaceItems'
 import { useToast } from '../context/ToastContext'
 import { useRegisterPageActions } from '../context/PageActionsContext'
-import CollectionItem from '../components/CollectionItem'
+import SpaceItem from '../components/SpaceItem'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
 import { Spinner, Modal } from '../components/ui/UI'
 
@@ -35,13 +35,13 @@ const ITEM_TYPES = [
   { type: 'card_list',     label: 'Cards',      desc: 'Title + description pairs',       icon: LayoutList,  color: 'text-amber-400',  bg: 'bg-amber-400/10'  },
 ]
 
-export default function CollectionPage() {
+export default function SpacePage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  // Single call to useCollections (avoids duplicate subscriptions)
-  const { data: collections = [] } = useCollections()
+  // Single call to useSpaces (avoids duplicate subscriptions)
+  const { data: spaces = [] } = useSpaces()
 
   const {
     data: items = [],
@@ -57,10 +57,10 @@ export default function CollectionPage() {
     bulkArchive,
     bulkSetPinned,
     bulkDuplicate,
-  } = useCollectionItems(id)
+  } = useSpaceItems(id)
 
-  /** The collection object for this page */
-  const collection = collections.find(c => c.id === id)
+  /** The space object for this page */
+  const space = spaces.find(c => c.id === id)
 
   // ── Local UI state ──
   const [addModal, setAddModal]           = useState(false)
@@ -205,11 +205,11 @@ export default function CollectionPage() {
   }
 
   // ── Not found state ──
-  if (!collection && !isLoading) {
+  if (!space && !isLoading) {
     return (
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-center">
-          <p className="text-text-secondary mb-4">Collection not found</p>
+          <p className="text-text-secondary mb-4">Space not found</p>
           <button onClick={() => navigate('/')} className="text-accent text-sm hover:underline">Go back</button>
         </div>
       </div>
@@ -231,11 +231,11 @@ export default function CollectionPage() {
             <span className="hidden sm:inline">Back</span>
           </button>
 
-          {/* Collection title & description */}
+          {/* Space title & description */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-semibold text-text-primary truncate">{collection?.name}</h1>
-            {collection?.description && (
-              <p className="text-xs text-text-muted truncate mt-0.5">{collection.description}</p>
+            <h1 className="text-sm font-semibold text-text-primary truncate">{space?.name}</h1>
+            {space?.description && (
+              <p className="text-xs text-text-muted truncate mt-0.5">{space.description}</p>
             )}
           </div>
 
@@ -297,7 +297,7 @@ export default function CollectionPage() {
               <Plus size={22} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Nothing here yet</p>
-            <p className="text-text-muted text-sm mt-1">Add your first item to this collection</p>
+            <p className="text-text-muted text-sm mt-1">Add your first item to this space</p>
             <button
               onClick={() => setAddModal(true)}
               className="mt-4 inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
@@ -320,7 +320,7 @@ export default function CollectionPage() {
                 } ${!selectMode && dragIndex === index ? 'opacity-40 scale-95' : ''}`}
                 style={{ animationDelay: `${index * 40}ms` }}
               >
-                <CollectionItem
+                <SpaceItem
                   item={item}
                   selectMode={selectMode}
                   selected={selectedIds.has(item.id)}

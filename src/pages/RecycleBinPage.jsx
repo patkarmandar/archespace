@@ -1,5 +1,5 @@
 /**
- * RecycleBinPage.jsx - Manage soft-deleted items and collections.
+ * RecycleBinPage.jsx - Manage soft-deleted items and spaces.
  */
 import { useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -56,8 +56,8 @@ export default function RecycleBinPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const {
-    data, isLoading, restoreCollection, purgeCollection, restoreItem, purgeItem,
-    bulkRestoreCollections, bulkRestoreItems, bulkPurgeCollections, bulkPurgeItems,
+    data, isLoading, restoreSpace, purgeSpace, restoreItem, purgeItem,
+    bulkRestoreSpaces, bulkRestoreItems, bulkPurgeSpaces, bulkPurgeItems,
     emptyBin, total,
   } = useRecycleBin()
 
@@ -65,54 +65,54 @@ export default function RecycleBinPage() {
   const [confirmPurge, setConfirmPurge] = useState(null)
   const [confirmBulkPurge, setConfirmBulkPurge] = useState(false)
   const [selectMode, setSelectMode] = useState(false)
-  const [selectedCollectionIds, setSelectedCollectionIds] = useState(() => new Set())
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState(() => new Set())
   const [selectedItemIds, setSelectedItemIds] = useState(() => new Set())
 
-  const collections = data?.collections || []
+  const spaces = data?.spaces || []
   const items = data?.items || []
-  const selectableTotal = collections.length + items.length
-  const selectedCount = selectedCollectionIds.size + selectedItemIds.size
+  const selectableTotal = spaces.length + items.length
+  const selectedCount = selectedSpaceIds.size + selectedItemIds.size
 
   const exitSelectMode = useCallback(() => {
     setSelectMode(false)
-    setSelectedCollectionIds(new Set())
+    setSelectedSpaceIds(new Set())
     setSelectedItemIds(new Set())
   }, [])
 
   const selectAll = useCallback(() => {
-    setSelectedCollectionIds(new Set(collections.map(c => c.id)))
+    setSelectedSpaceIds(new Set(spaces.map(c => c.id)))
     setSelectedItemIds(new Set(items.map(i => i.id)))
-  }, [collections, items])
+  }, [spaces, items])
 
   const runBulkRestore = useCallback(async () => {
-    const colIds = [...selectedCollectionIds]
+    const colIds = [...selectedSpaceIds]
     const itemIds = [...selectedItemIds]
     const count = colIds.length + itemIds.length
     if (!count) return
     try {
-      if (colIds.length) await bulkRestoreCollections.mutateAsync(colIds)
+      if (colIds.length) await bulkRestoreSpaces.mutateAsync(colIds)
       if (itemIds.length) await bulkRestoreItems.mutateAsync(itemIds)
       toast.success(`Restored ${count} ${count === 1 ? 'item' : 'items'}`)
       exitSelectMode()
     } catch {
       toast.error('Failed to restore selection')
     }
-  }, [selectedCollectionIds, selectedItemIds, bulkRestoreCollections, bulkRestoreItems, exitSelectMode, toast])
+  }, [selectedSpaceIds, selectedItemIds, bulkRestoreSpaces, bulkRestoreItems, exitSelectMode, toast])
 
   const runBulkPurge = useCallback(async () => {
-    const colIds = [...selectedCollectionIds]
+    const colIds = [...selectedSpaceIds]
     const itemIds = [...selectedItemIds]
     const count = colIds.length + itemIds.length
     try {
       if (itemIds.length) await bulkPurgeItems.mutateAsync(itemIds)
-      if (colIds.length) await bulkPurgeCollections.mutateAsync(colIds)
+      if (colIds.length) await bulkPurgeSpaces.mutateAsync(colIds)
       toast.success(`Permanently deleted ${count} ${count === 1 ? 'item' : 'items'}`)
       setConfirmBulkPurge(false)
       exitSelectMode()
     } catch {
       toast.error('Failed to delete selection')
     }
-  }, [selectedCollectionIds, selectedItemIds, bulkPurgeCollections, bulkPurgeItems, exitSelectMode, toast])
+  }, [selectedSpaceIds, selectedItemIds, bulkPurgeSpaces, bulkPurgeItems, exitSelectMode, toast])
 
   const bulkActions = useMemo(() => [
     {
@@ -144,8 +144,8 @@ export default function RecycleBinPage() {
   const handlePurge = async () => {
     if (!confirmPurge) return
     try {
-      if (confirmPurge.type === 'collection') {
-        await purgeCollection.mutateAsync(confirmPurge.id)
+      if (confirmPurge.type === 'space') {
+        await purgeSpace.mutateAsync(confirmPurge.id)
       } else {
         await purgeItem.mutateAsync(confirmPurge.id)
       }
@@ -214,25 +214,25 @@ export default function RecycleBinPage() {
               <Trash2 size={22} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Recycle bin is empty</p>
-            <p className="text-text-muted text-sm mt-1">Deleted collections and items will appear here</p>
+            <p className="text-text-muted text-sm mt-1">Deleted spaces and items will appear here</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {collections.length > 0 && (
+            {spaces.length > 0 && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Folder size={14} className="text-text-muted" />
-                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Collections</h2>
-                  <span className="text-xs text-text-muted">({collections.length})</span>
+                  <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">Spaces</h2>
+                  <span className="text-xs text-text-muted">({spaces.length})</span>
                 </div>
                 <div className="space-y-2">
-                  {collections.map(col => (
+                  {spaces.map(col => (
                     <SelectableRow
                       key={col.id}
                       selectMode={selectMode}
-                      selected={selectedCollectionIds.has(col.id)}
+                      selected={selectedSpaceIds.has(col.id)}
                       onToggle={() => {
-                        setSelectedCollectionIds(prev => {
+                        setSelectedSpaceIds(prev => {
                           const next = new Set(prev)
                           if (next.has(col.id)) next.delete(col.id)
                           else next.add(col.id)
@@ -243,9 +243,9 @@ export default function RecycleBinPage() {
                         <>
                           <button
                             type="button"
-                            onClick={() => restoreCollection.mutate(col.id, {
-                              onSuccess: () => toast.success('Collection restored'),
-                              onError: () => toast.error('Failed to restore collection'),
+                            onClick={() => restoreSpace.mutate(col.id, {
+                              onSuccess: () => toast.success('Space restored'),
+                              onError: () => toast.error('Failed to restore space'),
                             })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-success/10 hover:border-success/30 hover:text-success text-text-secondary transition-all text-xs font-medium"
                           >
@@ -253,7 +253,7 @@ export default function RecycleBinPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setConfirmPurge({ type: 'collection', id: col.id, name: col.name })}
+                            onClick={() => setConfirmPurge({ type: 'space', id: col.id, name: col.name })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all text-xs font-medium"
                           >
                             <Trash2 size={13} /> Delete forever

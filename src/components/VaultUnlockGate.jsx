@@ -108,8 +108,8 @@ export default function VaultUnlockGate({ children }) {
             {needsMigration
               ? 'Enter your account password once, then choose a vault PIN. Your encrypted data stays the same.'
               : needsSetup
-                ? `Choose a ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digit PIN to encrypt and unlock your collections on this device.`
-                : 'Enter your vault PIN to decrypt your collections on this device.'}
+                ? `Choose a ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digit PIN to encrypt and unlock your spaces on this device.`
+                : 'Enter your vault PIN to decrypt your spaces on this device.'}
           </p>
         </div>
 
