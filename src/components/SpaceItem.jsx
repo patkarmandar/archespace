@@ -24,6 +24,7 @@ import {
   CheckSquare, Square,
 } from 'lucide-react'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
+import { ActionMenu } from './ui/ActionMenu'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
 import { useEncryption } from '../context/EncryptionContext'
@@ -211,19 +212,21 @@ export default function SpaceItem({
           title: titleVal,
           content: localContent,
         })
-      } catch (e) {
+      } catch {
         setTitleVal(item.title)
       }
     }
   }
 
   return (
-    <div className={`border rounded-2xl overflow-hidden transition-colors ${
+    <div className={`relative border rounded-2xl transition-colors ${
       selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
       item.pinned ? 'bg-accent/5 border-accent' : 'bg-bg-surface border-bg-border'
     }`}>
       {/* ── Header ────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-bg-border flex-wrap gap-y-2">
+      <div className={`flex items-center gap-2 px-4 py-3 flex-wrap gap-y-2 ${
+        !collapsed || collapseGuard ? 'border-b border-bg-border' : ''
+      }`}>
         {selectMode ? (
           <button
             type="button"
@@ -339,62 +342,28 @@ export default function SpaceItem({
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setEditingTitle(true)}
-                    title="Rename"
-                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onTogglePin(item.id, item.pinned)}
-                    title={item.pinned ? 'Unpin' : 'Pin to top'}
-                    className={`p-2 rounded-lg border transition-all ${
-                      item.pinned
-                        ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
-                        : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
-                    }`}
-                  >
-                    {item.pinned ? <PinOff size={12} /> : <Pin size={12} />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCollapseClick}
-                    title={collapsed ? 'Expand' : 'Collapse'}
-                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-                  >
-                    {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-                  </button>
-                  {onDuplicate && (
-                    <button
-                      type="button"
-                      onClick={() => onDuplicate(item)}
-                      title="Duplicate"
-                      className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  )}
-                  {onArchive && (
-                    <button
-                      type="button"
-                      onClick={() => onArchive(item.id)}
-                      title="Archive"
-                      className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all"
-                    >
-                      <Archive size={12} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => onDelete(item.id)}
-                    title="Delete"
-                    className="p-2 rounded-lg border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  <ActionMenu
+                    label="Item actions"
+                    actions={[
+                      { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
+                      {
+                        id: 'pin',
+                        label: item.pinned ? 'Unpin' : 'Pin to top',
+                        icon: item.pinned ? PinOff : Pin,
+                        active: item.pinned,
+                        onClick: () => onTogglePin(item.id, item.pinned),
+                      },
+                      {
+                        id: 'collapse',
+                        label: collapsed ? 'Expand' : 'Collapse',
+                        icon: collapsed ? ChevronDown : ChevronUp,
+                        onClick: handleCollapseClick,
+                      },
+                      onDuplicate && { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(item) },
+                      onArchive && { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive(item.id) },
+                      { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => onDelete(item.id) },
+                    ]}
+                  />
                 </>
               )}
             </>

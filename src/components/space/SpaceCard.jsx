@@ -3,6 +3,7 @@
  */
 import { ChevronRight, Pin, PinOff, Pencil, Trash2, Copy, Archive, CheckSquare, Square } from 'lucide-react'
 import { getColorPreset } from '../../lib/spaceColors'
+import { ActionMenu } from '../ui/ActionMenu'
 
 export function SpaceCard({
   col, index, search, dragIndex, dragOverIndex,
@@ -27,7 +28,7 @@ export function SpaceCard({
       onDrop={() => !selectMode && handleDrop(index)}
       onDragEnd={handleDragEnd}
       onClick={() => (selectMode ? onToggleSelect?.() : navigate(`/space/${col.id}`))}
-      className={`group border rounded-2xl p-4 cursor-pointer hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up overflow-hidden ${
+      className={`group relative border rounded-2xl p-4 cursor-pointer hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up ${
         selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
         col.pinned ? 'bg-accent/5 border-accent hover:border-accent/80' : 'bg-bg-surface border-bg-border hover:border-accent/40'
       } ${
@@ -73,52 +74,22 @@ export function SpaceCard({
       <div className="flex items-center justify-between mt-4 pt-3 border-t border-bg-border gap-2">
         <p className="text-text-muted text-xs truncate">{itemLabel}</p>
         {!selectMode && (
-          <div className="flex gap-1 flex-wrap justify-end" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => togglePin.mutate({ id: col.id, pinned: col.pinned })}
-              className={`p-2 rounded-lg border transition-all ${
-                col.pinned
-                  ? 'border-accent/30 bg-accent-muted text-accent hover:bg-accent/20'
-                  : 'border-bg-border bg-bg-surface text-text-secondary hover:text-accent hover:bg-accent-muted hover:border-accent/30'
-              }`}
-              title={col.pinned ? 'Unpin' : 'Pin'}
-            >
-              {col.pinned ? <PinOff size={12} /> : <Pin size={12} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDuplicate?.(col.id)}
-              className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
-              title="Duplicate"
-            >
-              <Copy size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onArchive?.(col.id)}
-              className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-accent transition-all"
-              title="Archive"
-            >
-              <Archive size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setModal({ type: 'edit', col })}
-              className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
-              title="Edit"
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteConfirm(col.id)}
-              className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-danger hover:bg-danger/10 hover:border-danger/30 transition-all"
-              title="Delete"
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
+          <ActionMenu
+            label="Space actions"
+            actions={[
+              {
+                id: 'pin',
+                label: col.pinned ? 'Unpin' : 'Pin',
+                icon: col.pinned ? PinOff : Pin,
+                active: col.pinned,
+                onClick: () => togglePin.mutate({ id: col.id, pinned: col.pinned }),
+              },
+              { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate?.(col.id) },
+              { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive?.(col.id) },
+              { id: 'edit', label: 'Edit', icon: Pencil, onClick: () => setModal({ type: 'edit', col }) },
+              { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => setDeleteConfirm(col.id) },
+            ]}
+          />
         )}
       </div>
     </div>
