@@ -2,8 +2,6 @@
  * vault.js - Per-user vault setup / unlock (Supabase user_encryption row).
  *
  * New vaults use a random master key wrapped with a PIN-derived key.
- * Legacy vaults derived the master key directly from the login password;
- * those require a one-time migration (account password + new PIN).
  */
 import { supabase } from '../supabase'
 import { encryptString, decryptString } from './cipher'
@@ -61,14 +59,13 @@ async function generateMasterKey() {
 
 /**
  * @param {string} userId
- * @returns {Promise<{ hasVault: boolean, needsMigration: boolean }>}
+ * @returns {Promise<{ hasVault: boolean }>}
  */
 export async function getVaultStatus(userId) {
   const meta = await fetchVaultMeta(userId)
-  if (!meta) return { hasVault: false, needsMigration: false }
+  if (!meta) return { hasVault: false }
   return {
     hasVault: true,
-    needsMigration: isLegacyVault(meta),
   }
 }
 
@@ -85,11 +82,6 @@ async function fetchVaultMeta(userId) {
   return data
 }
 
-export function isLegacyVault(meta) {
-  if (!meta) return false
-  if (meta.vault_format === VAULT_FORMAT_PIN_WRAPPED) return false
-  return !meta.wrapped_key
-}
 
 /**
  * Create a new PIN-protected vault for a new user.
@@ -114,39 +106,9 @@ export async function unlockUserVault(userId, pin) {
   if (!meta) {
     throw new Error('No vault PIN configured. Create a PIN to continue.')
   }
-  if (isLegacyVault(meta)) {
-    throw new Error('Your vault must be upgraded. Sign in with your account password once to set a PIN.')
-  }
   return unlockPinWrappedVault(meta, pin)
 }
 
-/**
- * Legacy unlock using login password (migration only).
- */
-export async function unlockLegacyVault(userId, password) {
-  const meta = await fetchVaultMeta(userId)
-  if (!meta) throw new Error('No vault found for this account.')
-  if (!isLegacyVault(meta)) {
-    throw new Error('Use your vault PIN to unlock.')
-  }
-  const salt = saltFromBase64(meta.salt)
-  const key = await deriveEncryptionKey(password, salt)
-  const check = await decryptString(meta.key_check, key)
-  if (check !== VAULT_CHECK_PLAINTEXT) {
-    throw new Error('Incorrect account password — cannot unlock your encrypted vault.')
-  }
-  return key
-}
-
-/**
- * One-time migration from password-derived vault to PIN-wrapped vault.
- */
-export async function migrateVaultToPin(userId, password, pin) {
-  assertValidPin(pin)
-  const masterKey = await unlockLegacyVault(userId, password)
-  await persistPinWrappedVault(userId, pin, masterKey)
-  return masterKey
-}
 
 /**
  * Change vault PIN (verifies current PIN first).

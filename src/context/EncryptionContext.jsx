@@ -10,7 +10,6 @@ import { useAuth } from './AuthContext'
 import {
   setupUserVault,
   unlockUserVault,
-  migrateVaultToPin,
   changeVaultPinWithVerification,
   getVaultStatus,
 } from '../lib/crypto/vault'
@@ -33,12 +32,11 @@ export function EncryptionProvider({ children }) {
   const [vaultStatus, setVaultStatus] = useState({
     loading: true,
     hasVault: false,
-    needsMigration: false,
   })
 
   const refreshVaultStatus = useCallback(async () => {
     if (!user?.id) {
-      setVaultStatus({ loading: false, hasVault: false, needsMigration: false })
+      setVaultStatus({ loading: false, hasVault: false })
       return
     }
     setVaultStatus(s => ({ ...s, loading: true }))
@@ -46,7 +44,7 @@ export function EncryptionProvider({ children }) {
       const status = await getVaultStatus(user.id)
       setVaultStatus({ loading: false, ...status })
     } catch {
-      setVaultStatus({ loading: false, hasVault: false, needsMigration: false })
+      setVaultStatus({ loading: false, hasVault: false })
     }
   }, [user?.id])
 
@@ -93,24 +91,6 @@ export function EncryptionProvider({ children }) {
       return key
     } catch (err) {
       const msg = err?.message || 'Failed to set up vault'
-      setUnlockError(msg)
-      throw err
-    } finally {
-      setUnlocking(false)
-    }
-  }, [user?.id, applyUnlockedKey, refreshVaultStatus])
-
-  const migrateFromPassword = useCallback(async (password, pin) => {
-    if (!user?.id) throw new Error('Not signed in')
-    setUnlocking(true)
-    setUnlockError('')
-    try {
-      const key = await migrateVaultToPin(user.id, password, pin)
-      await applyUnlockedKey(key)
-      await refreshVaultStatus()
-      return key
-    } catch (err) {
-      const msg = err?.message || 'Failed to migrate vault'
       setUnlockError(msg)
       throw err
     } finally {
@@ -194,7 +174,6 @@ export function EncryptionProvider({ children }) {
         vaultStatus,
         unlock,
         setup,
-        migrateFromPassword,
         updatePin,
         lock,
         refreshVaultStatus,

@@ -2,7 +2,7 @@
  * VaultUnlockGate.jsx - Post-login vault PIN unlock or setup.
  */
 import { useState } from 'react'
-import { Shield, Lock, Eye, EyeOff } from 'lucide-react'
+import { Shield, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useEncryption } from '../context/EncryptionContext'
 import PinInput from './PinInput'
@@ -15,7 +15,6 @@ export default function VaultUnlockGate({ children }) {
     isUnlocked,
     unlock,
     setup,
-    migrateFromPassword,
     unlocking,
     unlockError,
     vaultStatus,
@@ -25,8 +24,6 @@ export default function VaultUnlockGate({ children }) {
 
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
 
   if (!user) return children
   if (authLoading || vaultStatus.loading || sessionRestoring) {
@@ -39,12 +36,10 @@ export default function VaultUnlockGate({ children }) {
   if (isUnlocked) return children
 
   const needsSetup = !vaultStatus.hasVault
-  const needsMigration = vaultStatus.needsMigration
 
   const resetFields = () => {
     setPin('')
     setConfirmPin('')
-    setPassword('')
   }
 
   const handleUnlock = async (e) => {
@@ -77,22 +72,9 @@ export default function VaultUnlockGate({ children }) {
     }
   }
 
-  const handleMigrate = async (e) => {
-    e.preventDefault()
-    clearUnlockError()
-    if (pin !== confirmPin) return
-    try {
-      await migrateFromPassword(password, pin)
-      resetFields()
-    } catch {
-      // unlockError set in context
-    }
-  }
-
   const pinMismatch = confirmPin.length > 0 && pin !== confirmPin
   const setupPinInvalid = needsSetup && pin.length > 0 && validateVaultPin(pin)
   const canSubmitSetup = pin.length >= VAULT_PIN_MIN_LENGTH && pin === confirmPin && !validateVaultPin(pin)
-  const canSubmitMigrate = password.length > 0 && canSubmitSetup
 
   return (
     <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 py-6 sm:p-4 overflow-y-auto">
@@ -102,58 +84,29 @@ export default function VaultUnlockGate({ children }) {
             <Shield size={24} className="text-accent sm:w-[26px] sm:h-[26px]" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
-            {needsMigration ? 'Upgrade your vault' : needsSetup ? 'Create vault PIN' : 'Unlock your vault'}
+            {needsSetup ? 'Create vault PIN' : 'Unlock your vault'}
           </h1>
           <p className="text-text-muted text-sm mt-1.5 sm:mt-2 leading-relaxed">
-            {needsMigration
-              ? 'Enter your account password once, then choose a vault PIN. Your encrypted data stays the same.'
-              : needsSetup
-                ? `Choose a ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digit PIN to encrypt and unlock your spaces on this device.`
-                : 'Enter your vault PIN to decrypt your spaces on this device.'}
+            {needsSetup
+              ? `Choose a ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digit PIN to encrypt and unlock your spaces on this device.`
+              : 'Enter your vault PIN to decrypt your spaces on this device.'}
           </p>
         </div>
 
         <form
-          onSubmit={needsMigration ? handleMigrate : needsSetup ? handleSetup : handleUnlock}
+          onSubmit={needsSetup ? handleSetup : handleUnlock}
           className="bg-bg-surface border border-bg-border rounded-2xl p-6 space-y-3"
         >
-          {needsMigration && (
-            <div>
-              <label htmlFor="migrate-password" className="block text-xs font-medium text-text-secondary mb-1.5">
-                Account password (one time)
-              </label>
-              <div className="relative">
-                <input
-                  id="migrate-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-          )}
-
           <PinInput
             id="vault-pin"
-            label={needsSetup || needsMigration ? 'New vault PIN' : 'Vault PIN'}
+            label={needsSetup ? 'New vault PIN' : 'Vault PIN'}
             value={pin}
             onChange={setPin}
             autoComplete={needsSetup ? 'new-password' : 'off'}
             disabled={unlocking}
           />
 
-          {(needsSetup || needsMigration) && (
+          {needsSetup && (
             <PinInput
               id="vault-pin-confirm"
               label="Confirm vault PIN"
@@ -168,7 +121,7 @@ export default function VaultUnlockGate({ children }) {
             <p className="text-danger text-xs">{setupPinInvalid}</p>
           )}
 
-          {pinMismatch && (needsSetup || needsMigration) && (
+          {pinMismatch && needsSetup && (
             <p className="text-danger text-xs">PINs do not match.</p>
           )}
 
@@ -182,18 +135,16 @@ export default function VaultUnlockGate({ children }) {
             type="submit"
             disabled={
               unlocking ||
-              (needsMigration ? !canSubmitMigrate : needsSetup ? !canSubmitSetup : pin.length < VAULT_PIN_MIN_LENGTH)
+              (needsSetup ? !canSubmitSetup : pin.length < VAULT_PIN_MIN_LENGTH)
             }
             className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
           >
             <Lock size={14} />
             {unlocking
               ? 'Working…'
-              : needsMigration
-                ? 'Upgrade & unlock'
-                : needsSetup
-                  ? 'Create PIN'
-                  : 'Unlock vault'}
+              : needsSetup
+                ? 'Create PIN'
+                : 'Unlock vault'}
           </button>
 
           <button
