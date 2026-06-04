@@ -345,7 +345,6 @@ export default function SpaceItem({
                   <ActionMenu
                     label="Item actions"
                     actions={[
-                      { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
                       {
                         id: 'pin',
                         label: item.pinned ? 'Unpin' : 'Pin to top',
@@ -359,6 +358,7 @@ export default function SpaceItem({
                         icon: collapsed ? ChevronDown : ChevronUp,
                         onClick: handleCollapseClick,
                       },
+                      { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
                       onDuplicate && { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(item) },
                       onArchive && { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive(item.id) },
                       { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => onDelete(item.id) },

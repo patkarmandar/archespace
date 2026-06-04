@@ -84,9 +84,9 @@ export function SpaceCard({
                 active: col.pinned,
                 onClick: () => togglePin.mutate({ id: col.id, pinned: col.pinned }),
               },
+              { id: 'edit', label: 'Edit', icon: Pencil, onClick: () => setModal({ type: 'edit', col }) },
               { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate?.(col.id) },
               { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive?.(col.id) },
-              { id: 'edit', label: 'Edit', icon: Pencil, onClick: () => setModal({ type: 'edit', col }) },
               { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => setDeleteConfirm(col.id) },
             ]}
           />

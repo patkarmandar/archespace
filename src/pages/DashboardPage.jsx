@@ -290,7 +290,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Actions - desktop: theme, archive, bin, lock, command, settings */}
+          {/* Actions - desktop: theme, lock, command, archive, bin, settings */}
           <div className="hidden sm:flex items-center gap-2">
             <button
               type="button"
@@ -300,6 +300,29 @@ export default function DashboardPage() {
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               <span className="hidden nav:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            </button>
+            {isUnlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  lock()
+                  toast.info('Vault locked')
+                }}
+                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+                title="Lock vault"
+              >
+                <Lock size={14} />
+                <span className="hidden nav:inline">Lock vault</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => openPalette()}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Commands (⌘K)"
+            >
+              <Command size={14} />
+              <span className="hidden nav:inline">Commands</span>
             </button>
             <button
               type="button"
@@ -329,29 +352,6 @@ export default function DashboardPage() {
                 </span>
               )}
             </button>
-            {isUnlocked && (
-              <button
-                type="button"
-                onClick={() => {
-                  lock()
-                  toast.info('Vault locked')
-                }}
-                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-                title="Lock vault"
-              >
-                <Lock size={14} />
-                <span className="hidden nav:inline">Lock vault</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => openPalette()}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title="Commands (⌘K)"
-            >
-              <Command size={14} />
-              <span className="hidden nav:inline">Commands</span>
-            </button>
             <button
               type="button"
               onClick={() => navigate('/settings')}
@@ -363,7 +363,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Actions - mobile: theme, archive + menu (search is the bar below) */}
+          {/* Actions - mobile: theme + ordered menu (search is the bar below) */}
           <div className="flex sm:hidden items-center gap-2">
             <button
               type="button"
@@ -372,19 +372,6 @@ export default function DashboardPage() {
               title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/archive')}
-              className="relative p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
-              title="Archive"
-            >
-              <Archive size={16} />
-              {archiveTotal > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1 leading-none">
-                  {archiveTotal > 99 ? '99+' : archiveTotal}
-                </span>
-              )}
             </button>
             <button
               type="button"
@@ -401,19 +388,6 @@ export default function DashboardPage() {
 
         {mobileMenuOpen && (
           <div className="sm:hidden border-t border-bg-border bg-bg-surface px-4 py-3 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => { navigate('/recycle-bin'); setMobileMenuOpen(false) }}
-              className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-            >
-              <Trash2 size={15} />
-              Recycle bin
-              {binTotal > 0 && (
-                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1">
-                  {binTotal > 99 ? '99+' : binTotal}
-                </span>
-              )}
-            </button>
             {isUnlocked && (
               <button
                 type="button"
@@ -435,6 +409,32 @@ export default function DashboardPage() {
             >
               <Command size={15} />
               Commands
+            </button>
+            <button
+              type="button"
+              onClick={() => { navigate('/archive'); setMobileMenuOpen(false) }}
+              className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Archive size={15} />
+              Archive
+              {archiveTotal > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1">
+                  {archiveTotal > 99 ? '99+' : archiveTotal}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => { navigate('/recycle-bin'); setMobileMenuOpen(false) }}
+              className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Trash2 size={15} />
+              Recycle bin
+              {binTotal > 0 && (
+                <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1">
+                  {binTotal > 99 ? '99+' : binTotal}
+                </span>
+              )}
             </button>
             <button
               type="button"
