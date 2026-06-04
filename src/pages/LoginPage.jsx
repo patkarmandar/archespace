@@ -103,7 +103,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 py-6 sm:p-4 relative overflow-y-auto overflow-x-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full opacity-[0.03] blur-3xl animate-float-slow"
           style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
@@ -124,15 +124,15 @@ export default function LoginPage() {
       </button>
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-accent/10">
+        <div className="text-center mb-6 sm:mb-10">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg shadow-accent/10">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
               <path d="M8 7h6" />
               <path d="M8 11h8" />
             </svg>
           </div>
-          <h1 className="text-4xl font-semibold text-text-primary tracking-widest mb-2">ARCHE</h1>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-text-primary tracking-widest mb-1.5 sm:mb-2">ARCHE</h1>
           <p className="text-text-muted text-sm">
             {MULTI_USER_ENABLED ? 'Your private workspace - sign in or create an account' : 'Your private workspace'}
           </p>
@@ -256,7 +256,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-text-muted text-xs mt-6">
+        <p className="text-center text-text-muted text-xs mt-4 sm:mt-6">
           {MULTI_USER_ENABLED ? 'Multi-user · Private · Encrypted' : 'Single-user · Private · Encrypted'}
         </p>
       </div>

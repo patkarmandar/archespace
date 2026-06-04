@@ -95,16 +95,16 @@ export default function VaultUnlockGate({ children }) {
   const canSubmitMigrate = password.length > 0 && canSubmitSetup
 
   return (
-    <div className="min-h-screen bg-bg-base flex items-center justify-center p-4">
+    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 py-6 sm:p-4 overflow-y-auto">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4">
-            <Shield size={26} className="text-accent" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <Shield size={24} className="text-accent sm:w-[26px] sm:h-[26px]" />
           </div>
           <h1 className="text-xl font-semibold text-text-primary">
             {needsMigration ? 'Upgrade your vault' : needsSetup ? 'Create vault PIN' : 'Unlock your vault'}
           </h1>
-          <p className="text-text-muted text-sm mt-2 leading-relaxed">
+          <p className="text-text-muted text-sm mt-1.5 sm:mt-2 leading-relaxed">
             {needsMigration
               ? 'Enter your account password once, then choose a vault PIN. Your encrypted data stays the same.'
               : needsSetup
@@ -205,7 +205,7 @@ export default function VaultUnlockGate({ children }) {
           </button>
         </form>
 
-        <p className="text-center text-text-muted text-[10px] mt-6 leading-relaxed">
+        <p className="text-center text-text-muted text-[10px] mt-4 sm:mt-6 leading-relaxed">
           Vault PIN is separate from your login password · AES-256-GCM
         </p>
       </div>
