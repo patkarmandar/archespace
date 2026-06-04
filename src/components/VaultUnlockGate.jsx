@@ -77,7 +77,7 @@ export default function VaultUnlockGate({ children }) {
   const canSubmitSetup = pin.length >= VAULT_PIN_MIN_LENGTH && pin === confirmPin && !validateVaultPin(pin)
 
   return (
-    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 py-6 sm:p-4 overflow-y-auto">
+    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 pt-16 pb-6 sm:p-4 overflow-y-auto">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6 sm:mb-8">
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">

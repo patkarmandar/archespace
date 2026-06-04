@@ -103,7 +103,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 py-6 sm:p-4 relative overflow-y-auto overflow-x-hidden">
+    <div className="min-h-[100svh] bg-bg-base flex items-start sm:items-center justify-center px-4 pt-16 pb-6 sm:p-4 relative overflow-y-auto overflow-x-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full opacity-[0.03] blur-3xl animate-float-slow"
           style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
@@ -116,7 +116,7 @@ export default function LoginPage() {
       <button
         type="button"
         onClick={toggle}
-        className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-10"
+        className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-50"
         title="Toggle theme"
         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
       >

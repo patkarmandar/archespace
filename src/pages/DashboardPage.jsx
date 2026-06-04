@@ -363,7 +363,7 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Actions - mobile: theme + ordered menu (search is the bar below) */}
+          {/* Actions - mobile: theme + lock + ordered menu (search is the bar below) */}
           <div className="flex sm:hidden items-center gap-2">
             <button
               type="button"
@@ -373,6 +373,19 @@ export default function DashboardPage() {
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+            {isUnlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  lock()
+                  toast.info('Vault locked')
+                }}
+                className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
+                title="Lock vault"
+              >
+                <Lock size={16} />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(v => !v)}
@@ -388,20 +401,6 @@ export default function DashboardPage() {
 
         {mobileMenuOpen && (
           <div className="sm:hidden border-t border-bg-border bg-bg-surface px-4 py-3 flex flex-col gap-2">
-            {isUnlocked && (
-              <button
-                type="button"
-                onClick={() => {
-                  lock()
-                  toast.info('Vault locked')
-                  setMobileMenuOpen(false)
-                }}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              >
-                <Lock size={15} />
-                Lock vault
-              </button>
-            )}
             <button
               type="button"
               onClick={() => { openPalette(); setMobileMenuOpen(false) }}
