@@ -5,7 +5,6 @@ A private, encrypted workspace for organising notes, checklists, lists, and card
 ## Features
 
 - **Encrypted vault with PIN unlock**: Data is encrypted client-side (AES-256-GCM). Login password and vault PIN are separate.
-- **Vault migration support**: Legacy password-derived vaults are upgraded once to PIN-based vaults.
 - **Session + vault security**:
   - Login session persists until manual logout or max 1 week.
   - Vault auto-locks after 24 hours.
@@ -84,12 +83,6 @@ For a new Supabase project, run the full `database.sql` before signing in.
 5. **Users**
    - **Single-user (default)**: Create a user in Supabase Auth dashboard; sign in only.
    - **Multi-user**: Set `VITE_ALLOW_SIGNUP=true` in `.env`, enable **Email** provider in Supabase Auth → Providers, and allow sign-ups. Each user gets an isolated workspace (RLS enforces `user_id`).
-
-6. **Schema update for existing projects**
-   - Ensure `user_encryption` includes:
-     - `wrapped_key` (nullable text)
-     - `vault_format` (text, default `'legacy'`)
-   - These are included in `database.sql`.
 
 ## Project structure
 

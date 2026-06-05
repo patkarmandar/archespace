@@ -14,9 +14,11 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Search, Folder, FileText,
+  Plus, Search, Folder,
   Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock, Menu,
 } from 'lucide-react'
+import GlobalSearchResults from '../components/GlobalSearchResults'
+import { useDragReorder } from '../hooks/useDragReorder'
 import { useCommandPalette } from '../context/CommandPaletteContext'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
@@ -36,13 +38,6 @@ import { SpaceModal } from '../components/space/SpaceModal'
 import { SpaceCard } from '../components/space/SpaceCard'
 
 export default function DashboardPage() {
-  const TYPE_LABELS = {
-    textbox: 'Note',
-    checkbox_list: 'Checklist',
-    menu_list: 'List',
-    card_list: 'Cards',
-  }
-
   const { user } = useAuth()
   const { lock, isUnlocked } = useEncryption()
   const { theme, toggle } = useTheme()
@@ -123,10 +118,6 @@ export default function DashboardPage() {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [mobileMenuOpen])
 
-  // ── Drag-and-drop state ──
-  const [dragIndex, setDragIndex] = useState(null)
-  const [dragOverIndex, setDragOverIndex] = useState(null)
-
   // ── Derived state ──
   const globalMatches = useMemo(() => (
     filterGlobalSearch({
@@ -155,52 +146,27 @@ export default function DashboardPage() {
     navigate(`/space/${spaceId}`)
   }, [navigate])
 
-  // ── Actions ──
-  // ── Drag-and-drop handlers ──
-  const handleDragStart = (index) => {
-    if (search || selectMode) return
-    setDragIndex(index)
-  }
+  const {
+    dragIndex, dragOverIndex,
+    handleDragStart, handleDragOver, handleDrop, handleDragEnd,
+  } = useDragReorder({
+    disabled: !!search || selectMode,
+    onDrop: (fromIndex, toIndex) => {
+      const fromId = filtered[fromIndex]?.id
+      const toId = filtered[toIndex]?.id
+      if (!fromId || !toId) return
 
-  const handleDragOver = (e, index) => {
-    if (search) return
-    e.preventDefault()
-    setDragOverIndex(index)
-  }
+      const reordered = [...spaces]
+      const fromIdx = reordered.findIndex(c => c.id === fromId)
+      const toIdx = reordered.findIndex(c => c.id === toId)
+      const [moved] = reordered.splice(fromIdx, 1)
+      reordered.splice(toIdx, 0, moved)
 
-  const handleDrop = (filteredIndex) => {
-    if (search || dragIndex === null || dragIndex === filteredIndex) {
-      setDragIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    const fromId = filtered[dragIndex]?.id
-    const toId = filtered[filteredIndex]?.id
-    if (!fromId || !toId) {
-      setDragIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    const reordered = [...spaces]
-    const fromIdx = reordered.findIndex(c => c.id === fromId)
-    const toIdx = reordered.findIndex(c => c.id === toId)
-    const [moved] = reordered.splice(fromIdx, 1)
-    reordered.splice(toIdx, 0, moved)
-
-    reorder.mutate(reordered, {
-      onError: () => toast.error('Failed to reorder spaces'),
-    })
-
-    setDragIndex(null)
-    setDragOverIndex(null)
-  }
-
-  const handleDragEnd = () => {
-    setDragIndex(null)
-    setDragOverIndex(null)
-  }
+      reorder.mutate(reordered, {
+        onError: () => toast.error('Failed to reorder spaces'),
+      })
+    },
+  })
 
   return (
     <div className="min-h-screen bg-bg-base">
@@ -230,62 +196,13 @@ export default function DashboardPage() {
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono hidden sm:inline">/</kbd>
               {showSearchResults && (
-                <div className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
-                  {globalMatches.spaces.length === 0 && globalMatches.items.length === 0 ? (
-                    <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
-                  ) : (
-                    <>
-                      {globalMatches.spaces.length > 0 && (
-                        <section>
-                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Spaces</p>
-                          <ul className="space-y-1">
-                            {globalMatches.spaces.map(c => (
-                              <li key={c.id}>
-                                <button
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => goSpaceFromSearch(c.id)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
-                                >
-                                  <Folder size={14} className="text-accent shrink-0" />
-                                  <span className="font-medium text-text-primary truncate">{c.name}</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </section>
-                      )}
-                      {globalMatches.items.length > 0 && (
-                        <section>
-                          <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Items</p>
-                          <ul className="space-y-1">
-                            {globalMatches.items.slice(0, 30).map(item => (
-                              <li key={item.id}>
-                                <button
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => goSpaceFromSearch(item.space_id)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
-                                >
-                                  <FileText size={14} className="text-text-muted shrink-0" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
-                                    <p className="text-xs text-text-muted truncate">
-                                      {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.spaceName}
-                                    </p>
-                                  </div>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                          {globalMatches.items.length > 30 && (
-                            <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - 30} more items</p>
-                          )}
-                        </section>
-                      )}
-                    </>
-                  )}
-                </div>
+                <GlobalSearchResults
+                  search={search}
+                  globalMatches={globalMatches}
+                  itemMeta={globalSearchData?.itemMeta}
+                  onSelectSpace={goSpaceFromSearch}
+                  className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
+                />
               )}
             </div>
           </div>
@@ -463,62 +380,13 @@ export default function DashboardPage() {
               className="w-full bg-bg-surface border border-bg-border rounded-xl pl-9 pr-3 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
             />
             {showSearchResults && (
-              <div className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3">
-                {globalMatches.spaces.length === 0 && globalMatches.items.length === 0 ? (
-                  <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
-                ) : (
-                  <>
-                    {globalMatches.spaces.length > 0 && (
-                      <section>
-                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Spaces</p>
-                        <ul className="space-y-1">
-                          {globalMatches.spaces.map(c => (
-                            <li key={c.id}>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => goSpaceFromSearch(c.id)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
-                              >
-                                <Folder size={14} className="text-accent shrink-0" />
-                                <span className="font-medium text-text-primary truncate">{c.name}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </section>
-                    )}
-                    {globalMatches.items.length > 0 && (
-                      <section>
-                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Items</p>
-                        <ul className="space-y-1">
-                          {globalMatches.items.slice(0, 30).map(item => (
-                            <li key={item.id}>
-                              <button
-                                type="button"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => goSpaceFromSearch(item.space_id)}
-                                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
-                              >
-                                <FileText size={14} className="text-text-muted shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-text-primary truncate">{item.title || 'Untitled'}</p>
-                                  <p className="text-xs text-text-muted truncate">
-                                    {TYPE_LABELS[item.type]} · {globalSearchData?.itemMeta?.[item.id]?.spaceName}
-                                  </p>
-                                </div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                        {globalMatches.items.length > 30 && (
-                          <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - 30} more items</p>
-                        )}
-                      </section>
-                    )}
-                  </>
-                )}
-              </div>
+              <GlobalSearchResults
+                search={search}
+                globalMatches={globalMatches}
+                itemMeta={globalSearchData?.itemMeta}
+                onSelectSpace={goSpaceFromSearch}
+                className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
+              />
             )}
           </div>
         </div>

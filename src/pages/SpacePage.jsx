@@ -15,25 +15,16 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useBlocker } from 'react-router-dom'
-import {
-  ArrowLeft, Plus, CheckSquare,
-  AlignLeft, List, LayoutList,
-} from 'lucide-react'
+import { ArrowLeft, Plus, CheckSquare } from 'lucide-react'
+import { ITEM_TYPE_OPTIONS } from '../lib/itemTypes'
+import { useDragReorder } from '../hooks/useDragReorder'
 import { useSpaces } from '../hooks/useSpaces'
 import { useSpaceItems } from '../hooks/useSpaceItems'
 import { useToast } from '../context/ToastContext'
 import { useRegisterPageActions } from '../context/PageActionsContext'
 import SpaceItem from '../components/SpaceItem'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
-import { Spinner, Modal } from '../components/ui/UI'
-
-/** Item type definitions for the "Add item" modal */
-const ITEM_TYPES = [
-  { type: 'textbox',       label: 'Note',      desc: 'Free-form text area (markdown)',  icon: AlignLeft,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-  { type: 'checkbox_list', label: 'Checklist',  desc: 'Items with checkboxes',           icon: CheckSquare, color: 'text-green-400',  bg: 'bg-green-400/10' },
-  { type: 'menu_list',     label: 'List',       desc: 'Simple bullet list',              icon: List,        color: 'text-purple-400', bg: 'bg-purple-400/10' },
-  { type: 'card_list',     label: 'Cards',      desc: 'Title + description pairs',       icon: LayoutList,  color: 'text-amber-400',  bg: 'bg-amber-400/10'  },
-]
+import { Modal } from '../components/ui/UI'
 
 export default function SpacePage() {
   const { id } = useParams()
@@ -110,9 +101,6 @@ export default function SpacePage() {
   }), [exitSelectMode])
   useRegisterPageActions(pageActions)
 
-  // ── Drag-and-drop state ──
-  const [dragIndex, setDragIndex]   = useState(null)
-  const [dragOverIndex, setDragOverIndex] = useState(null)
   const dragItemRef = useRef(null)
 
   // ── Track dirty state per item for beforeunload ──
@@ -145,16 +133,29 @@ export default function SpacePage() {
     setAddModal(false)
     try {
       await create.mutateAsync({ type, title: '' })
-      toast.success(`${ITEM_TYPES.find(t => t.type === type)?.label || 'Item'} added`)
+      toast.success(`${ITEM_TYPE_OPTIONS.find(t => t.type === type)?.label || 'Item'} added`)
     } catch {
       toast.error('Failed to add item')
     }
   }
 
-  // ── Drag-and-drop handlers ──
+  const {
+    dragIndex, dragOverIndex,
+    handleDragStart: onDragStart, handleDragOver, handleDrop, handleDragEnd,
+  } = useDragReorder({
+    disabled: selectMode,
+    onDrop: (fromIndex, toIndex) => {
+      const reordered = [...items]
+      const [moved] = reordered.splice(fromIndex, 1)
+      reordered.splice(toIndex, 0, moved)
+      reorder.mutate(reordered, {
+        onError: () => toast.error('Failed to reorder items'),
+      })
+    },
+  })
+
   const handleDragStart = (index) => {
-    if (selectMode) return
-    setDragIndex(index)
+    onDragStart(index)
     dragItemRef.current = items[index]
   }
 
@@ -171,37 +172,6 @@ export default function SpacePage() {
     } catch {
       toast.error('Bulk action failed')
     }
-  }
-
-  const handleDragOver = (e, index) => {
-    e.preventDefault()
-    setDragOverIndex(index)
-  }
-
-  const handleDrop = (index) => {
-    if (dragIndex === null || dragIndex === index) {
-      setDragIndex(null)
-      setDragOverIndex(null)
-      return
-    }
-
-    // Reorder the items array
-    const reordered = [...items]
-    const [moved] = reordered.splice(dragIndex, 1)
-    reordered.splice(index, 0, moved)
-
-    // Persist the new order
-    reorder.mutate(reordered, {
-      onError: () => toast.error('Failed to reorder items'),
-    })
-
-    setDragIndex(null)
-    setDragOverIndex(null)
-  }
-
-  const handleDragEnd = () => {
-    setDragIndex(null)
-    setDragOverIndex(null)
   }
 
   // ── Not found state ──
@@ -458,7 +428,7 @@ export default function SpacePage() {
         <Modal title="Add item" onClose={() => setAddModal(false)}>
           <p className="text-text-muted text-xs mb-3">Choose the type of content to add</p>
           <div className="grid grid-cols-2 gap-2">
-            {ITEM_TYPES.map(({ type, label, desc, icon: Icon, color, bg }) => (
+            {ITEM_TYPE_OPTIONS.map(({ type, label, desc, icon: Icon, color, bg }) => (
               <button
                 key={type}
                 type="button"

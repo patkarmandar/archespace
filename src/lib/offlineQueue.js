@@ -29,10 +29,6 @@ export function getOfflineQueue() {
   return readQueue()
 }
 
-export function clearOfflineQueue() {
-  localStorage.removeItem(STORAGE_KEY)
-}
-
 /**
  * @param {(entry: object) => Promise<boolean>} processor - return true to remove
  */

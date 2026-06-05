@@ -291,7 +291,7 @@ export default function SettingsPage() {
                     onClick={handleExport}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
                   >
-                    <Upload size={15} />
+                    <Download size={15} />
                     Export backup
                   </button>
                   <button
@@ -299,7 +299,7 @@ export default function SettingsPage() {
                     onClick={() => importRef.current?.click()}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-text-secondary hover:text-text-primary text-sm font-medium transition-colors"
                   >
-                    <Download size={15} />
+                    <Upload size={15} />
                     Import backup
                   </button>
                   <input

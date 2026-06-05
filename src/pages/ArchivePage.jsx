@@ -1,54 +1,17 @@
 /**
  * ArchivePage.jsx - Archived spaces and items (reversible).
  */
-import { useState, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Archive, RotateCcw, Folder, LayoutList, CheckSquare } from 'lucide-react'
 import { useArchive } from '../hooks/useArchive'
+import { useDualEntitySelection } from '../hooks/useDualEntitySelection'
 import { useToast } from '../context/ToastContext'
 import BulkSelectionBar, { BULK_ICONS } from '../components/BulkSelectionBar'
+import SelectableRow from '../components/SelectableRow'
 import { Spinner } from '../components/ui/UI'
-
-const TYPE_LABELS = {
-  textbox: 'Note', checkbox_list: 'Checklist', menu_list: 'List', card_list: 'Cards',
-}
-
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  return `${days} days ago`
-}
-
-function SelectableRow({ selectMode, selected, onToggle, actions, children }) {
-  return (
-    <div
-      role={selectMode ? 'button' : undefined}
-      tabIndex={selectMode ? 0 : undefined}
-      onClick={selectMode ? onToggle : undefined}
-      onKeyDown={selectMode ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } } : undefined}
-      className={`bg-bg-surface border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${
-        selected ? 'border-accent/50 bg-accent-muted/20' : 'border-bg-border'
-      } ${selectMode ? 'cursor-pointer' : ''}`}
-    >
-      {selectMode && (
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={onToggle}
-          onClick={e => e.stopPropagation()}
-          className="shrink-0 w-4 h-4 rounded border-bg-border accent-accent"
-          aria-label="Select"
-        />
-      )}
-      <div className="flex-1 min-w-0">{children}</div>
-      {!selectMode && (
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">{actions}</div>
-      )}
-    </div>
-  )
-}
+import { TYPE_LABELS } from '../lib/itemTypes'
+import { timeAgo } from '../lib/timeAgo'
 
 export default function ArchivePage() {
   const navigate = useNavigate()
@@ -58,25 +21,13 @@ export default function ArchivePage() {
     bulkUnarchiveSpaces, bulkUnarchiveItems, total,
   } = useArchive()
 
-  const [selectMode, setSelectMode] = useState(false)
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState(() => new Set())
-  const [selectedItemIds, setSelectedItemIds] = useState(() => new Set())
-
   const spaces = data?.spaces || []
   const items = data?.items || []
-  const selectableTotal = spaces.length + items.length
-  const selectedCount = selectedSpaceIds.size + selectedItemIds.size
 
-  const exitSelectMode = useCallback(() => {
-    setSelectMode(false)
-    setSelectedSpaceIds(new Set())
-    setSelectedItemIds(new Set())
-  }, [])
-
-  const selectAll = useCallback(() => {
-    setSelectedSpaceIds(new Set(spaces.map(c => c.id)))
-    setSelectedItemIds(new Set(items.map(i => i.id)))
-  }, [spaces, items])
+  const {
+    selectMode, setSelectMode, selectedSpaceIds, selectedItemIds,
+    selectableTotal, selectedCount, exitSelectMode, selectAll, toggleSpace, toggleItem,
+  } = useDualEntitySelection(spaces, items)
 
   const runBulkUnarchive = useCallback(async () => {
     const colIds = [...selectedSpaceIds]
@@ -162,14 +113,7 @@ export default function ArchivePage() {
                       key={col.id}
                       selectMode={selectMode}
                       selected={selectedSpaceIds.has(col.id)}
-                      onToggle={() => {
-                        setSelectedSpaceIds(prev => {
-                          const next = new Set(prev)
-                          if (next.has(col.id)) next.delete(col.id)
-                          else next.add(col.id)
-                          return next
-                        })
-                      }}
+                      onToggle={() => toggleSpace(col.id)}
                       actions={
                         <button
                           type="button"
@@ -202,14 +146,7 @@ export default function ArchivePage() {
                       key={item.id}
                       selectMode={selectMode}
                       selected={selectedItemIds.has(item.id)}
-                      onToggle={() => {
-                        setSelectedItemIds(prev => {
-                          const next = new Set(prev)
-                          if (next.has(item.id)) next.delete(item.id)
-                          else next.add(item.id)
-                          return next
-                        })
-                      }}
+                      onToggle={() => toggleItem(item.id)}
                       actions={
                         <button
                           type="button"

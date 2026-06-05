@@ -9,9 +9,6 @@
  *
  * Toasts auto-dismiss after 3 seconds and stack vertically in the
  * bottom-right corner. Max 5 visible at once (oldest removed first).
- *
- * Bug fix: Timer IDs are tracked in a ref map and cleaned up on
- * unmount to prevent memory leaks from orphaned setTimeouts.
  */
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'

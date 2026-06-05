@@ -11,13 +11,6 @@
  * `onChange(newContent)` callback. They manage their own local
  * state and push changes up on every keystroke so the parent
  * can track dirty state and auto-save.
- *
- * Bug fixes applied:
- *   - TextboxEditor: removed duplicate `adjust()` call (was firing
- *     both in handleChange and in the useEffect).
- *   - ChecklistEditor & MenuListEditor: replaced global
- *     `document.querySelectorAll` with a scoped container ref so
- *     focus targets the correct input when multiple editors exist.
  */
 
 import { useState, useRef, useEffect } from 'react'
@@ -56,11 +49,6 @@ export function TextboxEditor({ content, onChange }) {
   const [preview, setPreview]   = useState(false)
   const ref = useRef(null)
 
-  /**
-   * Resize the textarea to fit its content.
-   * Called only from the useEffect (not from handleChange)
-   * to avoid double-calling.
-   */
   const adjust = () => {
     const el = ref.current
     if (!el) return
@@ -77,11 +65,9 @@ export function TextboxEditor({ content, onChange }) {
   // Auto-resize whenever text changes
   useEffect(() => { adjust() }, [text])
 
-  /** Handle user typing - update local state and notify parent */
   const handleChange = (e) => {
     setText(e.target.value)
     onChange({ text: e.target.value })
-    // Note: adjust() is NOT called here - the useEffect above handles it
   }
 
   return (
@@ -124,58 +110,42 @@ export function TextboxEditor({ content, onChange }) {
 
 
 // ─────────────────────────────────────────────────────────
-// ChecklistEditor
+// ListEditor (shared by ChecklistEditor & MenuListEditor)
 // ─────────────────────────────────────────────────────────
 
-/**
- * Checkbox list editor - each item has a toggle and text input.
- *
- * Uses a scoped container ref for focus management so adding a
- * new item focuses the correct input even when multiple checklists
- * exist on the same page.
- *
- * @param {{ content: { items: Array }, onChange: Function }} props
- */
-export function ChecklistEditor({ content, onChange }) {
+function ListEditor({ content, onChange, variant }) {
+  const isChecklist = variant === 'checkbox'
+  const inputAttr = isChecklist ? 'data-checklist-input' : 'data-menu-input'
   const [items, setItems] = useState(content?.items || [])
   const containerRef = useRef(null)
 
-  // Sync with parent when content changes externally
   useEffect(() => {
     setItems(content?.items || [])
   }, [content?.items])
 
-  /** Update local state and push to parent */
   const push = (newItems) => {
     setItems(newItems)
     onChange({ items: newItems })
   }
 
-  /** Add a new empty item and focus its input */
   const addItem = () => {
-    const newItems = [...items, { id: crypto.randomUUID(), text: '', checked: false }]
-    push(newItems)
+    const newItem = isChecklist
+      ? { id: crypto.randomUUID(), text: '', checked: false }
+      : { id: crypto.randomUUID(), text: '' }
+    push([...items, newItem])
 
-    // Focus the last input inside THIS editor (scoped via containerRef)
     setTimeout(() => {
-      const inputs = containerRef.current?.querySelectorAll('[data-checklist-input]')
+      const inputs = containerRef.current?.querySelectorAll(`[${inputAttr}]`)
       inputs?.[inputs.length - 1]?.focus()
     }, 50)
   }
 
-  /** Update a single field on an item */
   const updateItem = (id, field, value) =>
     push(items.map(item => item.id === id ? { ...item, [field]: value } : item))
 
-  /** Remove an item by id */
   const removeItem = (id) =>
     push(items.filter(item => item.id !== id))
 
-  /**
-   * Keyboard shortcuts:
-   *   Enter     → add a new item below
-   *   Backspace → delete the current item if its text is empty
-   */
   const handleKeyDown = (e, idx) => {
     if (e.key === 'Enter') { e.preventDefault(); addItem() }
     if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
@@ -188,25 +158,27 @@ export function ChecklistEditor({ content, onChange }) {
     <div className="space-y-1" ref={containerRef}>
       {items.map((item, idx) => (
         <div key={item.id} className="flex items-center gap-2 group py-0.5">
-          {/* Checkbox toggle */}
-          <button
-            onClick={() => updateItem(item.id, 'checked', !item.checked)}
-            className="shrink-0 text-text-muted hover:text-accent transition-colors"
-          >
-            {item.checked
-              ? <CheckSquare size={17} className="text-accent" />
-              : <Square size={17} />}
-          </button>
+          {isChecklist ? (
+            <button
+              onClick={() => updateItem(item.id, 'checked', !item.checked)}
+              className="shrink-0 text-text-muted hover:text-accent transition-colors"
+            >
+              {item.checked
+                ? <CheckSquare size={17} className="text-accent" />
+                : <Square size={17} />}
+            </button>
+          ) : (
+            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-0.5" />
+          )}
 
-          {/* Text input */}
           <input
-            data-checklist-input
+            {...(isChecklist ? { 'data-checklist-input': true } : { 'data-menu-input': true })}
             value={item.text}
             onChange={e => updateItem(item.id, 'text', e.target.value)}
             onKeyDown={e => handleKeyDown(e, idx)}
-            placeholder="List item…"
+            placeholder={isChecklist ? 'List item…' : 'Item…'}
             className={`flex-1 bg-transparent text-sm focus:outline-none placeholder-text-muted ${
-              item.checked ? 'line-through text-text-muted' : 'text-text-primary'
+              isChecklist && item.checked ? 'line-through text-text-muted' : 'text-text-primary'
             }`}
           />
 
@@ -214,7 +186,6 @@ export function ChecklistEditor({ content, onChange }) {
         </div>
       ))}
 
-      {/* Add item button */}
       <button
         onClick={addItem}
         className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
@@ -225,81 +196,12 @@ export function ChecklistEditor({ content, onChange }) {
   )
 }
 
+export function ChecklistEditor(props) {
+  return <ListEditor {...props} variant="checkbox" />
+}
 
-// ─────────────────────────────────────────────────────────
-// MenuListEditor
-// ─────────────────────────────────────────────────────────
-
-/**
- * Simple bullet list editor - text-only items with a dot bullet.
- *
- * Same scoped-ref fix as ChecklistEditor for focus management.
- *
- * @param {{ content: { items: Array }, onChange: Function }} props
- */
-export function MenuListEditor({ content, onChange }) {
-  const [items, setItems] = useState(content?.items || [])
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    setItems(content?.items || [])
-  }, [content?.items])
-
-  const push = (newItems) => { setItems(newItems); onChange({ items: newItems }) }
-
-  const addItem = () => {
-    const newItems = [...items, { id: crypto.randomUUID(), text: '' }]
-    push(newItems)
-
-    // Focus last input inside THIS editor
-    setTimeout(() => {
-      const inputs = containerRef.current?.querySelectorAll('[data-menu-input]')
-      inputs?.[inputs.length - 1]?.focus()
-    }, 50)
-  }
-
-  const updateItem = (id, text) =>
-    push(items.map(item => item.id === id ? { ...item, text } : item))
-
-  const removeItem = (id) =>
-    push(items.filter(item => item.id !== id))
-
-  const handleKeyDown = (e, idx) => {
-    if (e.key === 'Enter') { e.preventDefault(); addItem() }
-    if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
-      e.preventDefault()
-      push(items.filter((_, i) => i !== idx))
-    }
-  }
-
-  return (
-    <div className="space-y-1" ref={containerRef}>
-      {items.map((item, idx) => (
-        <div key={item.id} className="flex items-center gap-2 group py-0.5">
-          {/* Bullet dot */}
-          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-0.5" />
-
-          <input
-            data-menu-input
-            value={item.text}
-            onChange={e => updateItem(item.id, e.target.value)}
-            onKeyDown={e => handleKeyDown(e, idx)}
-            placeholder="Item…"
-            className="flex-1 bg-transparent text-sm focus:outline-none text-text-primary placeholder-text-muted"
-          />
-
-          <DelBtn onClick={() => removeItem(item.id)} />
-        </div>
-      ))}
-
-      <button
-        onClick={addItem}
-        className="flex items-center gap-2 text-text-muted hover:text-accent text-sm transition-colors mt-2 py-1"
-      >
-        <Plus size={14} /> Add item
-      </button>
-    </div>
-  )
+export function MenuListEditor(props) {
+  return <ListEditor {...props} variant="bullet" />
 }
 
 

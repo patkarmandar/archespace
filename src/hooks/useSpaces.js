@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { parseTags } from '../lib/spaceColors'
 import { useEncryption } from '../context/EncryptionContext'
 import { encryptSpace, decryptSpace, decryptSpaces } from '../lib/dataProtection'
+import { duplicateSpaceWithItems } from '../lib/spaceDuplicate'
 
 export function useSpaces() {
   const qc = useQueryClient()
@@ -190,58 +191,9 @@ export function useSpaces() {
 
   const duplicate = useMutation({
     mutationFn: async (id) => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
-      if (!userId) throw new Error('Not authenticated')
-
       const source = query.data?.find(c => c.id === id)
       if (!source) throw new Error('Space not found')
-
-      const encCol = await encryptSpace({
-        name: `${source.name} (copy)`,
-        description: source.description || '',
-        tags: source.tags || [],
-      }, cryptoKey)
-
-      const { data: newCol, error: colErr } = await supabase
-        .from('spaces')
-        .insert({
-          name: encCol.name,
-          description: encCol.description,
-          user_id: userId,
-          position: (query.data?.length || 0),
-          color: source.color,
-          tags: encCol.tags,
-          pinned: false,
-        })
-        .select()
-        .single()
-      if (colErr) throw colErr
-
-      const { data: items, error: itemsErr } = await supabase
-        .from('space_items')
-        .select('type, title, content, position, pinned')
-        .eq('space_id', id)
-        .is('deleted_at', null)
-        .is('archived_at', null)
-        .order('position')
-      if (itemsErr) throw itemsErr
-
-      if (items?.length) {
-        const { error: insertErr } = await supabase.from('space_items').insert(
-          items.map((item, i) => ({
-            space_id: newCol.id,
-            user_id: userId,
-            type: item.type,
-            title: item.title,
-            content: item.content,
-            position: i,
-            pinned: item.pinned,
-          }))
-        )
-        if (insertErr) throw insertErr
-      }
-
+      const newCol = await duplicateSpaceWithItems(source, cryptoKey, query.data?.length || 0)
       return decryptSpace(newCol, cryptoKey)
     },
     onSuccess: () => {
@@ -305,55 +257,8 @@ export function useSpaces() {
 
   const bulkDuplicate = useMutation({
     mutationFn: async (cols) => {
-      const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
-      if (!userId) throw new Error('Not authenticated')
-
       for (const source of cols) {
-        const encCol = await encryptSpace({
-          name: `${source.name} (copy)`,
-          description: source.description || '',
-          tags: source.tags || [],
-        }, cryptoKey)
-
-        const { data: newCol, error: colErr } = await supabase
-          .from('spaces')
-          .insert({
-            name: encCol.name,
-            description: encCol.description,
-            user_id: userId,
-            position: (query.data?.length || 0),
-            color: source.color,
-            tags: encCol.tags,
-            pinned: false,
-          })
-          .select()
-          .single()
-        if (colErr) throw colErr
-
-        const { data: items, error: itemsErr } = await supabase
-          .from('space_items')
-          .select('type, title, content, position, pinned')
-          .eq('space_id', source.id)
-          .is('deleted_at', null)
-          .is('archived_at', null)
-          .order('position')
-        if (itemsErr) throw itemsErr
-
-        if (items?.length) {
-          const { error: insertErr } = await supabase.from('space_items').insert(
-            items.map((item, i) => ({
-              space_id: newCol.id,
-              user_id: userId,
-              type: item.type,
-              title: item.title,
-              content: item.content,
-              position: i,
-              pinned: item.pinned,
-            }))
-          )
-          if (insertErr) throw insertErr
-        }
+        await duplicateSpaceWithItems(source, cryptoKey, query.data?.length || 0)
       }
     },
     onSuccess: invalidateSpaces,

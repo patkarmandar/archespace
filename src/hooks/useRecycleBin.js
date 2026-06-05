@@ -4,7 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionContext'
-import { decryptSpaces, decryptItems } from '../lib/dataProtection'
+import { fetchStoredCollection } from '../lib/storedCollectionQuery'
 
 export function useRecycleBin() {
   const qc = useQueryClient()
@@ -13,29 +13,17 @@ export function useRecycleBin() {
   const query = useQuery({
     queryKey: ['bin'],
     enabled: !!cryptoKey,
-    queryFn: async () => {
-      const [{ data: spaces, error: e1 }, { data: items, error: e2 }] =
-        await Promise.all([
-          supabase
-            .from('spaces')
-            .select('*')
-            .not('deleted_at', 'is', null)
-            .is('archived_at', null)
-            .order('deleted_at', { ascending: false }),
-          supabase
-            .from('space_items')
-            .select('*')
-            .not('deleted_at', 'is', null)
-            .is('archived_at', null)
-            .order('deleted_at', { ascending: false }),
-        ])
-      if (e1) throw e1
-      if (e2) throw e2
-      return {
-        spaces: await decryptSpaces(spaces || [], cryptoKey),
-        items: await decryptItems(items || [], cryptoKey),
-      }
-    },
+    queryFn: () => fetchStoredCollection({
+      cryptoKey,
+      spaceQuery: q => q
+        .not('deleted_at', 'is', null)
+        .is('archived_at', null)
+        .order('deleted_at', { ascending: false }),
+      itemQuery: q => q
+        .not('deleted_at', 'is', null)
+        .is('archived_at', null)
+        .order('deleted_at', { ascending: false }),
+    }),
   })
 
   const restoreSpace = useMutation({
@@ -54,10 +42,7 @@ export function useRecycleBin() {
 
   const purgeSpace = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('spaces')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('spaces').delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
@@ -79,10 +64,7 @@ export function useRecycleBin() {
 
   const purgeItem = useMutation({
     mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('space_items')
-        .delete()
-        .eq('id', id)
+      const { error } = await supabase.from('space_items').delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),

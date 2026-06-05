@@ -29,25 +29,8 @@ import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
 import { useEncryption } from '../context/EncryptionContext'
 import { encryptItem } from '../lib/dataProtection'
-
-/** Human-readable labels for each item type */
-const TYPE_LABELS = {
-  textbox:       'Note',
-  checkbox_list: 'Checklist',
-  menu_list:     'List',
-  card_list:     'Cards',
-}
-
-/** Colour scheme per item type (text, background, border) */
-const TYPE_STYLES = {
-  textbox:       { text: 'text-blue-400',   bg: 'bg-blue-400/10',   border: 'border-blue-400/20'   },
-  checkbox_list: { text: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20'  },
-  menu_list:     { text: 'text-purple-400', bg: 'bg-purple-400/10', border: 'border-purple-400/20' },
-  card_list:     { text: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20'  },
-}
-
-/** Auto-save delay in milliseconds */
-const AUTO_SAVE_DELAY = 2000
+import { TYPE_LABELS, TYPE_STYLES } from '../lib/itemTypes'
+import { AUTO_SAVE_DELAY_MS } from '../lib/constants'
 
 /**
  * @param {{ item: Object, onUpdate: Function, onTogglePin: Function, onDelete: Function, onDirtyChange?: Function, dragHandleProps?: Object }} props
@@ -79,7 +62,6 @@ export default function SpaceItem({
   const [savedFlash, setSavedFlash] = useState(false)
   const [pendingSync, setPendingSync] = useState(false)
 
-  // ── P1 Bugfix: Refs for latest state to prevent stale closures in auto-save ──
   const latestState = useRef({ title: item.title, content: item.content })
   
   useEffect(() => {
@@ -173,7 +155,7 @@ export default function SpaceItem({
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
       performSave(latestState.current.title, newContent)
-    }, AUTO_SAVE_DELAY)
+    }, AUTO_SAVE_DELAY_MS)
   }, [performSave])
 
   /** Manual save button handler */

@@ -19,7 +19,3 @@ export function validateVaultPin(pin) {
   }
   return null
 }
-
-export function isValidVaultPin(pin) {
-  return validateVaultPin(pin) === null
-}

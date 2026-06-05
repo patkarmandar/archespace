@@ -24,7 +24,7 @@ export async function decryptSpace(row, key) {
   if (!row) return row
   if (!key) {
     if (row.name && isEncrypted(row.name)) {
-      throw new Error('Vault is locked - enter your password to view this data.')
+      throw new Error('Vault is locked - enter your PIN to view this data.')
     }
     return { ...row, tags: parseTags(row.tags) }
   }
@@ -51,11 +51,6 @@ export async function decryptSpaces(rows, key) {
   return Promise.all(rows.map(r => decryptSpace(r, key)))
 }
 
-export async function encryptSpaces(rows, key) {
-  if (!rows?.length || !key) return rows
-  return Promise.all(rows.map(r => encryptSpace(r, key)))
-}
-
 // ── Space items ────────────────────────────────────────
 
 export async function encryptItem(row, key) {
@@ -71,7 +66,7 @@ export async function decryptItem(row, key) {
   if (!row) return row
   if (!key) {
     if (row.title && isEncrypted(row.title)) {
-      throw new Error('Vault is locked - enter your password to view this data.')
+      throw new Error('Vault is locked - enter your PIN to view this data.')
     }
     return row
   }
@@ -99,7 +94,3 @@ export async function decryptItems(rows, key) {
   return Promise.all(rows.map(r => decryptItem(r, key)))
 }
 
-export async function encryptItems(rows, key) {
-  if (!rows?.length || !key) return rows
-  return Promise.all(rows.map(r => encryptItem(r, key)))
-}
