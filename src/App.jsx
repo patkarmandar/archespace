@@ -125,7 +125,7 @@ function RouteErrorBoundary() {
         </div>
 
         <h1 className="text-xl font-semibold">
-          {isChunkError ? 'App updated — reload needed' : 'Something went wrong'}
+          {isChunkError ? 'App updated - reload needed' : 'Something went wrong'}
         </h1>
 
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>

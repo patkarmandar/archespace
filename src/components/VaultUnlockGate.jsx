@@ -157,7 +157,7 @@ export default function VaultUnlockGate({ children }) {
         </form>
 
         <p className="text-center text-text-muted text-[10px] mt-4 sm:mt-6 leading-relaxed">
-          Vault PIN is separate from your login password · AES-256-GCM
+          Vault PIN is separate from your login password.
         </p>
       </div>
     </div>

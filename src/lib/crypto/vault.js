@@ -144,7 +144,7 @@ async function unlockPinWrappedVault(meta, pin) {
   const masterKey = await importRawAesKey(bytesFromBase64(rawB64))
   const check = await decryptString(meta.key_check, masterKey)
   if (check !== VAULT_CHECK_PLAINTEXT) {
-    throw new Error('Incorrect PIN — cannot unlock your encrypted vault.')
+    throw new Error('Incorrect PIN - cannot unlock your encrypted vault.')
   }
   return masterKey
 }

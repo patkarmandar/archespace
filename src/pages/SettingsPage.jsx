@@ -108,7 +108,7 @@ export default function SettingsPage() {
       await queryClient.invalidateQueries({ queryKey: ['bin'] })
       toast.success('Backup imported successfully')
     } catch (err) {
-      toast.error('Failed to import backup — invalid format')
+      toast.error('Failed to import backup - invalid format')
       console.error(err)
     }
     e.target.value = ''
