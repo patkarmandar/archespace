@@ -33,7 +33,6 @@ function DelBtn({ onClick }) {
   )
 }
 
-
 // ─────────────────────────────────────────────────────────
 // TextboxEditor (Note)
 // ─────────────────────────────────────────────────────────
@@ -221,6 +220,12 @@ export function CardListEditor({ content, onChange }) {
     setItems(content?.items || [])
   }, [content?.items])
 
+  const adjust = (el) => {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
   const push = (newItems) => { setItems(newItems); onChange({ items: newItems }) }
 
   const addItem = () =>
@@ -247,11 +252,15 @@ export function CardListEditor({ content, onChange }) {
           </div>
 
           <textarea
+            ref={adjust}
             value={item.description}
-            onChange={e => updateItem(item.id, 'description', e.target.value)}
+            onChange={e => {
+              updateItem(item.id, 'description', e.target.value)
+              adjust(e.target)
+            }}
             placeholder="Description…"
             rows={2}
-            className="w-full bg-transparent text-sm text-text-secondary focus:outline-none placeholder-text-muted resize-none leading-relaxed"
+            className="w-full bg-transparent text-sm text-text-secondary focus:outline-none placeholder-text-muted resize-none overflow-hidden leading-relaxed"
           />
         </div>
       ))}
