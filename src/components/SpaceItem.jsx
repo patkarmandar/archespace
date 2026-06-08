@@ -18,10 +18,11 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
-  CheckSquare, Square,
+  CheckSquare, Square, Maximize2, Minimize2,
 } from 'lucide-react'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
@@ -61,6 +62,7 @@ export default function SpaceItem({
   const [collapseGuard, setCollapseGuard] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const [pendingSync, setPendingSync] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const latestState = useRef({ title: item.title, content: item.content })
   
@@ -89,6 +91,23 @@ export default function SpaceItem({
   useEffect(() => {
     return () => clearTimeout(autoSaveTimer.current)
   }, [])
+
+  useEffect(() => {
+    if (!isFullscreen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsFullscreen(false)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFullscreen])
 
   /**
    * Called by editors on every content change.
@@ -184,6 +203,14 @@ export default function SpaceItem({
     onCollapsedChange?.(!collapsed)
   }
 
+  const handleFullscreenClick = () => {
+    if (!isFullscreen && collapsed) {
+      onCollapsedChange?.(false)
+      setCollapseGuard(false)
+    }
+    setIsFullscreen(v => !v)
+  }
+
   /** Save the title instantly to the server without marking dirty */
   const saveTitle = async () => {
     setEditingTitle(false)
@@ -200,13 +227,20 @@ export default function SpaceItem({
     }
   }
 
-  return (
-    <div className={`relative border rounded-2xl transition-colors ${
-      selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
-      item.pinned ? 'bg-accent/5 border-accent' : 'bg-bg-surface border-bg-border'
+  const itemCard = (
+    <div className={`${
+      isFullscreen
+        ? 'fixed inset-0 z-[80] flex flex-col rounded-none border-0 bg-bg-base'
+        : 'relative border rounded-2xl'
+    } transition-colors ${
+      selected && !isFullscreen ? 'ring-2 ring-accent border-accent bg-accent/5' :
+      item.pinned && !isFullscreen ? 'bg-accent/5 border-accent' :
+      !isFullscreen ? 'bg-bg-surface border-bg-border' : ''
     }`}>
       {/* ── Header ────────────────────────────────────── */}
       <div className={`flex items-center gap-2 px-4 py-3 flex-wrap gap-y-2 ${
+        isFullscreen ? 'sticky top-0 z-10 bg-bg-surface/95 backdrop-blur-md' : ''
+      } ${
         !collapsed || collapseGuard ? 'border-b border-bg-border' : ''
       }`}>
         {selectMode ? (
@@ -340,6 +374,13 @@ export default function SpaceItem({
                         icon: collapsed ? ChevronDown : ChevronUp,
                         onClick: handleCollapseClick,
                       },
+                      {
+                        id: 'fullscreen',
+                        label: isFullscreen ? 'Exit full screen' : 'Full screen',
+                        icon: isFullscreen ? Minimize2 : Maximize2,
+                        active: isFullscreen,
+                        onClick: handleFullscreenClick,
+                      },
                       { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
                       onDuplicate && { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(item) },
                       onArchive && { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive(item.id) },
@@ -384,7 +425,7 @@ export default function SpaceItem({
 
       {/* ── Content editor (conditionally rendered) ── */}
       {!collapsed && (
-        <div className="px-4 py-4">
+        <div className={isFullscreen ? 'flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8' : 'px-4 py-4'}>
           {/* Render only the editor for this item's type (not all four) */}
           {item.type === 'textbox'       && <TextboxEditor    content={localContent} onChange={handleContentChange} />}
           {item.type === 'checkbox_list' && <ChecklistEditor  content={localContent} onChange={handleContentChange} />}
@@ -394,4 +435,6 @@ export default function SpaceItem({
       )}
     </div>
   )
+
+  return isFullscreen ? createPortal(itemCard, document.body) : itemCard
 }
