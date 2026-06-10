@@ -358,21 +358,24 @@ export default function SpaceItem({
                 </>
               ) : (
                 <>
+                  <button
+                    type="button"
+                    onClick={handleCollapseClick}
+                    className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
+                    aria-label={collapsed ? 'Expand item' : 'Collapse item'}
+                    title={collapsed ? 'Expand' : 'Collapse'}
+                  >
+                    {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                  </button>
                   <ActionMenu
                     label="Item actions"
                     actions={[
                       {
                         id: 'pin',
-                        label: item.pinned ? 'Unpin' : 'Pin to top',
+                        label: item.pinned ? 'Unpin' : 'Pin',
                         icon: item.pinned ? PinOff : Pin,
                         active: item.pinned,
                         onClick: () => onTogglePin(item.id, item.pinned),
-                      },
-                      {
-                        id: 'collapse',
-                        label: collapsed ? 'Expand' : 'Collapse',
-                        icon: collapsed ? ChevronDown : ChevronUp,
-                        onClick: handleCollapseClick,
                       },
                       {
                         id: 'fullscreen',
