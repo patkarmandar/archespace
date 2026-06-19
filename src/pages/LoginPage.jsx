@@ -134,7 +134,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-semibold text-text-primary tracking-widest mb-1.5 sm:mb-2">ARCHE</h1>
           <p className="text-text-muted text-sm">
-            {MULTI_USER_ENABLED ? 'Your private workspace - sign in or create an account' : 'Your private workspace'}
+            {MULTI_USER_ENABLED ? 'Your private space - sign in or create an account' : 'Your private space'}
           </p>
         </div>
 

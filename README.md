@@ -1,6 +1,6 @@
 # Arche
 
-A private, encrypted workspace for organising notes, checklists, lists, and cards with Supabase-powered sync.
+A private, encrypted space for organising notes, checklists, lists, and cards with Supabase-powered sync.
 
 ## Features
 
@@ -82,7 +82,7 @@ For a new Supabase project, run the full `database.sql` before signing in.
 
 5. **Users**
    - **Single-user (default)**: Create a user in Supabase Auth dashboard; sign in only.
-   - **Multi-user**: Set `VITE_ALLOW_SIGNUP=true` in `.env`, enable **Email** provider in Supabase Auth → Providers, and allow sign-ups. Each user gets an isolated workspace (RLS enforces `user_id`).
+   - **Multi-user**: Set `VITE_ALLOW_SIGNUP=true` in `.env`, enable **Email** provider in Supabase Auth → Providers, and allow sign-ups. Each user gets an isolated space (RLS enforces `user_id`).
 
 ## Project structure
 

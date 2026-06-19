@@ -1,7 +1,7 @@
 {
-  "name": "Arche - Private Workspace",
+  "name": "Arche - Private Space",
   "short_name": "Arche",
-  "description": "A private, encrypted workspace for organising notes, checklists, lists, and cards.",
+  "description": "A private, encrypted space for organising notes, checklists, lists, and cards.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#18181f",
