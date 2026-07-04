@@ -1,9 +1,9 @@
 /**
  * LoginPage.jsx - Sign in and (optional) sign up.
  */
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeContext'
 import { Lock, Sun, Moon, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
@@ -32,45 +32,20 @@ export default function LoginPage() {
   )
   const [loading, setLoading] = useState(false)
 
-  const [attempts, setAttempts] = useState(0)
-  const [cooldownEnd, setCooldownEnd] = useState(null)
-  const [cooldownRemaining, setCooldownRemaining] = useState(0)
-  const cooldownTimer = useRef(null)
+  const [, setCooldownTick] = useState(0)
 
   const loginRateKey = email.trim().toLowerCase() ? `login:${email.trim().toLowerCase()}` : 'login:anonymous'
 
-  useEffect(() => {
-    const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
-    if (status.blocked) {
-      setCooldownEnd(Date.now() + status.retryAfter * 1000)
-      setAttempts(MAX_LOGIN_ATTEMPTS)
-    }
-  }, [loginRateKey])
-
-  useEffect(() => {
-    if (!MULTI_USER_ENABLED) setMode('signin')
-  }, [])
-
-  useEffect(() => {
-    if (!cooldownEnd) {
-      setCooldownRemaining(0)
-      return
-    }
-    const tick = () => {
-      const remaining = Math.max(0, cooldownEnd - Date.now())
-      setCooldownRemaining(remaining)
-      if (remaining <= 0) {
-        setCooldownEnd(null)
-        setAttempts(0)
-        clearInterval(cooldownTimer.current)
-      }
-    }
-    tick()
-    cooldownTimer.current = setInterval(tick, 1000)
-    return () => clearInterval(cooldownTimer.current)
-  }, [cooldownEnd])
-
+  const cooldownStatus = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
+  const cooldownRemaining = cooldownStatus.blocked ? cooldownStatus.retryAfter * 1000 : 0
   const isCoolingDown = cooldownRemaining > 0
+
+  useEffect(() => {
+    if (!isCoolingDown) return
+    const timer = setInterval(() => setCooldownTick(tick => tick + 1), 1000)
+    return () => clearInterval(timer)
+  }, [isCoolingDown, loginRateKey])
+
   const isSignUp = mode === 'signup' && MULTI_USER_ENABLED
   const isForgot = mode === 'forgot'
 
@@ -81,7 +56,7 @@ export default function LoginPage() {
     if (!isForgot) {
       const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
       if (status.blocked) {
-        setCooldownEnd(Date.now() + status.retryAfter * 1000)
+        setCooldownTick(tick => tick + 1)
         setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
         return
       }
@@ -135,11 +110,9 @@ export default function LoginPage() {
     if (signInError) {
       recordClientRateLimitFailure(loginRateKey, MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS)
       const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
-      const newAttempts = MAX_LOGIN_ATTEMPTS - status.remaining
-      setAttempts(newAttempts)
       setError(signInError.message)
       if (status.blocked) {
-        setCooldownEnd(Date.now() + status.retryAfter * 1000)
+        setCooldownTick(tick => tick + 1)
         setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
       }
       setLoading(false)
@@ -147,7 +120,7 @@ export default function LoginPage() {
     }
 
     clearClientRateLimit(loginRateKey)
-    setAttempts(0)
+    setCooldownTick(tick => tick + 1)
 
     setLoading(false)
   }

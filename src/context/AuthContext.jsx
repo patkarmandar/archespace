@@ -13,11 +13,10 @@
  *      when tokens refresh or the user signs out in another tab.
  */
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { clearVaultSession } from '../lib/crypto/vaultSession'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './AuthContextCore'
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
@@ -96,14 +95,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-/**
- * Hook to access the auth context.
- * Must be used inside an <AuthProvider>.
- */
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
 }

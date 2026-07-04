@@ -2,7 +2,7 @@
  * AppChrome.jsx - Global UI shell (palette, session toasts, offline sync).
  */
 import { useEffect, useRef } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/AuthContextCore'
 import { useToast } from '../../context/ToastContext'
 import { useCommandPalette } from '../../context/CommandPaletteContext'
 import { useShortcut } from '../../context/ShortcutsContext'

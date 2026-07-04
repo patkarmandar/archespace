@@ -3,7 +3,7 @@
  */
 import { useState } from 'react'
 import { Shield, Lock } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../context/AuthContextCore'
 import { useEncryption } from '../context/EncryptionContext'
 import PinInput from './PinInput'
 import { VAULT_PIN_MAX_LENGTH, VAULT_PIN_MIN_LENGTH } from '../lib/constants'

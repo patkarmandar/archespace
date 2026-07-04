@@ -6,7 +6,7 @@
  * require re-entering the PIN until manual lock or 24-hour auto-lock.
  */
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
-import { useAuth } from './AuthContext'
+import { useAuth } from './AuthContextCore'
 import {
   setupUserVault,
   unlockUserVault,
