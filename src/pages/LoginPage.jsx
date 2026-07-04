@@ -2,9 +2,10 @@
  * LoginPage.jsx - Sign in and (optional) sign up.
  */
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { Lock, Sun, Moon, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Lock, Sun, Moon, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
@@ -15,15 +16,20 @@ import {
 } from '../lib/rateLimiter'
 
 export default function LoginPage() {
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, requestPasswordReset } = useAuth()
   const { theme, toggle } = useTheme()
+  const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
+  const [info, setInfo] = useState(
+    searchParams.get('reset') === 'success'
+      ? 'Password updated. Please sign in with your new password.'
+      : ''
+  )
   const [loading, setLoading] = useState(false)
 
   const [attempts, setAttempts] = useState(0)
@@ -66,20 +72,35 @@ export default function LoginPage() {
 
   const isCoolingDown = cooldownRemaining > 0
   const isSignUp = mode === 'signup' && MULTI_USER_ENABLED
+  const isForgot = mode === 'forgot'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isCoolingDown || loading) return
+    if ((!isForgot && isCoolingDown) || loading) return
 
-    const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
-    if (status.blocked) {
-      setCooldownEnd(Date.now() + status.retryAfter * 1000)
-      setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
-      return
+    if (!isForgot) {
+      const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
+      if (status.blocked) {
+        setCooldownEnd(Date.now() + status.retryAfter * 1000)
+        setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
+        return
+      }
     }
 
     setError('')
     setInfo('')
+
+    if (isForgot) {
+      setLoading(true)
+      const { error: resetError } = await requestPasswordReset(email)
+      setLoading(false)
+      if (resetError) {
+        setError(resetError.message)
+        return
+      }
+      setInfo('Password reset link sent. Check your email to set a new password.')
+      return
+    }
 
     if (isSignUp) {
       const passwordError = validatePassword(password)
@@ -191,6 +212,16 @@ export default function LoginPage() {
             </div>
           )}
 
+          {isForgot && (
+            <button
+              type="button"
+              onClick={() => { setMode('signin'); setError(''); setInfo('') }}
+              className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-accent transition-colors mb-4"
+            >
+              <ArrowLeft size={13} /> Back to sign in
+            </button>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label htmlFor="login-email" className="block text-xs font-medium text-text-secondary mb-1.5">Email</label>
@@ -202,11 +233,12 @@ export default function LoginPage() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                disabled={isCoolingDown}
+                disabled={!isForgot && isCoolingDown}
                 className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm disabled:opacity-50"
               />
             </div>
-            <div>
+            {!isForgot && (
+              <div>
               <label htmlFor="login-password" className="block text-xs font-medium text-text-secondary mb-1.5">Password</label>
               <div className="relative">
                 <input
@@ -230,7 +262,8 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            </div>
+              </div>
+            )}
 
             {isSignUp && (
               <div>
@@ -260,7 +293,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {isCoolingDown && !isSignUp && (
+            {isCoolingDown && !isSignUp && !isForgot && (
               <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
                 <p className="text-amber-400 text-xs">
                   Try again in {Math.ceil(cooldownRemaining / 1000)}s
@@ -270,18 +303,30 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || (isCoolingDown && !isSignUp)}
+              disabled={loading || (isCoolingDown && !isSignUp && !isForgot)}
               className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-3 text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-1 active:scale-[0.98] shadow-lg shadow-accent/20"
             >
-              {isSignUp ? <UserPlus size={14} /> : <Lock size={14} />}
+              {isForgot ? <Mail size={14} /> : isSignUp ? <UserPlus size={14} /> : <Lock size={14} />}
               {loading
-                ? (isSignUp ? 'Creating account…' : 'Signing in…')
-                : isCoolingDown && !isSignUp
+                ? (isForgot ? 'Sending link…' : isSignUp ? 'Creating account…' : 'Signing in…')
+                : isCoolingDown && !isSignUp && !isForgot
                   ? 'Locked'
-                  : isSignUp
+                  : isForgot
+                    ? 'Send reset link'
+                    : isSignUp
                     ? 'Create account'
                     : 'Sign in'}
             </button>
+
+            {!isSignUp && !isForgot && (
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(''); setInfo('') }}
+                className="w-full text-center text-xs text-text-muted hover:text-accent transition-colors pt-1"
+              >
+                Forgot password?
+              </button>
+            )}
           </form>
         </div>
 

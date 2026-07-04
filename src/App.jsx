@@ -47,6 +47,7 @@ function lazyWithRetry(importFn) {
 sessionStorage.removeItem('chunk_reload')
 
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
+const PasswordResetPage = lazyWithRetry(() => import('./pages/PasswordResetPage'))
 const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage'))
 const SpacePage = lazyWithRetry(() => import('./pages/SpacePage'))
 const RecycleBinPage = lazyWithRetry(() => import('./pages/RecycleBinPage'))
@@ -172,6 +173,7 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
     children: [
       { path: '/login', element: <PublicRoute><LoginPage /></PublicRoute> },
+      { path: '/reset-password', element: <Suspense fallback={<PageLoader />}><PasswordResetPage /></Suspense> },
       { path: '/', element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
       { path: '/space/:id', element: <ProtectedRoute><SpacePage /></ProtectedRoute> },
       { path: '/recycle-bin', element: <ProtectedRoute><RecycleBinPage /></ProtectedRoute> },

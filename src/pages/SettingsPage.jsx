@@ -10,7 +10,6 @@ import { useEncryption } from '../context/EncryptionContext'
 import { useToast } from '../context/ToastContext'
 import { useSpaces } from '../hooks/useSpaces'
 import { exportSpaces, importSpaces } from '../lib/exportImport'
-import { supabase } from '../lib/supabase'
 import PinInput from '../components/PinInput'
 import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
 import WeakPinWarning from '../components/WeakPinWarning'
@@ -19,7 +18,7 @@ import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, signIn, signOut } = useAuth()
+  const { user, signIn, signOut, requestPasswordReset, updatePasswordAndSignOut } = useAuth()
   const { cryptoKey, updatePin, unlocking } = useEncryption()
   const { toast } = useToast()
   const { data: spaces = [] } = useSpaces()
@@ -36,6 +35,7 @@ export default function SettingsPage() {
   const [confirmPin, setConfirmPin] = useState('')
 
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
   const [pinLoading, setPinLoading] = useState(false)
   const [openSection, setOpenSection] = useState('password')
 
@@ -57,7 +57,7 @@ export default function SettingsPage() {
       setPasswordLoading(false)
       return
     }
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    const { error } = await updatePasswordAndSignOut(newPassword)
     setPasswordLoading(false)
     if (error) {
       toast.error(error.message)
@@ -66,7 +66,23 @@ export default function SettingsPage() {
     setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
-    toast.success('Login password updated.')
+    toast.success('Login password updated. Sign in again with your new password.')
+    navigate('/login?reset=success', { replace: true })
+  }
+
+  const handleSendPasswordReset = async () => {
+    if (!user?.email) {
+      toast.error('No email address is available for this account.')
+      return
+    }
+    setResetLoading(true)
+    const { error } = await requestPasswordReset(user.email)
+    setResetLoading(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Password reset link sent. Check your email.')
   }
 
   const handleChangePin = async (e) => {
@@ -212,6 +228,14 @@ export default function SettingsPage() {
                     className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
                   >
                     {passwordLoading ? 'Updating…' : 'Change login password'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendPasswordReset}
+                    disabled={resetLoading}
+                    className="w-full px-4 py-3 rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Sending reset link…' : 'Forgot current password? Send reset link'}
                   </button>
                 </form>
               </div>
