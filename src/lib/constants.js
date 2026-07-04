@@ -16,6 +16,12 @@ export const MAX_LOGIN_ATTEMPTS = 5
 /** Cooldown duration after max login attempts (ms) */
 export const LOGIN_COOLDOWN_MS = 30_000
 
+/** Vault PIN unlock: max failed attempts before lockout */
+export const VAULT_PIN_MAX_ATTEMPTS = 5
+
+/** Vault PIN unlock lockout duration (ms) */
+export const VAULT_PIN_LOCKOUT_MS = 5 * 60 * 1000
+
 /** Absolute maximum session lifetime (ms) - 1 week; no inactivity logout */
 export const SESSION_ABSOLUTE_MAX_MS = 7 * 24 * 60 * 60 * 1000
 

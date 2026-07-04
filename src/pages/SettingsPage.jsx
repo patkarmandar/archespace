@@ -12,7 +12,8 @@ import { useSpaces } from '../hooks/useSpaces'
 import { exportSpaces, importSpaces } from '../lib/exportImport'
 import { supabase } from '../lib/supabase'
 import PinInput from '../components/PinInput'
-import { validateVaultPin } from '../lib/crypto/vaultPin'
+import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
+import WeakPinWarning from '../components/WeakPinWarning'
 import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 
 export default function SettingsPage() {
@@ -256,6 +257,7 @@ export default function SettingsPage() {
                     onChange={setConfirmPin}
                     disabled={pinLoading || unlocking}
                   />
+                  <WeakPinWarning message={!validateVaultPin(newPin) ? getWeakPinWarning(newPin) : null} />
                   <button
                     type="submit"
                     disabled={pinLoading || unlocking}

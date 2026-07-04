@@ -75,11 +75,47 @@ export async function getVaultStatus(userId) {
 async function fetchVaultMeta(userId) {
   const { data, error } = await supabase
     .from('user_encryption')
-    .select('user_id, salt, key_check, wrapped_key, vault_format')
+    .select('user_id, salt, key_check, wrapped_key, vault_format, pin_locked_until')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
   return data
+}
+
+async function assertVaultUnlockAllowed(userId) {
+  const { data, error } = await supabase.rpc('get_vault_pin_lock_status')
+  if (error) {
+    // Fallback for projects that have not run the migration yet.
+    const meta = await fetchVaultMeta(userId)
+    if (meta?.pin_locked_until && new Date(meta.pin_locked_until) > new Date()) {
+      const retryAfter = Math.ceil((new Date(meta.pin_locked_until) - Date.now()) / 1000)
+      throw new Error(formatPinLockoutMessage(retryAfter))
+    }
+    return
+  }
+  if (data?.locked) {
+    throw new Error(formatPinLockoutMessage(data.retry_after_seconds || 300))
+  }
+}
+
+function formatPinLockoutMessage(retryAfterSeconds) {
+  const minutes = Math.max(1, Math.ceil(retryAfterSeconds / 60))
+  return `Too many failed PIN attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`
+}
+
+async function recordVaultUnlockFailure() {
+  const { error } = await supabase.rpc('record_vault_pin_unlock_failure')
+  if (error) console.warn('Failed to record vault PIN failure:', error.message)
+}
+
+async function recordVaultUnlockSuccess() {
+  const { error } = await supabase.rpc('record_vault_pin_unlock_success')
+  if (error) console.warn('Failed to reset vault PIN attempts:', error.message)
+}
+
+function isIncorrectPinError(err) {
+  const msg = err?.message || ''
+  return msg.includes('Incorrect PIN') || msg.includes('cannot unlock')
 }
 
 
@@ -102,11 +138,21 @@ export async function setupUserVault(userId, pin) {
  */
 export async function unlockUserVault(userId, pin) {
   assertValidPin(pin)
+  await assertVaultUnlockAllowed(userId)
   const meta = await fetchVaultMeta(userId)
   if (!meta) {
     throw new Error('No vault PIN configured. Create a PIN to continue.')
   }
-  return unlockPinWrappedVault(meta, pin)
+  try {
+    const key = await unlockPinWrappedVault(meta, pin)
+    await recordVaultUnlockSuccess()
+    return key
+  } catch (err) {
+    if (isIncorrectPinError(err)) {
+      await recordVaultUnlockFailure()
+    }
+    throw err
+  }
 }
 
 
@@ -115,9 +161,20 @@ export async function unlockUserVault(userId, pin) {
  */
 export async function changeVaultPinWithVerification(userId, currentPin, newPin) {
   assertValidPin(newPin)
-  const masterKey = await unlockUserVault(userId, currentPin)
-  await persistPinWrappedVault(userId, newPin, masterKey)
-  return masterKey
+  await assertVaultUnlockAllowed(userId)
+  try {
+    const meta = await fetchVaultMeta(userId)
+    if (!meta) throw new Error('No vault PIN configured.')
+    const masterKey = await unlockPinWrappedVault(meta, currentPin)
+    await recordVaultUnlockSuccess()
+    await persistPinWrappedVault(userId, newPin, masterKey)
+    return masterKey
+  } catch (err) {
+    if (isIncorrectPinError(err)) {
+      await recordVaultUnlockFailure()
+    }
+    throw err
+  }
 }
 
 async function persistPinWrappedVault(userId, pin, masterKey) {

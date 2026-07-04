@@ -7,6 +7,11 @@ import { useTheme } from '../context/ThemeContext'
 import { Lock, Sun, Moon, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
+import {
+  recordClientRateLimitFailure,
+  clearClientRateLimit,
+  getClientRateLimitStatus,
+} from '../lib/rateLimiter'
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth()
@@ -24,6 +29,16 @@ export default function LoginPage() {
   const [cooldownEnd, setCooldownEnd] = useState(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
   const cooldownTimer = useRef(null)
+
+  const loginRateKey = email.trim().toLowerCase() ? `login:${email.trim().toLowerCase()}` : 'login:anonymous'
+
+  useEffect(() => {
+    const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
+    if (status.blocked) {
+      setCooldownEnd(Date.now() + status.retryAfter * 1000)
+      setAttempts(MAX_LOGIN_ATTEMPTS)
+    }
+  }, [loginRateKey])
 
   useEffect(() => {
     if (!MULTI_USER_ENABLED) setMode('signin')
@@ -54,6 +69,13 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (isCoolingDown || loading) return
+
+    const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
+    if (status.blocked) {
+      setCooldownEnd(Date.now() + status.retryAfter * 1000)
+      setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
+      return
+    }
 
     setError('')
     setInfo('')
@@ -88,16 +110,21 @@ export default function LoginPage() {
     setLoading(true)
     const { error: signInError } = await signIn(email, password)
     if (signInError) {
-      const newAttempts = attempts + 1
+      recordClientRateLimitFailure(loginRateKey, MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS)
+      const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
+      const newAttempts = MAX_LOGIN_ATTEMPTS - status.remaining
       setAttempts(newAttempts)
       setError(signInError.message)
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        setCooldownEnd(Date.now() + LOGIN_COOLDOWN_MS)
-        setError(`Too many failed attempts. Please wait ${Math.ceil(LOGIN_COOLDOWN_MS / 1000)} seconds.`)
+      if (status.blocked) {
+        setCooldownEnd(Date.now() + status.retryAfter * 1000)
+        setError(`Too many failed attempts. Please wait ${status.retryAfter} seconds.`)
       }
       setLoading(false)
       return
     }
+
+    clearClientRateLimit(loginRateKey)
+    setAttempts(0)
 
     setLoading(false)
   }

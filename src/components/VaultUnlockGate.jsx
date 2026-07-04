@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext'
 import { useEncryption } from '../context/EncryptionContext'
 import PinInput from './PinInput'
 import { VAULT_PIN_MAX_LENGTH, VAULT_PIN_MIN_LENGTH } from '../lib/constants'
-import { validateVaultPin } from '../lib/crypto/vaultPin'
+import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
+import WeakPinWarning from './WeakPinWarning'
 
 export default function VaultUnlockGate({ children }) {
   const { user, signOut, loading: authLoading } = useAuth()
@@ -74,6 +75,7 @@ export default function VaultUnlockGate({ children }) {
 
   const pinMismatch = confirmPin.length > 0 && pin !== confirmPin
   const setupPinInvalid = needsSetup && pin.length > 0 && validateVaultPin(pin)
+  const weakPinWarning = needsSetup && !validateVaultPin(pin) ? getWeakPinWarning(pin) : null
   const canSubmitSetup = pin.length >= VAULT_PIN_MIN_LENGTH && pin === confirmPin && !validateVaultPin(pin)
 
   return (
@@ -116,6 +118,8 @@ export default function VaultUnlockGate({ children }) {
               disabled={unlocking}
             />
           )}
+
+          <WeakPinWarning message={weakPinWarning} />
 
           {setupPinInvalid && (
             <p className="text-danger text-xs">{setupPinInvalid}</p>

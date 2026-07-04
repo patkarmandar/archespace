@@ -19,7 +19,12 @@ import {
   clearVaultSession,
   VAULT_UNLOCKED_AT_KEY,
 } from '../lib/crypto/vaultSession'
-import { VAULT_AUTO_LOCK_MS } from '../lib/constants'
+import { VAULT_AUTO_LOCK_MS, VAULT_PIN_LOCKOUT_MS, VAULT_PIN_MAX_ATTEMPTS } from '../lib/constants'
+import {
+  getClientRateLimitStatus,
+  recordClientRateLimitFailure,
+  clearClientRateLimit,
+} from '../lib/rateLimiter'
 
 const EncryptionContext = createContext(null)
 
@@ -65,14 +70,27 @@ export function EncryptionProvider({ children }) {
 
   const unlock = useCallback(async (pin) => {
     if (!user?.id) throw new Error('Not signed in')
+
+    const rateKey = `vault-unlock:${user.id}`
+    const status = getClientRateLimitStatus(rateKey, VAULT_PIN_MAX_ATTEMPTS)
+    if (status.blocked) {
+      const msg = `Too many failed PIN attempts. Try again in ${status.retryAfter} seconds.`
+      setUnlockError(msg)
+      throw new Error(msg)
+    }
+
     setUnlocking(true)
     setUnlockError('')
     try {
       const key = await unlockUserVault(user.id, pin)
+      clearClientRateLimit(rateKey)
       await applyUnlockedKey(key)
       return key
     } catch (err) {
       const msg = err?.message || 'Failed to unlock vault'
+      if (msg.includes('Incorrect PIN') || msg.includes('cannot unlock')) {
+        recordClientRateLimitFailure(rateKey, VAULT_PIN_MAX_ATTEMPTS, VAULT_PIN_LOCKOUT_MS)
+      }
       setUnlockError(msg)
       throw err
     } finally {
