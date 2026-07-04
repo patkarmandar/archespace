@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionContext'
 import { encryptItem, decryptItem, decryptItems } from '../lib/dataProtection'
+import { invalidateSpaceItems } from '../lib/queryInvalidation'
 
 const defaultContent = {
   textbox: { text: '' },
@@ -50,11 +51,7 @@ export function useSpaceItems(spaceId) {
           filter: `space_id=eq.${spaceId}`,
         },
         () => {
-          qc.invalidateQueries({ queryKey: ['items', spaceId] })
-          qc.invalidateQueries({ queryKey: ['bin'] })
-          qc.invalidateQueries({ queryKey: ['archive'] })
-          qc.invalidateQueries({ queryKey: ['space-stats'] })
-          qc.invalidateQueries({ queryKey: ['global-search-data'] })
+          invalidateSpaceItems(qc, spaceId)
         }
       )
       .subscribe()
@@ -87,8 +84,7 @@ export function useSpaceItems(spaceId) {
       return decryptItem(data, cryptoKey)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', spaceId] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
+      invalidateSpaceItems(qc, spaceId)
     },
   })
 
@@ -104,7 +100,7 @@ export function useSpaceItems(spaceId) {
       if (error) throw error
       return decryptItem(data, cryptoKey)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['items', spaceId] }),
+    onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
   const togglePin = useMutation({
@@ -127,8 +123,7 @@ export function useSpaceItems(spaceId) {
       if (context?.previous) qc.setQueryData(['items', spaceId], context.previous)
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ['items', spaceId] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
+      invalidateSpaceItems(qc, spaceId)
     },
   })
 
@@ -141,9 +136,7 @@ export function useSpaceItems(spaceId) {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', spaceId] })
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
+      invalidateSpaceItems(qc, spaceId)
     },
   })
 
@@ -156,9 +149,7 @@ export function useSpaceItems(spaceId) {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', spaceId] })
-      qc.invalidateQueries({ queryKey: ['archive'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
+      invalidateSpaceItems(qc, spaceId)
     },
   })
 
@@ -187,8 +178,7 @@ export function useSpaceItems(spaceId) {
       return decryptItem(data, cryptoKey)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['items', spaceId] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
+      invalidateSpaceItems(qc, spaceId)
     },
   })
 
@@ -212,16 +202,8 @@ export function useSpaceItems(spaceId) {
     onError: (_err, _vars, context) => {
       if (context?.previous) qc.setQueryData(['items', spaceId], context.previous)
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['items', spaceId] }),
+    onSettled: () => invalidateSpaceItems(qc, spaceId),
   })
-
-  const invalidateItems = () => {
-    qc.invalidateQueries({ queryKey: ['items', spaceId] })
-    qc.invalidateQueries({ queryKey: ['bin'] })
-    qc.invalidateQueries({ queryKey: ['archive'] })
-    qc.invalidateQueries({ queryKey: ['space-stats'] })
-    qc.invalidateQueries({ queryKey: ['global-search-data'] })
-  }
 
   const bulkRemove = useMutation({
     mutationFn: async (ids) => {
@@ -232,7 +214,7 @@ export function useSpaceItems(spaceId) {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateItems,
+    onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
   const bulkArchive = useMutation({
@@ -244,7 +226,7 @@ export function useSpaceItems(spaceId) {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateItems,
+    onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
   const bulkSetPinned = useMutation({
@@ -256,7 +238,7 @@ export function useSpaceItems(spaceId) {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateItems,
+    onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
   const bulkDuplicate = useMutation({
@@ -283,7 +265,7 @@ export function useSpaceItems(spaceId) {
       const { error } = await supabase.from('space_items').insert(rows)
       if (error) throw error
     },
-    onSuccess: invalidateItems,
+    onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
   return {

@@ -5,23 +5,11 @@
  */
 import { VAULT_AUTO_LOCK_MS } from '../constants'
 import { exportRawAesKey, importRawAesKey } from './vault'
+import { bytesFromBase64, bytesToBase64 } from './encoding'
 
 export const VAULT_UNLOCKED_AT_KEY = 'arche:vault-unlocked-at'
 const VAULT_SESSION_KEY = 'arche:vault-session-key'
 const VAULT_SESSION_USER = 'arche:vault-session-user'
-
-function bytesToBase64(bytes) {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary)
-}
-
-function bytesFromBase64(b64) {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes
-}
 
 export function clearVaultSession() {
   sessionStorage.removeItem(VAULT_UNLOCKED_AT_KEY)

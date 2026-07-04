@@ -1,21 +1,9 @@
 /**
  * cipher.js - AES-256-GCM encrypt/decrypt via Web Crypto API.
  */
+import { bytesFromBase64, bytesToBase64 } from './encoding'
+
 export const CIPHER_PREFIX = 'arc1:'
-
-function toBase64(bytes) {
-  let binary = ''
-  const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
-  for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i])
-  return btoa(binary)
-}
-
-function fromBase64(b64) {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes
-}
 
 export function isEncrypted(value) {
   return typeof value === 'string' && value.startsWith(CIPHER_PREFIX)
@@ -36,7 +24,7 @@ export async function encryptString(plaintext, key) {
     key,
     encoded
   )
-  return `${CIPHER_PREFIX}${toBase64(iv)}.${toBase64(ciphertext)}`
+  return `${CIPHER_PREFIX}${bytesToBase64(iv)}.${bytesToBase64(ciphertext)}`
 }
 
 /**
@@ -50,8 +38,8 @@ export async function decryptString(value, key) {
   const body = value.slice(CIPHER_PREFIX.length)
   const dot = body.indexOf('.')
   if (dot < 0) throw new Error('Invalid encrypted payload')
-  const iv = fromBase64(body.slice(0, dot))
-  const ct = fromBase64(body.slice(dot + 1))
+  const iv = bytesFromBase64(body.slice(0, dot))
+  const ct = bytesFromBase64(body.slice(dot + 1))
   const plainBuffer = await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,

@@ -8,6 +8,7 @@ import { parseTags } from '../lib/spaceColors'
 import { useEncryption } from '../context/EncryptionContext'
 import { encryptSpace, decryptSpace, decryptSpaces } from '../lib/dataProtection'
 import { duplicateSpaceWithItems } from '../lib/spaceDuplicate'
+import { invalidateSpaceCollections, invalidateSpaceList } from '../lib/queryInvalidation'
 
 export function useSpaces() {
   const qc = useQueryClient()
@@ -38,11 +39,7 @@ export function useSpaces() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'spaces' },
         () => {
-          qc.invalidateQueries({ queryKey: ['spaces'] })
-          qc.invalidateQueries({ queryKey: ['bin'] })
-          qc.invalidateQueries({ queryKey: ['archive'] })
-          qc.invalidateQueries({ queryKey: ['space-stats'] })
-          qc.invalidateQueries({ queryKey: ['global-search-data'] })
+          invalidateSpaceCollections(qc)
         }
       )
       .subscribe()
@@ -79,7 +76,7 @@ export function useSpaces() {
       if (error) throw error
       return decryptSpace(data, cryptoKey)
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
+    onSuccess: () => invalidateSpaceList(qc),
   })
 
   const update = useMutation({
@@ -101,10 +98,7 @@ export function useSpaces() {
       if (error) throw error
       return decryptSpace(data, cryptoKey)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['global-search-data'] })
-    },
+    onSuccess: () => invalidateSpaceList(qc),
   })
 
   const togglePin = useMutation({
@@ -160,33 +154,25 @@ export function useSpaces() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   const archive = useMutation({
     mutationFn: async (id) => {
       const now = new Date().toISOString()
-      const { error: e1 } = await supabase
+      const { error: spaceError } = await supabase
         .from('spaces')
         .update({ archived_at: now })
         .eq('id', id)
-      if (e1) throw e1
-      await supabase
+      if (spaceError) throw spaceError
+      const { error: itemError } = await supabase
         .from('space_items')
         .update({ archived_at: now })
         .eq('space_id', id)
         .is('deleted_at', null)
+      if (itemError) throw itemError
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['archive'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-    },
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   const duplicate = useMutation({
@@ -196,20 +182,8 @@ export function useSpaces() {
       const newCol = await duplicateSpaceWithItems(source, cryptoKey, query.data?.length || 0)
       return decryptSpace(newCol, cryptoKey)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
-
-  const invalidateSpaces = () => {
-    qc.invalidateQueries({ queryKey: ['spaces'] })
-    qc.invalidateQueries({ queryKey: ['bin'] })
-    qc.invalidateQueries({ queryKey: ['archive'] })
-    qc.invalidateQueries({ queryKey: ['space-stats'] })
-    qc.invalidateQueries({ queryKey: ['global-search-data'] })
-    qc.invalidateQueries({ queryKey: ['items'] })
-  }
 
   const bulkRemove = useMutation({
     mutationFn: async (ids) => {
@@ -220,27 +194,27 @@ export function useSpaces() {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateSpaces,
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   const bulkArchive = useMutation({
     mutationFn: async (ids) => {
       if (!ids?.length) return
       const now = new Date().toISOString()
-      for (const colId of ids) {
-        const { error: e1 } = await supabase
-          .from('spaces')
-          .update({ archived_at: now })
-          .eq('id', colId)
-        if (e1) throw e1
-        await supabase
-          .from('space_items')
-          .update({ archived_at: now })
-          .eq('space_id', colId)
-          .is('deleted_at', null)
-      }
+      const { error: spaceError } = await supabase
+        .from('spaces')
+        .update({ archived_at: now })
+        .in('id', ids)
+      if (spaceError) throw spaceError
+
+      const { error: itemError } = await supabase
+        .from('space_items')
+        .update({ archived_at: now })
+        .in('space_id', ids)
+        .is('deleted_at', null)
+      if (itemError) throw itemError
     },
-    onSuccess: invalidateSpaces,
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   const bulkSetPinned = useMutation({
@@ -252,7 +226,7 @@ export function useSpaces() {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: invalidateSpaces,
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   const bulkDuplicate = useMutation({
@@ -261,7 +235,7 @@ export function useSpaces() {
         await duplicateSpaceWithItems(source, cryptoKey, query.data?.length || 0)
       }
     },
-    onSuccess: invalidateSpaces,
+    onSuccess: () => invalidateSpaceCollections(qc),
   })
 
   return {

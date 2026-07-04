@@ -5,13 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionContext'
 import { fetchStoredCollection } from '../lib/storedCollectionQuery'
-
-function invalidateArchive(qc) {
-  qc.invalidateQueries({ queryKey: ['archive'] })
-  qc.invalidateQueries({ queryKey: ['spaces'] })
-  qc.invalidateQueries({ queryKey: ['items'] })
-  qc.invalidateQueries({ queryKey: ['space-stats'] })
-}
+import { invalidateArchive } from '../lib/queryInvalidation'
 
 export function useArchive() {
   const qc = useQueryClient()
@@ -40,11 +34,12 @@ export function useArchive() {
         .update({ archived_at: null })
         .eq('id', id)
       if (error) throw error
-      await supabase
+      const { error: itemError } = await supabase
         .from('space_items')
         .update({ archived_at: null })
         .eq('space_id', id)
         .not('archived_at', 'is', null)
+      if (itemError) throw itemError
     },
     onSuccess: () => invalidateArchive(qc),
   })
@@ -75,11 +70,7 @@ export function useArchive() {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['archive'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateArchive(qc),
   })
 
   const unarchiveItem = useMutation({
@@ -90,11 +81,7 @@ export function useArchive() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['archive'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateArchive(qc),
   })
 
   const total =

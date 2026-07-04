@@ -12,6 +12,7 @@ import {
   saltFromBase64,
 } from './keyDerivation'
 import { validateVaultPin } from './vaultPin'
+import { bytesFromBase64, bytesToBase64 } from './encoding'
 
 const VAULT_CHECK_PLAINTEXT = 'ARCHE_VAULT_V1_OK'
 export const VAULT_FORMAT_PIN_WRAPPED = 'pin_wrapped'
@@ -19,19 +20,6 @@ export const VAULT_FORMAT_PIN_WRAPPED = 'pin_wrapped'
 function assertValidPin(pin) {
   const err = validateVaultPin(pin)
   if (err) throw new Error(err)
-}
-
-function bytesToBase64(bytes) {
-  let binary = ''
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-  return btoa(binary)
-}
-
-function bytesFromBase64(b64) {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return bytes
 }
 
 export async function importRawAesKey(rawBytes) {

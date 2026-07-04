@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionContext'
 import { fetchStoredCollection } from '../lib/storedCollectionQuery'
+import { invalidateRecycleBin } from '../lib/queryInvalidation'
 
 export function useRecycleBin() {
   const qc = useQueryClient()
@@ -34,10 +35,7 @@ export function useRecycleBin() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['bin'] })
-    },
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const purgeSpace = useMutation({
@@ -45,7 +43,7 @@ export function useRecycleBin() {
       const { error } = await supabase.from('spaces').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const restoreItem = useMutation({
@@ -56,10 +54,7 @@ export function useRecycleBin() {
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-    },
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const purgeItem = useMutation({
@@ -67,7 +62,7 @@ export function useRecycleBin() {
       const { error } = await supabase.from('space_items').delete().eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const bulkRestoreSpaces = useMutation({
@@ -79,11 +74,7 @@ export function useRecycleBin() {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['spaces'] })
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const bulkRestoreItems = useMutation({
@@ -95,11 +86,7 @@ export function useRecycleBin() {
         .in('id', ids)
       if (error) throw error
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bin'] })
-      qc.invalidateQueries({ queryKey: ['items'] })
-      qc.invalidateQueries({ queryKey: ['space-stats'] })
-    },
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const bulkPurgeSpaces = useMutation({
@@ -108,7 +95,7 @@ export function useRecycleBin() {
       const { error } = await supabase.from('spaces').delete().in('id', ids)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const bulkPurgeItems = useMutation({
@@ -117,7 +104,7 @@ export function useRecycleBin() {
       const { error } = await supabase.from('space_items').delete().in('id', ids)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const emptyBin = useMutation({
@@ -134,7 +121,7 @@ export function useRecycleBin() {
         .not('deleted_at', 'is', null)
       if (e2) throw e2
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['bin'] }),
+    onSuccess: () => invalidateRecycleBin(qc),
   })
 
   const total =

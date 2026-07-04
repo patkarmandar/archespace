@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionContext'
 import { decryptSpaces, decryptItems } from '../lib/dataProtection'
+import { GLOBAL_SEARCH_RESULT_LIMIT } from '../lib/constants'
 
 export function useGlobalSearchData() {
   const { cryptoKey } = useEncryption()
@@ -18,12 +19,16 @@ export function useGlobalSearchData() {
           .from('spaces')
           .select('id, name, description, tags, color, pinned')
           .is('deleted_at', null)
-          .is('archived_at', null),
+          .is('archived_at', null)
+          .order('updated_at', { ascending: false })
+          .limit(GLOBAL_SEARCH_RESULT_LIMIT),
         supabase
           .from('space_items')
           .select('id, space_id, type, title, content, pinned')
           .is('deleted_at', null)
-          .is('archived_at', null),
+          .is('archived_at', null)
+          .order('updated_at', { ascending: false })
+          .limit(GLOBAL_SEARCH_RESULT_LIMIT),
       ])
       if (e1) throw e1
       if (e2) throw e2
@@ -42,6 +47,6 @@ export function useGlobalSearchData() {
         itemMeta,
       }
     },
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 60 * 5,
   })
 }

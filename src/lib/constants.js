@@ -50,6 +50,9 @@ export const ITEM_TYPES = ['textbox', 'checkbox_list', 'menu_list', 'card_list']
 /** Auto-save debounce delay (ms) */
 export const AUTO_SAVE_DELAY_MS = 2000
 
+/** Maximum rows loaded into global search per entity */
+export const GLOBAL_SEARCH_RESULT_LIMIT = 500
+
 /** Toast auto-dismiss delay (ms) */
 export const TOAST_DISMISS_MS = 3000
 
