@@ -118,9 +118,20 @@ function ListEditor({ content, onChange, variant }) {
   const [items, setItems] = useState(content?.items || [])
   const containerRef = useRef(null)
 
+  const adjustItemText = (el) => {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
   useEffect(() => {
     setItems(content?.items || [])
   }, [content?.items])
+
+  useEffect(() => {
+    const inputs = containerRef.current?.querySelectorAll(`[${inputAttr}]`)
+    inputs?.forEach(adjustItemText)
+  }, [items, inputAttr])
 
   const push = (newItems) => {
     setItems(newItems)
@@ -146,7 +157,7 @@ function ListEditor({ content, onChange, variant }) {
     push(items.filter(item => item.id !== id))
 
   const handleKeyDown = (e, idx) => {
-    if (e.key === 'Enter') { e.preventDefault(); addItem() }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem() }
     if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
       e.preventDefault()
       push(items.filter((_, i) => i !== idx))
@@ -156,27 +167,31 @@ function ListEditor({ content, onChange, variant }) {
   return (
     <div className="space-y-1" ref={containerRef}>
       {items.map((item, idx) => (
-        <div key={item.id} className="flex items-center gap-2 group py-0.5">
+        <div key={item.id} className="flex items-start gap-2 group py-0.5">
           {isChecklist ? (
             <button
               onClick={() => updateItem(item.id, 'checked', !item.checked)}
-              className="shrink-0 text-text-muted hover:text-accent transition-colors"
+              className="shrink-0 mt-0.5 text-text-muted hover:text-accent transition-colors"
             >
               {item.checked
                 ? <CheckSquare size={17} className="text-accent" />
                 : <Square size={17} />}
             </button>
           ) : (
-            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-0.5" />
+            <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-2" />
           )}
 
-          <input
+          <textarea
             {...(isChecklist ? { 'data-checklist-input': true } : { 'data-menu-input': true })}
             value={item.text}
-            onChange={e => updateItem(item.id, 'text', e.target.value)}
+            onChange={e => {
+              updateItem(item.id, 'text', e.target.value)
+              adjustItemText(e.target)
+            }}
             onKeyDown={e => handleKeyDown(e, idx)}
             placeholder={isChecklist ? 'List item…' : 'Item…'}
-            className={`flex-1 bg-transparent text-sm focus:outline-none placeholder-text-muted ${
+            rows={1}
+            className={`flex-1 min-w-0 bg-transparent text-sm leading-relaxed focus:outline-none placeholder-text-muted resize-none overflow-hidden whitespace-pre-wrap break-words ${
               isChecklist && item.checked ? 'line-through text-text-muted' : 'text-text-primary'
             }`}
           />
