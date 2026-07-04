@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext'
 import { Lock, Sun, Moon, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
+import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import {
   recordClientRateLimitFailure,
   clearClientRateLimit,
@@ -81,8 +82,9 @@ export default function LoginPage() {
     setInfo('')
 
     if (isSignUp) {
-      if (password.length < 8) {
-        setError('Password must be at least 8 characters.')
+      const passwordError = validatePassword(password)
+      if (passwordError) {
+        setError(passwordError)
         return
       }
       if (password !== confirmPassword) {
@@ -216,7 +218,7 @@ export default function LoginPage() {
                   required
                   autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   disabled={isCoolingDown}
-                  minLength={isSignUp ? 8 : undefined}
+                  minLength={isSignUp ? PASSWORD_RULES.minLength : undefined}
                   className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm disabled:opacity-50"
                 />
                 <button

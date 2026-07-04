@@ -15,6 +15,7 @@ import PinInput from '../components/PinInput'
 import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
 import WeakPinWarning from '../components/WeakPinWarning'
 import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
+import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -40,8 +41,9 @@ export default function SettingsPage() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
-    if (newPassword.length < 8) {
-      toast.error('New password must be at least 8 characters.')
+    const passwordError = validatePassword(newPassword)
+    if (passwordError) {
+      toast.error(passwordError.replace('Password', 'New password'))
       return
     }
     if (newPassword !== confirmPassword) {
@@ -185,7 +187,7 @@ export default function SettingsPage() {
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
                       required
-                      minLength={8}
+                      minLength={PASSWORD_RULES.minLength}
                       autoComplete="new-password"
                       className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
                     />
