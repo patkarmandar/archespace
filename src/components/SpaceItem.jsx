@@ -7,14 +7,14 @@
  *   - Pin / collapse / delete actions
  *   - The appropriate editor component for the item type
  *   - Unsaved-changes indicator + Save / Discard buttons
- *   - Auto-save: debounced save after 2 seconds of inactivity
+ *   - Auto-save: debounced save after 5 seconds of inactivity
  *   - Collapse guard: warns before collapsing with unsaved edits
  *   - Drag handle for reordering
  *
  * The component manages its own local copy of `title` and `content`
  * so edits feel instant. Changes are marked "dirty" and flushed
  * to the server either manually (Save button) or automatically
- * (auto-save after 2s).
+ * (auto-save after 5s).
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react'
