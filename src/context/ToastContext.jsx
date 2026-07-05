@@ -11,11 +11,10 @@
  * bottom-right corner. Max 5 visible at once (oldest removed first).
  */
 
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react'
 import { TOAST_DISMISS_MS, MAX_TOASTS } from '../lib/constants'
-
-const ToastContext = createContext(null)
+import { ToastContext } from './ToastCore'
 
 /** Icon + accent colour per toast type */
 const TYPE_CONFIG = {
@@ -120,14 +119,4 @@ export function ToastProvider({ children }) {
       </div>
     </ToastContext.Provider>
   )
-}
-
-/**
- * Hook to access the toast notification system.
- * @returns {{ toast: { success: Function, error: Function, info: Function } }}
- */
-export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used within ToastProvider')
-  return ctx
 }

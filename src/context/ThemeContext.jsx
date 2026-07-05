@@ -11,9 +11,8 @@
  *   - `toggle` - function to flip between dark and light
  */
 
-import { createContext, useContext, useEffect, useState } from 'react'
-
-const ThemeContext = createContext(null)
+import { useEffect, useState } from 'react'
+import { ThemeContext } from './ThemeCore'
 
 export function ThemeProvider({ children }) {
   // Initialise from localStorage; fall back to dark
@@ -35,14 +34,4 @@ export function ThemeProvider({ children }) {
       {children}
     </ThemeContext.Provider>
   )
-}
-
-/**
- * Hook to access the theme context.
- * Must be used inside a <ThemeProvider>.
- */
-export function useTheme() {
-  const ctx = useContext(ThemeContext)
-  if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
-  return ctx
 }

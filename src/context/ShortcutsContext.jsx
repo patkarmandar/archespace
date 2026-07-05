@@ -1,9 +1,8 @@
 /**
  * ShortcutsContext.jsx - Global keyboard shortcut registry.
  */
-import { createContext, useContext, useEffect, useRef, useCallback } from 'react'
-
-const ShortcutsContext = createContext(null)
+import { useEffect, useRef, useCallback } from 'react'
+import { ShortcutsContext } from './ShortcutsCore'
 
 export function ShortcutsProvider({ children }) {
   const handlersRef = useRef(new Map())
@@ -64,19 +63,4 @@ export function ShortcutsProvider({ children }) {
       {children}
     </ShortcutsContext.Provider>
   )
-}
-
-export function useShortcuts() {
-  const ctx = useContext(ShortcutsContext)
-  if (!ctx) throw new Error('useShortcuts must be used within ShortcutsProvider')
-  return ctx
-}
-
-/** Register a shortcut handler for the lifetime of a component. */
-export function useShortcut(id, handler, enabled = true) {
-  const { register } = useShortcuts()
-  useEffect(() => {
-    if (!enabled || !handler) return
-    return register(id, handler)
-  }, [id, handler, enabled, register])
 }

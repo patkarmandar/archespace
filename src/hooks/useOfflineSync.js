@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { flushOfflineQueue, getOfflineQueue } from '../lib/offlineQueue'
-import { useToast } from '../context/ToastContext'
+import { useToast } from '../context/ToastCore'
 
 export function useOfflineSync() {
   const qc = useQueryClient()

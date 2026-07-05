@@ -4,7 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { useEncryption } from '../context/EncryptionContext'
+import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem, decryptItem, decryptItems } from '../lib/dataProtection'
 import { invalidateSpaceItems } from '../lib/queryInvalidation'
 

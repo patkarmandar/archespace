@@ -3,7 +3,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { useEncryption } from '../context/EncryptionContext'
+import { useEncryption } from '../context/EncryptionCore'
 import { fetchStoredCollection } from '../lib/storedCollectionQuery'
 import { invalidateRecycleBin } from '../lib/queryInvalidation'
 

@@ -1,9 +1,8 @@
 /**
  * PageActionsContext.jsx - Per-route actions for global shortcuts / palette.
  */
-import { createContext, useContext, useState, useEffect } from 'react'
-
-const PageActionsContext = createContext(null)
+import { useState } from 'react'
+import { PageActionsContext } from './PageActionsCore'
 
 export function PageActionsProvider({ children }) {
   const [pageActions, setPageActions] = useState({})
@@ -12,19 +11,4 @@ export function PageActionsProvider({ children }) {
       {children}
     </PageActionsContext.Provider>
   )
-}
-
-export function useRegisterPageActions(actions) {
-  const ctx = useContext(PageActionsContext)
-  if (!ctx) return
-  const { setPageActions } = ctx
-  useEffect(() => {
-    setPageActions(actions || {})
-    return () => setPageActions({})
-  }, [actions, setPageActions])
-}
-
-export function usePageActions() {
-  const ctx = useContext(PageActionsContext)
-  return ctx?.pageActions || {}
 }

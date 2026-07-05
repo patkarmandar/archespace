@@ -13,7 +13,7 @@
  * can track dirty state and auto-save.
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Plus, Trash2, CheckSquare, Square, Eye, EyeOff } from 'lucide-react'
 import MarkdownPreview from './MarkdownPreview'
 
@@ -44,9 +44,9 @@ function DelBtn({ onClick }) {
  * @param {{ content: { text: string }, onChange: Function }} props
  */
 export function TextboxEditor({ content, onChange }) {
-  const [text, setText]         = useState(content?.text || '')
   const [preview, setPreview]   = useState(false)
   const ref = useRef(null)
+  const text = content?.text || ''
 
   const adjust = () => {
     const el = ref.current
@@ -55,17 +55,10 @@ export function TextboxEditor({ content, onChange }) {
     el.style.height = `${el.scrollHeight}px`
   }
 
-  // Sync local text when the content prop changes from outside
-  // (e.g. after a discard or realtime update)
-  useEffect(() => {
-    setText(content?.text || '')
-  }, [content?.text])
-
   // Auto-resize whenever text changes
   useEffect(() => { adjust() }, [text])
 
   const handleChange = (e) => {
-    setText(e.target.value)
     onChange({ text: e.target.value })
   }
 
@@ -115,7 +108,7 @@ export function TextboxEditor({ content, onChange }) {
 function ListEditor({ content, onChange, variant }) {
   const isChecklist = variant === 'checkbox'
   const inputAttr = isChecklist ? 'data-checklist-input' : 'data-menu-input'
-  const [items, setItems] = useState(content?.items || [])
+  const items = useMemo(() => content?.items || [], [content?.items])
   const containerRef = useRef(null)
 
   const adjustItemText = (el) => {
@@ -125,16 +118,11 @@ function ListEditor({ content, onChange, variant }) {
   }
 
   useEffect(() => {
-    setItems(content?.items || [])
-  }, [content?.items])
-
-  useEffect(() => {
     const inputs = containerRef.current?.querySelectorAll(`[${inputAttr}]`)
     inputs?.forEach(adjustItemText)
   }, [items, inputAttr])
 
   const push = (newItems) => {
-    setItems(newItems)
     onChange({ items: newItems })
   }
 
@@ -229,11 +217,7 @@ export function MenuListEditor(props) {
  * @param {{ content: { items: Array }, onChange: Function }} props
  */
 export function CardListEditor({ content, onChange }) {
-  const [items, setItems] = useState(content?.items || [])
-
-  useEffect(() => {
-    setItems(content?.items || [])
-  }, [content?.items])
+  const items = useMemo(() => content?.items || [], [content?.items])
 
   const adjust = (el) => {
     if (!el) return
@@ -241,7 +225,7 @@ export function CardListEditor({ content, onChange }) {
     el.style.height = `${el.scrollHeight}px`
   }
 
-  const push = (newItems) => { setItems(newItems); onChange({ items: newItems }) }
+  const push = (newItems) => { onChange({ items: newItems }) }
 
   const addItem = () =>
     push([...items, { id: crypto.randomUUID(), title: '', description: '' }])

@@ -111,8 +111,8 @@ export async function importSpaces(file, userId, cryptoKey) {
   let parsed
   try {
     parsed = JSON.parse(text)
-  } catch (e) {
-    throw new Error('Invalid backup format: Not valid JSON.')
+  } catch (error) {
+    throw new Error('Invalid backup format: Not valid JSON.', { cause: error })
   }
 
   if (!Array.isArray(parsed)) {
@@ -130,7 +130,13 @@ export async function importSpaces(file, userId, cryptoKey) {
       throw new Error('Invalid backup format: Space must be an object.')
     }
 
-    const { items, id, created_at, updated_at, user_id, deleted_at, pinned, position, ...colData } = col
+    const { items } = col
+    const colData = {
+      name: col.name,
+      description: col.description,
+      color: col.color,
+      tags: col.tags,
+    }
 
     // Validate and sanitize space data
     let sanitizedName = typeof colData.name === 'string' ? colData.name.trim() : 'Imported Space'

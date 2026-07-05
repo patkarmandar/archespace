@@ -28,7 +28,7 @@ import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from '
 import { ActionMenu } from './ui/ActionMenu'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
-import { useEncryption } from '../context/EncryptionContext'
+import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem } from '../lib/dataProtection'
 import { TYPE_LABELS, TYPE_STYLES } from '../lib/itemTypes'
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants'
@@ -75,12 +75,17 @@ export default function SpaceItem({
   const checklistProgress = item.type === 'checkbox_list' ? getChecklistProgress(localContent) : null
 
   // ── Sync from server when not dirty (realtime / parent update) ──
-  useEffect(() => {
-    if (!isDirty) {
-      setTitleVal(item.title)
-      setLocalContent(item.content)
-    }
-  }, [item.title, item.content, isDirty])
+  const [syncedItem, setSyncedItem] = useState({ id: item.id, title: item.title, content: item.content })
+  if (
+    !isDirty &&
+    (syncedItem.id !== item.id ||
+      syncedItem.title !== item.title ||
+      syncedItem.content !== item.content)
+  ) {
+    setSyncedItem({ id: item.id, title: item.title, content: item.content })
+    setTitleVal(item.title)
+    setLocalContent(item.content)
+  }
 
   // ── Notify parent about dirty state (for beforeunload warning) ──
   useEffect(() => {

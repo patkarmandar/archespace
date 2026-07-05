@@ -33,7 +33,7 @@ function sanitizeUrl(url) {
   const trimmed = url.trim()
 
   // Decode any percent-encoded characters to catch obfuscation tricks
-  let decoded = trimmed
+  let decoded
   try {
     decoded = decodeURIComponent(trimmed)
   } catch {
@@ -42,7 +42,10 @@ function sanitizeUrl(url) {
   }
 
   // Strip whitespace and control characters that can bypass protocol checks
-  const normalized = decoded.replace(/[\s\x00-\x1f\x7f]/g, '').toLowerCase()
+  const normalized = Array.from(decoded)
+    .filter(char => !/\s/.test(char) && char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127)
+    .join('')
+    .toLowerCase()
 
   // Only allow http, https, mailto, and relative URLs
   const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:']

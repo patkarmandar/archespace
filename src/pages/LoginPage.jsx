@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextCore'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/ThemeCore'
 import { Lock, Sun, Moon, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'

@@ -3,7 +3,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import { useEncryption } from '../context/EncryptionContext'
+import { useEncryption } from '../context/EncryptionCore'
 import { decryptSpaces, decryptItems } from '../lib/dataProtection'
 import { GLOBAL_SEARCH_RESULT_LIMIT } from '../lib/constants'
 

@@ -6,8 +6,8 @@ import { useNavigate } from 'react-router-dom'
 import {
   Plus, Home, Archive, Trash2, Sun, Moon, Search, Settings,
 } from 'lucide-react'
-import { useCommandPalette } from '../context/CommandPaletteContext'
-import { useTheme } from '../context/ThemeContext'
+import { useCommandPalette } from '../context/CommandPaletteCore'
+import { useTheme } from '../context/ThemeCore'
 
 export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const { open, closePalette, extraCommands } = useCommandPalette()
@@ -39,16 +39,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
     return commands.filter(c => c.label.toLowerCase().includes(q))
   }, [commands, query])
 
-  useEffect(() => {
-    if (!open) {
-      setQuery('')
-      setActive(0)
-    }
-  }, [open])
-
-  useEffect(() => {
-    setActive(i => Math.min(i, Math.max(0, filtered.length - 1)))
-  }, [filtered.length])
+  const activeIndex = Math.min(active, Math.max(0, filtered.length - 1))
 
   useEffect(() => {
     if (!open) return
@@ -56,14 +47,14 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
       if (e.key === 'Escape') { e.preventDefault(); closePalette() }
       if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, filtered.length - 1)) }
       if (e.key === 'ArrowUp') { e.preventDefault(); setActive(a => Math.max(a - 1, 0)) }
-      if (e.key === 'Enter' && filtered[active]) {
+      if (e.key === 'Enter' && filtered[activeIndex]) {
         e.preventDefault()
-        filtered[active].run()
+        filtered[activeIndex].run()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, filtered, active])
+  }, [open, filtered, activeIndex, closePalette])
 
   if (!open) return null
 
@@ -98,7 +89,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
                   onClick={() => cmd.run()}
                   onMouseEnter={() => setActive(i)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${
-                    i === active ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-elevated'
+                    i === activeIndex ? 'bg-accent-muted text-text-primary' : 'text-text-secondary hover:bg-bg-elevated'
                   }`}
                 >
                   {Icon && <Icon size={16} className="shrink-0 text-text-muted" />}

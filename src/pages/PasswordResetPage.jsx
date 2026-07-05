@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Eye, EyeOff, KeyRound, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../context/AuthContextCore'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme } from '../context/ThemeCore'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { Spinner } from '../components/ui/UI'
 

@@ -3,13 +3,13 @@
  */
 import { useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContextCore'
-import { useToast } from '../../context/ToastContext'
-import { useCommandPalette } from '../../context/CommandPaletteContext'
-import { useShortcut } from '../../context/ShortcutsContext'
+import { useToast } from '../../context/ToastCore'
+import { useCommandPalette } from '../../context/CommandPaletteCore'
+import { useShortcut } from '../../context/ShortcutsCore'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import CommandPalette from '../CommandPalette'
 
-import { usePageActions } from '../../context/PageActionsContext'
+import { usePageActions } from '../../context/PageActionsCore'
 
 export default function AppChrome() {
   const { user } = useAuth()
@@ -17,7 +17,10 @@ export default function AppChrome() {
   const { openPalette } = useCommandPalette()
   const pageActions = usePageActions()
   const pageActionsRef = useRef(pageActions)
-  pageActionsRef.current = pageActions
+
+  useEffect(() => {
+    pageActionsRef.current = pageActions
+  }, [pageActions])
 
   useOfflineSync()
 

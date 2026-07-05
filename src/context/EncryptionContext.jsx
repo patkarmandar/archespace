@@ -5,8 +5,9 @@
  * While signed in, the unlocked key is kept in sessionStorage so refresh does not
  * require re-entering the PIN until manual lock or 24-hour auto-lock.
  */
-import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useAuth } from './AuthContextCore'
+import { EncryptionContext } from './EncryptionCore'
 import {
   setupUserVault,
   unlockUserVault,
@@ -29,10 +30,9 @@ import {
   clearClientRateLimit,
 } from '../lib/rateLimiter'
 
-const EncryptionContext = createContext(null)
-
 export function EncryptionProvider({ children }) {
   const { user, loading: authLoading } = useAuth()
+  const userId = user?.id
   const [cryptoKey, setCryptoKey] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
   const [sessionRestoring, setSessionRestoring] = useState(true)
@@ -43,21 +43,22 @@ export function EncryptionProvider({ children }) {
   })
 
   const refreshVaultStatus = useCallback(async () => {
-    if (!user?.id) {
+    if (!userId) {
       setVaultStatus({ loading: false, hasVault: false })
       return
     }
     setVaultStatus(s => ({ ...s, loading: true }))
     try {
-      const status = await getVaultStatus(user.id)
+      const status = await getVaultStatus(userId)
       setVaultStatus({ loading: false, ...status })
     } catch {
       setVaultStatus({ loading: false, hasVault: false })
     }
-  }, [user?.id])
+  }, [userId])
 
   useEffect(() => {
-    refreshVaultStatus()
+    const timer = setTimeout(refreshVaultStatus, 0)
+    return () => clearTimeout(timer)
   }, [refreshVaultStatus])
 
   const lock = useCallback(() => {
@@ -67,14 +68,14 @@ export function EncryptionProvider({ children }) {
   }, [])
 
   const applyUnlockedKey = useCallback(async (key) => {
-    if (user?.id) await saveVaultSession(user.id, key)
+    if (userId) await saveVaultSession(userId, key)
     setCryptoKey(key)
-  }, [user?.id])
+  }, [userId])
 
   const unlock = useCallback(async (pin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
 
-    const rateKey = `vault-unlock:${user.id}`
+    const rateKey = `vault-unlock:${userId}`
     const status = getClientRateLimitStatus(rateKey, VAULT_PIN_MAX_ATTEMPTS)
     if (status.blocked) {
       const msg = `Too many failed PIN attempts. Try again in ${status.retryAfter} seconds.`
@@ -85,7 +86,7 @@ export function EncryptionProvider({ children }) {
     setUnlocking(true)
     setUnlockError('')
     try {
-      const key = await unlockUserVault(user.id, pin)
+      const key = await unlockUserVault(userId, pin)
       clearClientRateLimit(rateKey)
       await applyUnlockedKey(key)
       return key
@@ -99,14 +100,14 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey])
+  }, [userId, applyUnlockedKey])
 
   const setup = useCallback(async (pin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
-      const { masterKey, recoveryCode, recoveryUnavailable } = await setupUserVault(user.id, pin)
+      const { masterKey, recoveryCode, recoveryUnavailable } = await setupUserVault(userId, pin)
       await applyUnlockedKey(masterKey)
       await refreshVaultStatus()
       return { recoveryCode, recoveryUnavailable }
@@ -117,14 +118,14 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey, refreshVaultStatus])
+  }, [userId, applyUnlockedKey, refreshVaultStatus])
 
   const updatePin = useCallback(async (currentPin, newPin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
-      const key = await changeVaultPinWithVerification(user.id, currentPin, newPin)
+      const key = await changeVaultPinWithVerification(userId, currentPin, newPin)
       await applyUnlockedKey(key)
     } catch (err) {
       const msg = err?.message || 'Failed to change PIN'
@@ -133,14 +134,14 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey])
+  }, [userId, applyUnlockedKey])
 
   const setupRecoveryCode = useCallback(async (currentPin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
-      const { masterKey, recoveryCode } = await createVaultRecoveryCode(user.id, currentPin)
+      const { masterKey, recoveryCode } = await createVaultRecoveryCode(userId, currentPin)
       await applyUnlockedKey(masterKey)
       return { recoveryCode }
     } catch (err) {
@@ -150,15 +151,15 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey])
+  }, [userId, applyUnlockedKey])
 
   const updatePinWithRecoveryCode = useCallback(async (recoveryCode, newPin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
       const { masterKey, recoveryCode: nextRecoveryCode } =
-        await changeVaultPinWithRecoveryCode(user.id, recoveryCode, newPin)
+        await changeVaultPinWithRecoveryCode(userId, recoveryCode, newPin)
       await applyUnlockedKey(masterKey)
       return { recoveryCode: nextRecoveryCode }
     } catch (err) {
@@ -168,15 +169,15 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey])
+  }, [userId, applyUnlockedKey])
 
   const recoverPinWithCode = useCallback(async (recoveryCode, newPin) => {
-    if (!user?.id) throw new Error('Not signed in')
+    if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
     setUnlockError('')
     try {
       const { masterKey, recoveryCode: nextRecoveryCode } =
-        await recoverVaultWithRecoveryCode(user.id, recoveryCode, newPin)
+        await recoverVaultWithRecoveryCode(userId, recoveryCode, newPin)
       await applyUnlockedKey(masterKey)
       return { recoveryCode: nextRecoveryCode }
     } catch (err) {
@@ -186,32 +187,40 @@ export function EncryptionProvider({ children }) {
     } finally {
       setUnlocking(false)
     }
-  }, [user?.id, applyUnlockedKey])
+  }, [userId, applyUnlockedKey])
 
   // Wait for auth hydration before clearing or restoring vault session.
   // Clearing while user is briefly null on refresh was wiping sessionStorage.
   useEffect(() => {
     if (authLoading) return
 
-    if (!user?.id) {
+    if (!userId) {
       clearVaultSession()
-      setCryptoKey(null)
-      setSessionRestoring(false)
-      return
+      const timer = setTimeout(() => {
+        setCryptoKey(null)
+        setSessionRestoring(false)
+      }, 0)
+      return () => clearTimeout(timer)
     }
 
     let cancelled = false
-    setSessionRestoring(true)
-    loadVaultSession(user.id).then(key => {
+    const restoringTimer = setTimeout(() => setSessionRestoring(true), 0)
+    loadVaultSession(userId).then(key => {
       if (cancelled) return
       if (key) setCryptoKey(key)
       setSessionRestoring(false)
     })
-    return () => { cancelled = true }
-  }, [user?.id, authLoading])
+    return () => {
+      cancelled = true
+      clearTimeout(restoringTimer)
+    }
+  }, [userId, authLoading])
 
   const lockRef = useRef(lock)
-  lockRef.current = lock
+
+  useEffect(() => {
+    lockRef.current = lock
+  }, [lock])
 
   useEffect(() => {
     if (!cryptoKey) return
@@ -260,10 +269,4 @@ export function EncryptionProvider({ children }) {
       {children}
     </EncryptionContext.Provider>
   )
-}
-
-export function useEncryption() {
-  const ctx = useContext(EncryptionContext)
-  if (!ctx) throw new Error('useEncryption must be used within EncryptionProvider')
-  return ctx
 }
