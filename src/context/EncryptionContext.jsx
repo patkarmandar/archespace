@@ -30,6 +30,17 @@ import {
   clearClientRateLimit,
 } from '../lib/rateLimiter'
 
+const VAULT_STATUS_TIMEOUT_MS = 8000
+const VAULT_SESSION_RESTORE_TIMEOUT_MS = 4000
+
+function withTimeout(promise, ms, message) {
+  let timeoutId
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
 export function EncryptionProvider({ children }) {
   const { user, loading: authLoading } = useAuth()
   const userId = user?.id
@@ -49,10 +60,15 @@ export function EncryptionProvider({ children }) {
     }
     setVaultStatus(s => ({ ...s, loading: true }))
     try {
-      const status = await getVaultStatus(userId)
+      const status = await withTimeout(
+        getVaultStatus(userId),
+        VAULT_STATUS_TIMEOUT_MS,
+        'Vault status check timed out.'
+      )
       setVaultStatus({ loading: false, ...status })
-    } catch {
-      setVaultStatus({ loading: false, hasVault: false })
+    } catch (error) {
+      console.warn('Failed to check vault status:', error)
+      setVaultStatus({ loading: false, hasVault: true })
     }
   }, [userId])
 
@@ -204,12 +220,25 @@ export function EncryptionProvider({ children }) {
     }
 
     let cancelled = false
-    const restoringTimer = setTimeout(() => setSessionRestoring(true), 0)
-    loadVaultSession(userId).then(key => {
-      if (cancelled) return
-      if (key) setCryptoKey(key)
-      setSessionRestoring(false)
-    })
+    const restoringTimer = setTimeout(() => {
+      if (!cancelled) setSessionRestoring(true)
+    }, 0)
+    withTimeout(
+      loadVaultSession(userId),
+      VAULT_SESSION_RESTORE_TIMEOUT_MS,
+      'Vault session restore timed out.'
+    )
+      .catch((error) => {
+        console.warn('Failed to restore vault session:', error)
+        clearVaultSession()
+        return null
+      })
+      .then(key => {
+        if (cancelled) return
+        clearTimeout(restoringTimer)
+        if (key) setCryptoKey(key)
+        setSessionRestoring(false)
+      })
     return () => {
       cancelled = true
       clearTimeout(restoringTimer)

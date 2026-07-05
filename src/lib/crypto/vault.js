@@ -58,11 +58,13 @@ async function generateMasterKey() {
  * @returns {Promise<{ hasVault: boolean }>}
  */
 export async function getVaultStatus(userId) {
-  const meta = await fetchVaultMeta(userId)
-  if (!meta) return { hasVault: false }
-  return {
-    hasVault: true,
-  }
+  const { data, error } = await supabase
+    .from('user_encryption')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return { hasVault: !!data }
 }
 
 /**
@@ -75,28 +77,38 @@ async function fetchVaultMeta(userId) {
     .eq('user_id', userId)
     .maybeSingle()
   if (error) {
-    if (isRecoverySchemaCacheError(error)) {
-      return fetchVaultMetaWithoutRecoveryColumns(userId)
-    }
+    if (isOptionalVaultColumnError(error)) return fetchVaultMetaWithoutOptionalColumns(userId)
     throw error
   }
   return data
 }
 
-async function fetchVaultMetaWithoutRecoveryColumns(userId) {
+async function fetchVaultMetaWithoutOptionalColumns(userId) {
   const { data, error } = await supabase
     .from('user_encryption')
-    .select('user_id, salt, key_check, wrapped_key, vault_format, pin_locked_until')
+    .select('user_id, salt, key_check, wrapped_key, vault_format')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
   if (!data) return data
   return {
     ...data,
+    pin_locked_until: null,
     recovery_salt: null,
     recovery_wrapped_key: null,
+    optionalColumnsMissing: true,
     recoveryColumnsMissing: true,
   }
+}
+
+function isOptionalVaultColumnError(error) {
+  const message = error?.message || ''
+  return (
+    message.includes('schema cache') &&
+    (message.includes('pin_locked_until') ||
+      message.includes('recovery_salt') ||
+      message.includes('recovery_wrapped_key'))
+  )
 }
 
 function isRecoverySchemaCacheError(error) {
@@ -111,10 +123,16 @@ async function assertVaultUnlockAllowed(userId) {
   const { data, error } = await supabase.rpc('get_vault_pin_lock_status')
   if (error) {
     // Fallback for projects that have not run the migration yet.
-    const meta = await fetchVaultMeta(userId)
-    if (meta?.pin_locked_until && new Date(meta.pin_locked_until) > new Date()) {
-      const retryAfter = Math.ceil((new Date(meta.pin_locked_until) - Date.now()) / 1000)
-      throw new Error(formatPinLockoutMessage(retryAfter))
+    try {
+      const meta = await fetchVaultMeta(userId)
+      if (meta?.pin_locked_until && new Date(meta.pin_locked_until) > new Date()) {
+        const retryAfter = Math.ceil((new Date(meta.pin_locked_until) - Date.now()) / 1000)
+        throw new Error(formatPinLockoutMessage(retryAfter))
+      }
+    } catch (fallbackError) {
+      if (fallbackError?.message?.startsWith('Too many failed PIN attempts.')) {
+        throw fallbackError
+      }
     }
     return
   }
