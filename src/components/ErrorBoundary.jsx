@@ -68,7 +68,7 @@ export default class ErrorBoundary extends Component {
                 Reload page
               </button>
               <button
-                onClick={() => { window.location.href = '/' }}
+                onClick={() => { window.location.href = '/app' }}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}
               >

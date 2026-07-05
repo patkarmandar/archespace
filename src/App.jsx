@@ -49,6 +49,7 @@ sessionStorage.removeItem('chunk_reload')
 
 const LoginPage = lazyWithRetry(() => import('./pages/LoginPage'))
 const PasswordResetPage = lazyWithRetry(() => import('./pages/PasswordResetPage'))
+const HomePage = lazyWithRetry(() => import('./pages/HomePage'))
 const DashboardPage = lazyWithRetry(() => import('./pages/DashboardPage'))
 const SpacePage = lazyWithRetry(() => import('./pages/SpacePage'))
 const RecycleBinPage = lazyWithRetry(() => import('./pages/RecycleBinPage'))
@@ -86,10 +87,22 @@ function PublicRoute({ children }) {
   const { user, loading } = useAuth()
 
   if (loading) return <PageLoader />
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/app" replace />
   return (
     <Suspense fallback={<PageLoader />}>
       {children}
+    </Suspense>
+  )
+}
+
+function HomeRoute() {
+  const { user, loading } = useAuth()
+
+  if (loading) return <PageLoader />
+  if (user) return <Navigate to="/app" replace />
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <HomePage />
     </Suspense>
   )
 }
@@ -156,7 +169,7 @@ function RouteErrorBoundary() {
             Reload page
           </button>
           <button
-            onClick={() => { window.location.href = '/' }}
+            onClick={() => { window.location.href = '/app' }}
             className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
             style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}
           >
@@ -175,7 +188,8 @@ const router = createBrowserRouter([
     children: [
       { path: '/login', element: <PublicRoute><LoginPage /></PublicRoute> },
       { path: '/reset-password', element: <Suspense fallback={<PageLoader />}><PasswordResetPage /></Suspense> },
-      { path: '/', element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
+      { path: '/', element: <HomeRoute /> },
+      { path: '/app', element: <ProtectedRoute><DashboardPage /></ProtectedRoute> },
       { path: '/space/:id', element: <ProtectedRoute><SpacePage /></ProtectedRoute> },
       { path: '/recycle-bin', element: <ProtectedRoute><RecycleBinPage /></ProtectedRoute> },
       { path: '/archive', element: <ProtectedRoute><ArchivePage /></ProtectedRoute> },

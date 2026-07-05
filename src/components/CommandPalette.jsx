@@ -19,7 +19,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const baseCommands = useMemo(() => [
     { id: 'new', label: 'New space', hint: 'N', icon: Plus, run: () => { closePalette(); onNewSpace?.() } },
     { id: 'search', label: 'Search', hint: '/', icon: Search, run: () => { closePalette(); onOpenSearch?.() } },
-    { id: 'home', label: 'Go to dashboard', icon: Home, run: () => { closePalette(); navigate('/') } },
+    { id: 'home', label: 'Go to dashboard', icon: Home, run: () => { closePalette(); navigate('/app') } },
     { id: 'archive', label: 'Open archive', icon: Archive, run: () => { closePalette(); navigate('/archive') } },
     { id: 'bin', label: 'Open recycle bin', icon: Trash2, run: () => { closePalette(); navigate('/recycle-bin') } },
     { id: 'settings', label: 'Settings', icon: Settings, run: () => { closePalette(); navigate('/settings') } },

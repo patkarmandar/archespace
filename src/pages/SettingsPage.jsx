@@ -185,7 +185,7 @@ export default function SettingsPage() {
         <div className="w-full px-4 sm:px-6 h-14 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
           >
             <ArrowLeft size={15} />

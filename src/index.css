@@ -112,6 +112,16 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes homeFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg); }
+  50% { transform: translate3d(0, -14px, 0) rotate(1deg); }
+}
+
+@keyframes homeFloatDelayed {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(1deg); }
+  50% { transform: translate3d(0, 16px, 0) rotate(-1deg); }
+}
+
 .animate-fade-in { animation: fadeIn 0.4s ease-out; }
 .animate-slide-in { animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -119,6 +129,8 @@ body {
 .animate-float-slow-reverse { animation: floatSlowReverse 18s ease-in-out infinite; }
 .animate-shake { animation: shake 0.4s ease-in-out; }
 .animate-slide-out { animation: slideOutRight 0.2s ease-in forwards; }
+.home-float { animation: homeFloat 8s ease-in-out infinite; }
+.home-float-delayed { animation: homeFloatDelayed 10s ease-in-out infinite; }
 
 /* Delay utilities for staggered animations */
 .delay-75 { animation-delay: 75ms; }
@@ -151,4 +163,3 @@ body {
   visibility: hidden;
   pointer-events: none;
 }
-
