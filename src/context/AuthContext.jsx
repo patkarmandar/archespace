@@ -62,9 +62,16 @@ export function AuthProvider({ children }) {
     })
 
   /** Update password, revoke all sessions, and force a fresh sign-in. */
-  const updatePasswordAndSignOut = async (password) => {
+  const updatePasswordAndSignOut = async (password, afterUpdate) => {
     const { error: updateError } = await supabase.auth.updateUser({ password })
     if (updateError) return { error: updateError }
+    if (afterUpdate) {
+      try {
+        await afterUpdate()
+      } catch (error) {
+        return { error }
+      }
+    }
 
     clearVaultSession()
     const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' })

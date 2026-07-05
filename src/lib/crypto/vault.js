@@ -2,6 +2,7 @@
  * vault.js - Per-user vault setup / unlock (Supabase user_encryption row).
  *
  * New vaults use a random master key wrapped with a PIN-derived key.
+ * A separate one-time recovery code can also wrap the same master key.
  */
 import { supabase } from '../supabase'
 import { encryptString, decryptString } from './cipher'
@@ -13,9 +14,16 @@ import {
 } from './keyDerivation'
 import { validateVaultPin } from './vaultPin'
 import { bytesFromBase64, bytesToBase64 } from './encoding'
+import {
+  generateRecoveryCode,
+  normalizeRecoveryCode,
+  validateRecoveryCode,
+} from './recoveryCode'
 
 const VAULT_CHECK_PLAINTEXT = 'ARCHE_VAULT_V1_OK'
 export const VAULT_FORMAT_PIN_WRAPPED = 'pin_wrapped'
+const RECOVERY_COLUMNS_MISSING_MESSAGE =
+  'Vault recovery is not enabled in the database yet. Run the recovery_salt and recovery_wrapped_key migration, then reload the Supabase schema cache.'
 
 function assertValidPin(pin) {
   const err = validateVaultPin(pin)
@@ -63,11 +71,40 @@ export async function getVaultStatus(userId) {
 async function fetchVaultMeta(userId) {
   const { data, error } = await supabase
     .from('user_encryption')
+    .select('user_id, salt, key_check, wrapped_key, vault_format, pin_locked_until, recovery_salt, recovery_wrapped_key')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    if (isRecoverySchemaCacheError(error)) {
+      return fetchVaultMetaWithoutRecoveryColumns(userId)
+    }
+    throw error
+  }
+  return data
+}
+
+async function fetchVaultMetaWithoutRecoveryColumns(userId) {
+  const { data, error } = await supabase
+    .from('user_encryption')
     .select('user_id, salt, key_check, wrapped_key, vault_format, pin_locked_until')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
-  return data
+  if (!data) return data
+  return {
+    ...data,
+    recovery_salt: null,
+    recovery_wrapped_key: null,
+    recoveryColumnsMissing: true,
+  }
+}
+
+function isRecoverySchemaCacheError(error) {
+  const message = error?.message || ''
+  return (
+    message.includes('schema cache') &&
+    (message.includes('recovery_salt') || message.includes('recovery_wrapped_key'))
+  )
 }
 
 async function assertVaultUnlockAllowed(userId) {
@@ -115,8 +152,13 @@ function isIncorrectPinError(err) {
 export async function setupUserVault(userId, pin) {
   assertValidPin(pin)
   const masterKey = await generateMasterKey()
-  await persistPinWrappedVault(userId, pin, masterKey)
-  return masterKey
+  const recoveryCode = generateRecoveryCode()
+  const { recoverySaved } = await persistPinWrappedVault(userId, pin, masterKey, { recoveryCode })
+  return {
+    masterKey,
+    recoveryCode: recoverySaved ? recoveryCode : null,
+    recoveryUnavailable: !recoverySaved,
+  }
 }
 
 /**
@@ -165,21 +207,144 @@ export async function changeVaultPinWithVerification(userId, currentPin, newPin)
   }
 }
 
-async function persistPinWrappedVault(userId, pin, masterKey) {
+/**
+ * Add or replace the one-time recovery code after verifying the current PIN.
+ */
+export async function createVaultRecoveryCode(userId, currentPin) {
+  assertValidPin(currentPin)
+  await assertVaultUnlockAllowed(userId)
+  try {
+    const meta = await fetchVaultMeta(userId)
+    if (!meta) throw new Error('No vault PIN configured.')
+    if (meta.recoveryColumnsMissing) {
+      throw new Error(RECOVERY_COLUMNS_MISSING_MESSAGE)
+    }
+
+    const masterKey = await unlockPinWrappedVault(meta, currentPin)
+    const recoveryCode = generateRecoveryCode()
+    await persistRecoveryWrappedVault(userId, masterKey, recoveryCode)
+    await recordVaultUnlockSuccess()
+    return { masterKey, recoveryCode }
+  } catch (err) {
+    if (isIncorrectPinError(err)) {
+      await recordVaultUnlockFailure()
+    }
+    throw err
+  }
+}
+
+/**
+ * Recover the master key with the one-time recovery code, then set a new PIN.
+ */
+export async function recoverVaultWithRecoveryCode(userId, recoveryCode, newPin) {
+  assertValidPin(newPin)
+  const codeErr = validateRecoveryCode(recoveryCode)
+  if (codeErr) throw new Error(codeErr)
+
+  const meta = await fetchVaultMeta(userId)
+  if (!meta) throw new Error('No vault PIN configured.')
+  if (meta.recoveryColumnsMissing) {
+    throw new Error(RECOVERY_COLUMNS_MISSING_MESSAGE)
+  }
+  if (!meta.recovery_salt || !meta.recovery_wrapped_key) {
+    throw new Error('No recovery code is configured for this vault.')
+  }
+
+  try {
+    const masterKey = await unlockRecoveryWrappedVault(meta, recoveryCode)
+    const nextRecoveryCode = generateRecoveryCode()
+    const { recoverySaved } = await persistPinWrappedVault(userId, newPin, masterKey, { recoveryCode: nextRecoveryCode })
+    if (!recoverySaved) {
+      throw new Error(RECOVERY_COLUMNS_MISSING_MESSAGE)
+    }
+    await recordVaultUnlockSuccess()
+    return { masterKey, recoveryCode: nextRecoveryCode }
+  } catch (err) {
+    throw new Error(
+      err?.message || 'Recovery code could not unlock your vault.',
+      { cause: err }
+    )
+  }
+}
+
+/**
+ * Verify the recovery code against the current master key, then set a new PIN.
+ */
+export async function changeVaultPinWithRecoveryCode(userId, recoveryCode, newPin) {
+  return recoverVaultWithRecoveryCode(userId, recoveryCode, newPin)
+}
+
+async function persistPinWrappedVault(userId, pin, masterKey, { recoveryCode = '' } = {}) {
   const pinSalt = generateSalt()
   const pinKey = await deriveEncryptionKey(pin, pinSalt)
   const raw = await exportRawAesKey(masterKey)
   const wrappedKey = await encryptString(bytesToBase64(raw), pinKey)
   const keyCheck = await encryptString(VAULT_CHECK_PLAINTEXT, masterKey)
 
-  const { error } = await supabase.from('user_encryption').upsert({
+  const payload = {
     user_id: userId,
     salt: saltToBase64(pinSalt),
     key_check: keyCheck,
     wrapped_key: wrappedKey,
     vault_format: VAULT_FORMAT_PIN_WRAPPED,
-  })
-  if (error) throw error
+  }
+
+  if (recoveryCode) {
+    const normalizedCode = normalizeRecoveryCode(recoveryCode)
+    const recoverySalt = generateSalt()
+    const recoveryKey = await deriveEncryptionKey(normalizedCode, recoverySalt)
+    payload.recovery_salt = saltToBase64(recoverySalt)
+    payload.recovery_wrapped_key = await encryptString(bytesToBase64(raw), recoveryKey)
+  }
+
+  const { error } = await supabase.from('user_encryption').upsert(payload)
+  if (error) {
+    if (recoveryCode && isRecoverySchemaCacheError(error)) {
+      const pinOnlyPayload = { ...payload }
+      delete pinOnlyPayload.recovery_salt
+      delete pinOnlyPayload.recovery_wrapped_key
+
+      const { error: pinOnlyError } = await supabase.from('user_encryption').upsert(pinOnlyPayload)
+      if (pinOnlyError) throw pinOnlyError
+      return { recoverySaved: false }
+    }
+    throw error
+  }
+  return { recoverySaved: true }
+}
+
+async function persistRecoveryWrappedVault(userId, masterKey, recoveryCode) {
+  const raw = await exportRawAesKey(masterKey)
+  const normalizedCode = normalizeRecoveryCode(recoveryCode)
+  const recoverySalt = generateSalt()
+  const recoveryKey = await deriveEncryptionKey(normalizedCode, recoverySalt)
+  const payload = {
+    recovery_salt: saltToBase64(recoverySalt),
+    recovery_wrapped_key: await encryptString(bytesToBase64(raw), recoveryKey),
+  }
+
+  const { error } = await supabase
+    .from('user_encryption')
+    .update(payload)
+    .eq('user_id', userId)
+  if (error) {
+    if (isRecoverySchemaCacheError(error)) {
+      throw new Error(RECOVERY_COLUMNS_MISSING_MESSAGE, { cause: error })
+    }
+    throw error
+  }
+}
+
+async function unlockRecoveryWrappedVault(meta, recoveryCode) {
+  const recoverySalt = saltFromBase64(meta.recovery_salt)
+  const recoveryKey = await deriveEncryptionKey(normalizeRecoveryCode(recoveryCode), recoverySalt)
+  const rawB64 = await decryptString(meta.recovery_wrapped_key, recoveryKey)
+  const masterKey = await importRawAesKey(bytesFromBase64(rawB64))
+  const check = await decryptString(meta.key_check, masterKey)
+  if (check !== VAULT_CHECK_PLAINTEXT) {
+    throw new Error('Recovery code could not unlock your vault.')
+  }
+  return masterKey
 }
 
 async function unlockPinWrappedVault(meta, pin) {

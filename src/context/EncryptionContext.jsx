@@ -11,6 +11,9 @@ import {
   setupUserVault,
   unlockUserVault,
   changeVaultPinWithVerification,
+  createVaultRecoveryCode,
+  changeVaultPinWithRecoveryCode,
+  recoverVaultWithRecoveryCode,
   getVaultStatus,
 } from '../lib/crypto/vault'
 import {
@@ -103,10 +106,10 @@ export function EncryptionProvider({ children }) {
     setUnlocking(true)
     setUnlockError('')
     try {
-      const key = await setupUserVault(user.id, pin)
-      await applyUnlockedKey(key)
+      const { masterKey, recoveryCode, recoveryUnavailable } = await setupUserVault(user.id, pin)
+      await applyUnlockedKey(masterKey)
       await refreshVaultStatus()
-      return key
+      return { recoveryCode, recoveryUnavailable }
     } catch (err) {
       const msg = err?.message || 'Failed to set up vault'
       setUnlockError(msg)
@@ -125,6 +128,59 @@ export function EncryptionProvider({ children }) {
       await applyUnlockedKey(key)
     } catch (err) {
       const msg = err?.message || 'Failed to change PIN'
+      setUnlockError(msg)
+      throw err
+    } finally {
+      setUnlocking(false)
+    }
+  }, [user?.id, applyUnlockedKey])
+
+  const setupRecoveryCode = useCallback(async (currentPin) => {
+    if (!user?.id) throw new Error('Not signed in')
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      const { masterKey, recoveryCode } = await createVaultRecoveryCode(user.id, currentPin)
+      await applyUnlockedKey(masterKey)
+      return { recoveryCode }
+    } catch (err) {
+      const msg = err?.message || 'Failed to set up recovery code'
+      setUnlockError(msg)
+      throw err
+    } finally {
+      setUnlocking(false)
+    }
+  }, [user?.id, applyUnlockedKey])
+
+  const updatePinWithRecoveryCode = useCallback(async (recoveryCode, newPin) => {
+    if (!user?.id) throw new Error('Not signed in')
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      const { masterKey, recoveryCode: nextRecoveryCode } =
+        await changeVaultPinWithRecoveryCode(user.id, recoveryCode, newPin)
+      await applyUnlockedKey(masterKey)
+      return { recoveryCode: nextRecoveryCode }
+    } catch (err) {
+      const msg = err?.message || 'Failed to change PIN'
+      setUnlockError(msg)
+      throw err
+    } finally {
+      setUnlocking(false)
+    }
+  }, [user?.id, applyUnlockedKey])
+
+  const recoverPinWithCode = useCallback(async (recoveryCode, newPin) => {
+    if (!user?.id) throw new Error('Not signed in')
+    setUnlocking(true)
+    setUnlockError('')
+    try {
+      const { masterKey, recoveryCode: nextRecoveryCode } =
+        await recoverVaultWithRecoveryCode(user.id, recoveryCode, newPin)
+      await applyUnlockedKey(masterKey)
+      return { recoveryCode: nextRecoveryCode }
+    } catch (err) {
+      const msg = err?.message || 'Failed to recover vault PIN'
       setUnlockError(msg)
       throw err
     } finally {
@@ -193,6 +249,9 @@ export function EncryptionProvider({ children }) {
         unlock,
         setup,
         updatePin,
+        setupRecoveryCode,
+        updatePinWithRecoveryCode,
+        recoverPinWithCode,
         lock,
         refreshVaultStatus,
         clearUnlockError: () => setUnlockError(''),

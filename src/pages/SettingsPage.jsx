@@ -19,7 +19,7 @@ import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 export default function SettingsPage() {
   const navigate = useNavigate()
   const { user, signIn, signOut, requestPasswordReset, updatePasswordAndSignOut } = useAuth()
-  const { cryptoKey, updatePin, unlocking } = useEncryption()
+  const { cryptoKey, updatePin, setupRecoveryCode, updatePinWithRecoveryCode, unlocking } = useEncryption()
   const { toast } = useToast()
   const { data: spaces = [] } = useSpaces()
   const queryClient = useQueryClient()
@@ -33,10 +33,17 @@ export default function SettingsPage() {
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
+  const [recoverySetupPin, setRecoverySetupPin] = useState('')
+  const [recoveryCodeInput, setRecoveryCodeInput] = useState('')
+  const [recoveryPin, setRecoveryPin] = useState('')
+  const [confirmRecoveryPin, setConfirmRecoveryPin] = useState('')
+  const [oneTimeRecoveryCode, setOneTimeRecoveryCode] = useState('')
 
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [pinLoading, setPinLoading] = useState(false)
+  const [recoverySetupLoading, setRecoverySetupLoading] = useState(false)
+  const [pinRecoveryLoading, setPinRecoveryLoading] = useState(false)
   const [openSection, setOpenSection] = useState('password')
 
   const handleChangePassword = async (e) => {
@@ -107,6 +114,45 @@ export default function SettingsPage() {
       toast.error(err?.message || 'Failed to change vault PIN.')
     }
     setPinLoading(false)
+  }
+
+  const handleSetupRecoveryCode = async (e) => {
+    e.preventDefault()
+    setRecoverySetupLoading(true)
+    try {
+      const { recoveryCode } = await setupRecoveryCode(recoverySetupPin)
+      setRecoverySetupPin('')
+      setOneTimeRecoveryCode(recoveryCode)
+      toast.success('Recovery code created. Save it now.')
+    } catch (err) {
+      toast.error(err?.message || 'Failed to create recovery code.')
+    }
+    setRecoverySetupLoading(false)
+  }
+
+  const handleChangePinWithRecoveryCode = async (e) => {
+    e.preventDefault()
+    const pinErr = validateVaultPin(recoveryPin)
+    if (pinErr) {
+      toast.error(pinErr)
+      return
+    }
+    if (recoveryPin !== confirmRecoveryPin) {
+      toast.error('New PINs do not match.')
+      return
+    }
+    setPinRecoveryLoading(true)
+    try {
+      const { recoveryCode } = await updatePinWithRecoveryCode(recoveryCodeInput, recoveryPin)
+      setRecoveryCodeInput('')
+      setRecoveryPin('')
+      setConfirmRecoveryPin('')
+      setOneTimeRecoveryCode(recoveryCode)
+      toast.success('Vault PIN updated. Save your new recovery code.')
+    } catch (err) {
+      toast.error(err?.message || 'Failed to reset vault PIN.')
+    }
+    setPinRecoveryLoading(false)
   }
 
   const handleExport = async () => {
@@ -292,6 +338,83 @@ export default function SettingsPage() {
                     {pinLoading || unlocking ? 'Updating…' : 'Change vault PIN'}
                   </button>
                 </form>
+
+                <div className="my-5 border-t border-bg-border" />
+
+                <form onSubmit={handleSetupRecoveryCode} className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-text-primary">Set up recovery code</h3>
+                    <p className="text-text-muted text-xs mt-0.5">Use your current vault PIN to create or replace your one-time recovery code.</p>
+                  </div>
+                  <PinInput
+                    id="settings-recovery-setup-pin"
+                    label="Current vault PIN"
+                    value={recoverySetupPin}
+                    onChange={setRecoverySetupPin}
+                    disabled={recoverySetupLoading || unlocking}
+                  />
+                  <button
+                    type="submit"
+                    disabled={recoverySetupLoading || unlocking || recoverySetupPin.length < VAULT_PIN_MIN_LENGTH}
+                    className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {recoverySetupLoading || unlocking ? 'Creating…' : 'Create recovery code'}
+                  </button>
+                </form>
+
+                <div className="my-5 border-t border-bg-border" />
+
+                <form onSubmit={handleChangePinWithRecoveryCode} className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-text-primary">Forgot current PIN?</h3>
+                    <p className="text-text-muted text-xs mt-0.5">Use your recovery code to set a new vault PIN.</p>
+                  </div>
+                  <div>
+                    <label htmlFor="pin-recovery-code" className="block text-xs font-medium text-text-secondary mb-1.5">
+                      Recovery code
+                    </label>
+                    <input
+                      id="pin-recovery-code"
+                      type="text"
+                      value={recoveryCodeInput}
+                      onChange={e => setRecoveryCodeInput(e.target.value)}
+                      required
+                      autoComplete="off"
+                      inputMode="text"
+                      className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <PinInput
+                    id="settings-recovery-pin"
+                    label="New vault PIN"
+                    value={recoveryPin}
+                    onChange={setRecoveryPin}
+                    disabled={pinRecoveryLoading || unlocking}
+                  />
+                  <PinInput
+                    id="settings-recovery-confirm-pin"
+                    label="Confirm new vault PIN"
+                    value={confirmRecoveryPin}
+                    onChange={setConfirmRecoveryPin}
+                    disabled={pinRecoveryLoading || unlocking}
+                  />
+                  <WeakPinWarning message={!validateVaultPin(recoveryPin) ? getWeakPinWarning(recoveryPin) : null} />
+                  <button
+                    type="submit"
+                    disabled={pinRecoveryLoading || unlocking}
+                    className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {pinRecoveryLoading || unlocking ? 'Updating…' : 'Reset PIN with recovery code'}
+                  </button>
+                </form>
+
+                {oneTimeRecoveryCode && (
+                  <div className="mt-4 bg-success/10 border border-success/30 rounded-xl p-3 space-y-2">
+                    <p className="text-success text-xs font-semibold">New one-time recovery code</p>
+                    <p className="font-mono text-lg tracking-[0.2em] text-text-primary break-all">{oneTimeRecoveryCode}</p>
+                    <p className="text-text-muted text-xs">Save this code now. It replaces the previous recovery code.</p>
+                  </div>
+                )}
               </div>
             )}
           </section>
