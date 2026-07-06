@@ -63,6 +63,7 @@ export default function SpaceItem({
   const [savedFlash, setSavedFlash] = useState(false)
   const [pendingSync, setPendingSync] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [editorVersion, setEditorVersion] = useState(0)
 
   const latestState = useRef({ title: item.title, content: item.content })
   
@@ -85,6 +86,7 @@ export default function SpaceItem({
     setSyncedItem({ id: item.id, title: item.title, content: item.content })
     setTitleVal(item.title)
     setLocalContent(item.content)
+    setEditorVersion(version => version + 1)
   }
 
   // ── Notify parent about dirty state (for beforeunload warning) ──
@@ -189,6 +191,7 @@ export default function SpaceItem({
   const handleDiscard = () => {
     setTitleVal(item.title)
     setLocalContent(item.content)
+    setEditorVersion(version => version + 1)
     setIsDirty(false)
     setCollapseGuard(false)
     clearTimeout(autoSaveTimer.current)
@@ -435,10 +438,10 @@ export default function SpaceItem({
       {!collapsed && (
         <div className={isFullscreen ? 'flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8' : 'px-4 py-4'}>
           {/* Render only the editor for this item's type (not all four) */}
-          {item.type === 'textbox'       && <TextboxEditor    content={localContent} onChange={handleContentChange} />}
-          {item.type === 'checkbox_list' && <ChecklistEditor  content={localContent} onChange={handleContentChange} />}
-          {item.type === 'menu_list'     && <MenuListEditor   content={localContent} onChange={handleContentChange} />}
-          {item.type === 'card_list'     && <CardListEditor   content={localContent} onChange={handleContentChange} />}
+          {item.type === 'textbox'       && <TextboxEditor    key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'checkbox_list' && <ChecklistEditor  key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'menu_list'     && <MenuListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'card_list'     && <CardListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
         </div>
       )}
     </div>
