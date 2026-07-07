@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeCore'
-import { Lock, Sun, Moon, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
+import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
@@ -17,7 +17,7 @@ import {
 
 export default function LoginPage() {
   const { signIn, signUp, requestPasswordReset } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { theme, themes, toggle } = useTheme()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -48,6 +48,7 @@ export default function LoginPage() {
 
   const isSignUp = mode === 'signup' && MULTI_USER_ENABLED
   const isForgot = mode === 'forgot'
+  const currentThemeName = themes.find(option => option.id === theme)?.name || 'Theme'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -140,10 +141,10 @@ export default function LoginPage() {
         type="button"
         onClick={toggle}
         className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-50"
-        title="Toggle theme"
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        title={`Current theme: ${currentThemeName}`}
+        aria-label="Switch app theme"
       >
-        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        <Sparkles size={16} />
       </button>
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">

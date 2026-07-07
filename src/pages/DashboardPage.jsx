@@ -8,14 +8,13 @@
  *   - Pin spaces to top
  *   - Search spaces and item content
  *   - Access archive, recycle bin, settings
- *   - Toggle dark/light theme
  */
 
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Search, Folder,
-  Trash2, Sun, Moon, Archive, Command, CheckSquare, Settings, Lock, Menu,
+  Trash2, Archive, Command, CheckSquare, Settings, Lock, Menu,
 } from 'lucide-react'
 import GlobalSearchResults from '../components/GlobalSearchResults'
 import { useDragReorder } from '../hooks/useDragReorder'
@@ -25,7 +24,6 @@ import BulkSelectionBar from '../components/BulkSelectionBar'
 import { BULK_ICONS } from '../components/BulkSelectionIcons'
 import { useAuth } from '../context/AuthContextCore'
 import { useEncryption } from '../context/EncryptionCore'
-import { useTheme } from '../context/ThemeCore'
 import { useToast } from '../context/ToastCore'
 import { useRegisterPageActions } from '../context/PageActionsCore'
 import { useSpaces } from '../hooks/useSpaces'
@@ -41,7 +39,6 @@ import { SpaceCard } from '../components/space/SpaceCard'
 export default function DashboardPage() {
   const { user } = useAuth()
   const { lock, isUnlocked } = useEncryption()
-  const { theme, toggle } = useTheme()
   const { toast } = useToast()
   const { openPalette } = useCommandPalette()
   const {
@@ -208,17 +205,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Actions - desktop: theme, lock, command, archive, bin, settings */}
+          {/* Actions - desktop: lock, command, archive, bin, settings */}
           <div className="hidden sm:flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggle}
-              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            >
-              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              <span className="hidden nav:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
-            </button>
             {isUnlocked && (
               <button
                 type="button"
@@ -281,16 +269,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Actions - mobile: theme + lock + ordered menu (search is the bar below) */}
+          {/* Actions - mobile: lock + ordered menu (search is the bar below) */}
           <div className="flex sm:hidden items-center gap-2">
-            <button
-              type="button"
-              onClick={toggle}
-              className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
             {isUnlocked && (
               <button
                 type="button"

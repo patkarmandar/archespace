@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Home, Archive, Trash2, Sun, Moon, Search, Settings,
+  Plus, Home, Archive, Trash2, Search, Settings, Sparkles,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteCore'
 import { useTheme } from '../context/ThemeCore'
@@ -14,7 +14,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
-  const { theme, toggle } = useTheme()
+  const { toggle } = useTheme()
 
   const baseCommands = useMemo(() => [
     { id: 'new', label: 'New space', hint: 'N', icon: Plus, run: () => { closePalette(); onNewSpace?.() } },
@@ -25,11 +25,11 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
     { id: 'settings', label: 'Settings', icon: Settings, run: () => { closePalette(); navigate('/settings') } },
     {
       id: 'theme',
-      label: theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode',
-      icon: theme === 'dark' ? Sun : Moon,
+      label: 'Switch app theme',
+      icon: Sparkles,
       run: () => { toggle(); closePalette() },
     },
-  ], [closePalette, navigate, onNewSpace, onOpenSearch, theme, toggle])
+  ], [closePalette, navigate, onNewSpace, onOpenSearch, toggle])
 
   const commands = useMemo(() => [...baseCommands, ...extraCommands], [baseCommands, extraCommands])
 

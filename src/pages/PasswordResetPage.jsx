@@ -3,7 +3,7 @@
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Eye, EyeOff, KeyRound, Moon, Sun } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, KeyRound, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeCore'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
@@ -12,12 +12,13 @@ import { Spinner } from '../components/ui/UI'
 export default function PasswordResetPage() {
   const navigate = useNavigate()
   const { user, loading, passwordRecovery, updatePasswordAndSignOut } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { theme, themes, toggle } = useTheme()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const currentThemeName = themes.find(option => option.id === theme)?.name || 'Theme'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -50,10 +51,10 @@ export default function PasswordResetPage() {
         type="button"
         onClick={toggle}
         className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-50"
-        title="Toggle theme"
-        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        title={`Current theme: ${currentThemeName}`}
+        aria-label="Switch app theme"
       >
-        {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        <Sparkles size={16} />
       </button>
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
