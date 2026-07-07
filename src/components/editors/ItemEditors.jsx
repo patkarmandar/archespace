@@ -14,7 +14,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckSquare, Square, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, CheckSquare, Square, Eye, EyeOff, GripVertical } from 'lucide-react'
 import MarkdownPreview from './MarkdownPreview'
 
 // ─────────────────────────────────────────────────────────
@@ -29,6 +29,23 @@ function DelBtn({ onClick }) {
       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all shrink-0"
     >
       <Trash2 size={13} />
+    </button>
+  )
+}
+
+function ReorderBtn({ onDragStart, onDragEnd, onKeyDown }) {
+  return (
+    <button
+      type="button"
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onKeyDown={onKeyDown}
+      title="Drag to reorder. Use Arrow Up or Arrow Down while focused."
+      aria-label="Reorder item"
+      className="opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted transition-all shrink-0"
+    >
+      <GripVertical size={13} />
     </button>
   )
 }
@@ -112,6 +129,7 @@ function ListEditor({ content, onChange, variant }) {
   const inputAttr = isChecklist ? 'data-checklist-input' : 'data-menu-input'
   const [items, setItems] = useState(content?.items || [])
   const containerRef = useRef(null)
+  const dragFromIndex = useRef(null)
 
   const adjustItemText = (el) => {
     if (!el) return
@@ -148,6 +166,40 @@ function ListEditor({ content, onChange, variant }) {
   const removeItem = (id) =>
     push(items.filter(item => item.id !== id))
 
+  const moveItem = (fromIndex, toIndex) => {
+    if (toIndex < 0 || toIndex >= items.length) return
+    const nextItems = [...items]
+    const [moved] = nextItems.splice(fromIndex, 1)
+    nextItems.splice(toIndex, 0, moved)
+    push(nextItems)
+  }
+
+  const handleDragStart = (e, idx) => {
+    dragFromIndex.current = idx
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', items[idx].id)
+  }
+
+  const handleDrop = (e, toIndex) => {
+    e.preventDefault()
+    const draggedId = e.dataTransfer.getData('text/plain')
+    const fromIndex = dragFromIndex.current ?? items.findIndex(item => item.id === draggedId)
+    dragFromIndex.current = null
+    if (fromIndex === null || fromIndex === -1 || fromIndex === toIndex) return
+    moveItem(fromIndex, toIndex)
+  }
+
+  const handleReorderKeyDown = (e, idx) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      moveItem(idx, idx - 1)
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      moveItem(idx, idx + 1)
+    }
+  }
+
   const handleKeyDown = (e, idx) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addItem() }
     if (e.key === 'Backspace' && items[idx].text === '' && items.length > 1) {
@@ -159,7 +211,12 @@ function ListEditor({ content, onChange, variant }) {
   return (
     <div className="space-y-1" ref={containerRef}>
       {items.map((item, idx) => (
-        <div key={item.id} className="flex items-start gap-2 group py-0.5">
+        <div
+          key={item.id}
+          className="flex items-start gap-2 group py-0.5"
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => handleDrop(e, idx)}
+        >
           {isChecklist ? (
             <button
               onClick={() => updateItem(item.id, 'checked', !item.checked)}
@@ -188,7 +245,14 @@ function ListEditor({ content, onChange, variant }) {
             }`}
           />
 
-          <DelBtn onClick={() => removeItem(item.id)} />
+          <div className="flex shrink-0 items-center gap-0.5">
+            <ReorderBtn
+              onDragStart={e => handleDragStart(e, idx)}
+              onDragEnd={() => { dragFromIndex.current = null }}
+              onKeyDown={e => handleReorderKeyDown(e, idx)}
+            />
+            <DelBtn onClick={() => removeItem(item.id)} />
+          </div>
         </div>
       ))}
 
