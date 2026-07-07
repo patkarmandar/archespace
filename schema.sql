@@ -2,9 +2,11 @@
 -- Arche - Database Schema (Supabase / PostgreSQL)
 -- ============================================================
 --
--- This is the baseline schema file for the Arche app.
--- Run it in the Supabase SQL Editor to set up a new project with
--- all tables, indexes, RLS policies, triggers, and realtime config.
+-- This is the complete schema for the Arche app.
+-- Run it once in the Supabase SQL Editor on a
+-- new project to create every table (with all columns already in
+-- place), index, function, trigger, RLS policy, and realtime
+-- publication in one pass.
 --
 -- Safe to re-run: every statement uses IF NOT EXISTS / IF EXISTS
 -- guards so nothing breaks if the objects already exist.
@@ -61,17 +63,26 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- User Encryption: per-user metadata for client-side encrypted vaults.
 -- Stores PBKDF2 salt + encrypted verifier, never the raw key.
 CREATE TABLE IF NOT EXISTS user_encryption (
-  user_id      uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  salt         text        NOT NULL,
-  key_check    text        NOT NULL,
-  wrapped_key  text        DEFAULT NULL,
-  vault_format text        DEFAULT 'legacy',
-  created_at   timestamptz NOT NULL DEFAULT now()
+  user_id              uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  salt                 text        NOT NULL,
+  key_check            text        NOT NULL,
+  wrapped_key          text        DEFAULT NULL,
+  recovery_salt        text        DEFAULT NULL,
+  recovery_wrapped_key text        DEFAULT NULL,
+  vault_format         text        DEFAULT 'legacy',
+  pin_failed_attempts  integer     NOT NULL DEFAULT 0,
+  pin_locked_until     timestamptz DEFAULT NULL,
+  created_at           timestamptz NOT NULL DEFAULT now()
 );
 
--- PIN-wrapped vaults (run on existing projects):
-ALTER TABLE user_encryption ADD COLUMN IF NOT EXISTS wrapped_key text DEFAULT NULL;
-ALTER TABLE user_encryption ADD COLUMN IF NOT EXISTS vault_format text DEFAULT 'legacy';
+-- User Settings: per-user application preferences.
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id      uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  theme_mode   text        NOT NULL DEFAULT 'system' CHECK (theme_mode IN ('system', 'dark', 'light')),
+  accent_color text        NOT NULL DEFAULT 'mint' CHECK (accent_color IN ('mint', 'lavender', 'amber')),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
 
 
 -- ────────────────────────────────────────────────────────────
@@ -121,6 +132,11 @@ CREATE TRIGGER trg_space_items_updated_at
   BEFORE UPDATE ON space_items
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_user_settings_updated_at ON user_settings;
+CREATE TRIGGER trg_user_settings_updated_at
+  BEFORE UPDATE ON user_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
 -- Auto-populate user_id on space_items from the parent space.
 CREATE OR REPLACE FUNCTION populate_item_user_id()
 RETURNS TRIGGER AS $$
@@ -158,8 +174,10 @@ ALTER TABLE spaces      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE space_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_encryption  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings    ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_encryption TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE user_settings TO authenticated;
 
 -- Spaces: full CRUD for the owning user only.
 DO $$ BEGIN
@@ -227,6 +245,21 @@ DO $$ BEGIN
 END $$;
 
 
+-- User settings: full CRUD for the owning user only.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'user_settings'
+      AND policyname = 'Users manage own settings'
+  ) THEN
+    CREATE POLICY "Users manage own settings"
+      ON user_settings FOR ALL
+      USING     (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
+
+
 -- ────────────────────────────────────────────────────────────
 -- 5. REALTIME
 -- ────────────────────────────────────────────────────────────
@@ -272,3 +305,63 @@ BEGIN
   END LOOP;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- ────────────────────────────────────────────────────────────
+-- 7. VAULT PIN BRUTE-FORCE PROTECTION
+-- ────────────────────────────────────────────────────────────
+-- (pin_failed_attempts / pin_locked_until columns are defined
+--  on user_encryption in section 1 above)
+
+CREATE OR REPLACE FUNCTION get_vault_pin_lock_status()
+RETURNS jsonb AS $$
+DECLARE
+  v_locked_until timestamptz;
+  v_retry_after integer;
+BEGIN
+  SELECT pin_locked_until INTO v_locked_until
+  FROM user_encryption
+  WHERE user_id = auth.uid();
+
+  IF NOT FOUND OR v_locked_until IS NULL OR v_locked_until <= now() THEN
+    RETURN jsonb_build_object('locked', false, 'retry_after_seconds', 0);
+  END IF;
+
+  v_retry_after := GREATEST(0, EXTRACT(EPOCH FROM (v_locked_until - now()))::integer);
+  RETURN jsonb_build_object('locked', true, 'retry_after_seconds', v_retry_after);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION record_vault_pin_unlock_failure()
+RETURNS void AS $$
+DECLARE
+  v_max_attempts constant integer := 5;
+  v_lock_minutes constant integer := 5;
+BEGIN
+  UPDATE user_encryption
+  SET
+    pin_failed_attempts = pin_failed_attempts + 1,
+    pin_locked_until = CASE
+      WHEN pin_failed_attempts + 1 >= v_max_attempts
+        THEN now() + (v_lock_minutes || ' minutes')::interval
+      ELSE pin_locked_until
+    END
+  WHERE user_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+CREATE OR REPLACE FUNCTION record_vault_pin_unlock_success()
+RETURNS void AS $$
+BEGIN
+  UPDATE user_encryption
+  SET pin_failed_attempts = 0, pin_locked_until = NULL
+  WHERE user_id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+REVOKE ALL ON FUNCTION get_vault_pin_lock_status() FROM PUBLIC;
+REVOKE ALL ON FUNCTION record_vault_pin_unlock_failure() FROM PUBLIC;
+REVOKE ALL ON FUNCTION record_vault_pin_unlock_success() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_vault_pin_lock_status() TO authenticated;
+GRANT EXECUTE ON FUNCTION record_vault_pin_unlock_failure() TO authenticated;
+GRANT EXECUTE ON FUNCTION record_vault_pin_unlock_success() TO authenticated;
