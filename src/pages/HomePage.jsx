@@ -100,7 +100,7 @@ export default function HomePage() {
         <div className="relative z-10 mx-auto flex h-full max-w-4xl flex-col items-center justify-center px-1 pt-20 pb-10 text-center sm:pt-24 sm:pb-12">
           <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200/20 bg-emerald-200/10 px-3 py-1.5 text-xs font-medium text-emerald-100">
             <ShieldCheck size={14} />
-            Encrypted private workspace
+            Encrypted private space
           </p>
           <h1 className="max-w-4xl text-4xl font-semibold leading-[1.02] tracking-normal sm:text-6xl lg:text-7xl">
             Arche Space
@@ -156,28 +156,34 @@ export default function HomePage() {
       <section className="bg-[#0f1117] px-4 py-20 text-white sm:px-6">
         <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
           <article className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
-            <Server size={24} className="text-emerald-200" />
-            <h2 className="mt-4 text-xl font-semibold">Self-host friendly</h2>
+            <div className="flex items-center gap-3">
+              <Server size={24} className="shrink-0 text-emerald-200" />
+              <h2 className="text-xl font-semibold">Self-host friendly</h2>
+            </div>
             <p className="mt-3 text-sm leading-6 text-white/68">
               Run Arche Space for yourself with single-user mode enabled, or configure sign-up for a small private group.
             </p>
           </article>
           <article className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
-            <GitFork size={24} className="text-amber-200" />
-            <h2 className="mt-4 text-xl font-semibold">Open source</h2>
+            <div className="flex items-center gap-3">
+              <GitFork size={24} className="shrink-0 text-amber-200" />
+              <h2 className="text-xl font-semibold">Open source</h2>
+            </div>
             <p className="mt-3 text-sm leading-6 text-white/68">
               The project is open for inspection, improvement, forking, and starring on GitHub.
             </p>
           </article>
           <article className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
-            <Mail size={24} className="text-emerald-200" />
-            <h2 className="mt-4 text-xl font-semibold">Contact</h2>
+            <div className="flex items-center gap-3">
+              <Mail size={24} className="shrink-0 text-emerald-200" />
+              <h2 className="text-xl font-semibold">Contact</h2>
+            </div>
             <div className="mt-3 space-y-3 text-sm leading-6 text-white/68">
               <p>
-                Help: <a className="font-semibold text-emerald-200 hover:underline" href="mailto:help@archespace.cc">help@archespace.cc</a>
+                Need help with setup, login, recovery, or self-hosting? Write to <a className="font-semibold text-emerald-200 hover:underline" href="mailto:help@archespace.cc">help@archespace.cc</a>.
               </p>
               <p>
-                Feature requests or anything for developers: <a className="font-semibold text-emerald-200 hover:underline" href="mailto:dev@archespace.cc">dev@archespace.cc</a>
+                Have a feature request, bug report, or note for the developers? Send it to <a className="font-semibold text-emerald-200 hover:underline" href="mailto:dev@archespace.cc">dev@archespace.cc</a>.
               </p>
             </div>
           </article>
@@ -188,7 +194,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl">
           <h2 className="text-3xl font-semibold tracking-normal">A quiet place for everything you are shaping.</h2>
           <p className="mt-4 text-sm leading-6 text-white/65">
-            Keep the rough draft, the list, the plan, the memory, and the next move in one encrypted workspace.
+            Keep the rough draft, the list, the plan, the memory, and the next move in one encrypted space.
           </p>
           <div className="mt-8 flex justify-center">
             <Link
