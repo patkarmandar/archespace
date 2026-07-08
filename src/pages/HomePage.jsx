@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -28,12 +29,39 @@ function GithubMark({ size = 16, className = '' }) {
 const privacyPoints = [
   'Client-side encryption for saved spaces and items',
   'Vault PIN stays separate from the login password',
-  'Data is private by design, even app developers cannot read what you save',
+  'One-time recovery code if you ever forget your PIN',
 ]
 
+const heroWords = ['Arche', 'Encrypted', 'Private', 'Own']
+
 export default function HomePage() {
+  const [heroWordIndex, setHeroWordIndex] = useState(0)
+  const heroWord = heroWords[heroWordIndex]
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setHeroWordIndex(index => (index + 1) % heroWords.length)
+    }, 3500)
+
+    return () => window.clearInterval(interval)
+  }, [])
+
+  const handlePointerMove = (event) => {
+    event.currentTarget.style.setProperty('--home-cursor-x', `${event.clientX}px`)
+    event.currentTarget.style.setProperty('--home-cursor-y', `${event.clientY}px`)
+  }
+
+  const handlePointerLeave = (event) => {
+    event.currentTarget.style.setProperty('--home-cursor-x', '50vw')
+    event.currentTarget.style.setProperty('--home-cursor-y', '42vh')
+  }
+
   return (
-    <main className="min-h-screen bg-[#0f1117] text-white overflow-hidden">
+    <main
+      className="home-page min-h-screen bg-[#0f1117] text-white overflow-hidden"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+    >
       <section className="relative h-[100svh] overflow-hidden px-4 sm:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(50,211,170,0.18),transparent_28%),radial-gradient(circle_at_80%_16%,rgba(124,106,247,0.18),transparent_30%),linear-gradient(135deg,#0f1117_0%,#171923_46%,#11221f_100%)]" />
         <div className="absolute inset-0 opacity-[0.18] bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:44px_44px]" />
@@ -82,14 +110,14 @@ export default function HomePage() {
               href="https://github.com/patkarmandar/Arche"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/15 hover:text-white transition-colors"
+              className="home-link-lift hidden sm:inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/15 hover:text-white transition-colors"
             >
               <GithubMark size={15} />
               GitHub
             </a>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-300 px-4 py-2 text-sm font-semibold text-[#10201c] hover:bg-emerald-200 transition-colors"
+              className="home-link-lift inline-flex items-center gap-2 rounded-lg bg-emerald-300 px-4 py-2 text-sm font-semibold text-[#10201c] hover:bg-emerald-200 transition-colors"
             >
               Sign in
               <ArrowRight size={15} />
@@ -103,7 +131,14 @@ export default function HomePage() {
             Encrypted private space
           </p>
           <h1 className="max-w-4xl text-4xl font-semibold leading-[1.02] tracking-normal sm:text-6xl lg:text-7xl">
-            Arche Space
+            Your{' '}
+            <span
+              key={heroWord}
+              className="home-word inline-block text-cyan-200 drop-shadow-[0_0_22px_rgba(103,232,249,0.3)]"
+            >
+              {heroWord}
+            </span>{' '}
+            Space
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-white/72 sm:text-lg">
             An open-source, private, encrypted space for organizing notes, checklists, cards, and more without giving anyone else a window into your work.
@@ -111,7 +146,7 @@ export default function HomePage() {
           <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
             <Link
               to="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-300 px-5 py-3 text-sm font-semibold text-[#10201c] shadow-lg shadow-emerald-950/40 hover:bg-emerald-200 transition-colors"
+              className="home-link-lift inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-300 px-5 py-3 text-sm font-semibold text-[#10201c] shadow-lg shadow-emerald-950/40 hover:bg-emerald-200 transition-colors"
             >
               Open the app
               <ArrowRight size={16} />
@@ -120,10 +155,10 @@ export default function HomePage() {
               href="https://github.com/patkarmandar/Arche"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+              className="home-link-lift inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
             >
               <GithubMark size={16} />
-              Fork or star on GitHub
+              View on GitHub
             </a>
           </div>
         </div>
@@ -166,11 +201,11 @@ export default function HomePage() {
           </article>
           <article className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
             <div className="flex items-center gap-3">
-              <GitFork size={24} className="shrink-0 text-amber-200" />
+              <GitFork size={24} className="shrink-0 text-emerald-200" />
               <h2 className="text-xl font-semibold">Open source</h2>
             </div>
             <p className="mt-3 text-sm leading-6 text-white/68">
-              The project is open for inspection, improvement, forking, and starring on GitHub.
+              The code is open for anyone to inspect, audit, or contribute to on GitHub.
             </p>
           </article>
           <article className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
@@ -199,7 +234,7 @@ export default function HomePage() {
           <div className="mt-8 flex justify-center">
             <Link
               to="/login"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-300 px-5 py-3 text-sm font-semibold text-[#10201c] hover:bg-emerald-200 transition-colors"
+              className="home-link-lift inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-300 px-5 py-3 text-sm font-semibold text-[#10201c] hover:bg-emerald-200 transition-colors"
             >
               Sign in to Arche Space
               <ArrowRight size={16} />
