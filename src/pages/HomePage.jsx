@@ -41,7 +41,7 @@ export default function HomePage() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setHeroWordIndex(index => (index + 1) % heroWords.length)
-    }, 3500)
+    }, 3000)
 
     return () => window.clearInterval(interval)
   }, [])
