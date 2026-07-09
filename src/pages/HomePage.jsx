@@ -97,7 +97,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <header className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between px-4 py-4 sm:px-8 sm:py-5">
+        <header className="absolute left-0 right-0 top-0 z-50 flex items-center justify-between px-4 py-4 sm:px-8 sm:py-5">
           <Link to="/" className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10">
               <Sparkles size={18} className="text-emerald-200" />
