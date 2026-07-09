@@ -2,10 +2,10 @@
  * LoginPage.jsx - Sign in and (optional) sign up.
  */
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeCore'
-import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft } from 'lucide-react'
+import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft, Home } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
@@ -136,6 +136,15 @@ export default function LoginPage() {
           style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
         />
       </div>
+
+      <Link
+        to="/"
+        className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-50 text-sm font-medium"
+        aria-label="Go to home page"
+      >
+        <Home size={16} />
+        <span className="hidden sm:inline">Home</span>
+      </Link>
 
       <button
         type="button"
