@@ -32,7 +32,7 @@ const privacyPoints = [
   'One-time recovery code if you ever forget your PIN',
 ]
 
-const heroWords = ['Arche', 'Encrypted', 'Private', 'Own']
+const heroWords = ['Arche', 'Private', 'Own']
 
 export default function HomePage() {
   const [heroWordIndex, setHeroWordIndex] = useState(0)
