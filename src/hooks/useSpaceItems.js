@@ -217,6 +217,40 @@ export function useSpaceItems(spaceId) {
     onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
+  const move = useMutation({
+    mutationFn: async ({ ids, targetSpaceId }) => {
+      if (!ids?.length || !targetSpaceId || targetSpaceId === spaceId) return
+
+      const { count, error: countError } = await supabase
+        .from('space_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('space_id', targetSpaceId)
+        .is('deleted_at', null)
+        .is('archived_at', null)
+      if (countError) throw countError
+
+      const basePosition = count || 0
+      const updates = ids.map((id, index) =>
+        supabase
+          .from('space_items')
+          .update({
+            space_id: targetSpaceId,
+            position: basePosition + index,
+            pinned: false,
+          })
+          .eq('id', id)
+      )
+
+      const results = await Promise.all(updates)
+      const failed = results.find(result => result.error)
+      if (failed?.error) throw failed.error
+    },
+    onSuccess: (_data, variables) => {
+      invalidateSpaceItems(qc, spaceId)
+      invalidateSpaceItems(qc, variables?.targetSpaceId)
+    },
+  })
+
   const bulkArchive = useMutation({
     mutationFn: async (ids) => {
       if (!ids?.length) return
@@ -277,6 +311,7 @@ export function useSpaceItems(spaceId) {
     reorder,
     archive,
     duplicate,
+    move,
     bulkRemove,
     bulkArchive,
     bulkSetPinned,

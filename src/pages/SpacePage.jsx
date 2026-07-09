@@ -45,6 +45,7 @@ export default function SpacePage() {
     reorder,
     archive,
     duplicate,
+    move,
     bulkRemove,
     bulkArchive,
     bulkSetPinned,
@@ -62,11 +63,16 @@ export default function SpacePage() {
   const [selectedIds, setSelectedIds]     = useState(() => new Set())
   const [collapsedIds, setCollapsedIds] = useState(() => new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
+  const [moveRequest, setMoveRequest] = useState(null)
 
   const selectedCount = selectedIds.size
   const selectedItems = useMemo(
     () => items.filter(i => selectedIds.has(i.id)),
     [items, selectedIds]
+  )
+  const destinationSpaces = useMemo(
+    () => spaces.filter(candidate => candidate.id !== id),
+    [spaces, id]
   )
 
   const exitSelectMode = useCallback(() => {
@@ -97,6 +103,7 @@ export default function SpacePage() {
       setAddModal(false)
       setDeleteConfirm(null)
       setBulkDeleteConfirm(null)
+      setMoveRequest(null)
       exitSelectMode()
     },
   }), [exitSelectMode])
@@ -172,6 +179,30 @@ export default function SpacePage() {
       exitSelectMode()
     } catch {
       toast.error('Bulk action failed')
+    }
+  }
+
+  const openMoveItems = (ids) => {
+    if (!ids?.length) return
+    const dirtyMove = ids.some(itemId => dirtyItems.has(itemId))
+    if (dirtyMove) {
+      toast.error('Save or discard unsaved changes before moving items')
+      return
+    }
+    setMoveRequest({ ids })
+  }
+
+  const handleMoveItems = async (targetSpaceId) => {
+    if (!moveRequest?.ids?.length) return
+    try {
+      await move.mutateAsync({ ids: moveRequest.ids, targetSpaceId })
+      const movedCount = moveRequest.ids.length
+      const targetSpace = spaces.find(candidate => candidate.id === targetSpaceId)
+      toast.success(`Moved ${movedCount} ${movedCount === 1 ? 'item' : 'items'} to ${targetSpace?.name || 'space'}`)
+      setMoveRequest(null)
+      exitSelectMode()
+    } catch {
+      toast.error('Failed to move items')
     }
   }
 
@@ -305,6 +336,7 @@ export default function SpacePage() {
                     onSuccess: () => toast.success('Item duplicated'),
                     onError: () => toast.error('Failed to duplicate'),
                   })}
+                  onMove={(itemId) => openMoveItems([itemId])}
                   onArchive={(itemId) => archive.mutate(itemId, {
                     onSuccess: () => toast.success('Item archived'),
                     onError: () => toast.error('Failed to archive'),
@@ -383,6 +415,12 @@ export default function SpacePage() {
                       toast.success(`Duplicated ${selectedCount} items`)
                     )
                   ),
+                },
+                {
+                  id: 'move',
+                  label: 'Move',
+                  icon: BULK_ICONS.move,
+                  onClick: () => openMoveItems(selectedItems.map(item => item.id)),
                 },
                 {
                   id: 'archive',
@@ -513,6 +551,45 @@ export default function SpacePage() {
           <p className="text-text-secondary text-sm leading-relaxed">
             Selected items will be moved to the recycle bin. You can restore them later.
           </p>
+        </Modal>
+      )}
+
+      {moveRequest && (
+        <Modal
+          title={`Move ${moveRequest.ids.length} ${moveRequest.ids.length === 1 ? 'item' : 'items'} to space`}
+          onClose={() => setMoveRequest(null)}
+        >
+          {destinationSpaces.length === 0 ? (
+            <div className="space-y-4">
+              <p className="text-text-secondary text-sm leading-relaxed">
+                Create another space first, then you can move items into it.
+              </p>
+              <button
+                type="button"
+                onClick={() => setMoveRequest(null)}
+                className="w-full px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {destinationSpaces.map(candidate => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => handleMoveItems(candidate.id)}
+                  disabled={move.isPending}
+                  className="w-full rounded-xl border border-bg-border bg-bg-elevated hover:bg-bg-base px-4 py-3 text-left transition-colors disabled:opacity-50"
+                >
+                  <span className="block text-sm font-semibold text-text-primary truncate">{candidate.name}</span>
+                  {candidate.description && (
+                    <span className="mt-0.5 block text-xs text-text-muted truncate">{candidate.description}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </Modal>
       )}
 

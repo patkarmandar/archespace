@@ -28,7 +28,7 @@ Arche Space is an open source, private, encrypted space for organizing ideas, pl
 - Unified dashboard search across spaces, tags, and item content.
 - Command palette with `Ctrl+K` / `Cmd+K`.
 - Bulk actions for spaces and items.
-- Duplicate, archive, restore, and delete workflows.
+- Duplicate, move, archive, restore, and delete workflows.
 - Recycle bin with restore and permanent delete.
 - Archive area for hiding content without deleting it.
 - Auto-save for edited items.

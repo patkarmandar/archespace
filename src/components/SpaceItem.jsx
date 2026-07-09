@@ -22,7 +22,7 @@ import { createPortal } from 'react-dom'
 import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
-  CheckSquare, Square, Maximize2, Minimize2,
+  CheckSquare, Square, Maximize2, Minimize2, MoveRight,
 } from 'lucide-react'
 import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
@@ -43,6 +43,7 @@ export default function SpaceItem({
   onDelete,
   onDuplicate,
   onArchive,
+  onMove,
   onDirtyChange,
   dragHandleProps,
   collapsed = false,
@@ -394,6 +395,7 @@ export default function SpaceItem({
                       },
                       { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
                       onDuplicate && { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(item) },
+                      onMove && { id: 'move', label: 'Move', icon: MoveRight, onClick: () => onMove(item.id) },
                       onArchive && { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive(item.id) },
                       { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => onDelete(item.id) },
                     ]}
