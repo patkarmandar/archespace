@@ -116,14 +116,17 @@ export default function SettingsPage() {
     }
 
     const { error } = await updateEmail(nextEmail)
-    setEmailLoading(false)
     if (error) {
+      setEmailLoading(false)
       toast.error(error.message)
       return
     }
     setNewEmail('')
     setEmailPassword('')
-    toast.success('Email change requested. Check your email to confirm the change.')
+    await signOut({ scope: 'local' })
+    setEmailLoading(false)
+    toast.success('Email change requested. Confirm it from your email, then sign in again.')
+    navigate('/login?email_change=requested', { replace: true })
   }
 
   const handleChangePassword = async (e) => {
@@ -298,6 +301,9 @@ export default function SettingsPage() {
               <h3 className="text-sm font-semibold text-text-primary">Change email</h3>
               <p className="text-text-muted text-xs mt-0.5">
                 Current email: <span className="text-text-secondary">{user?.email}</span>
+              </p>
+              <p className="text-text-muted text-xs mt-1.5">
+                Supabase may send confirmation links to both your current and new email addresses. The email changes only after the required links are confirmed.
               </p>
             </div>
             <form onSubmit={handleChangeEmail} className="mt-3 space-y-3">

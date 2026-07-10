@@ -28,6 +28,10 @@ export default function LoginPage() {
   const [info, setInfo] = useState(
     searchParams.get('reset') === 'success'
       ? 'Password updated. Please sign in with your new password.'
+      : searchParams.get('email_change') === 'requested'
+        ? 'Email change requested. Check your current and new email inboxes, then sign in again.'
+        : searchParams.get('email_change') === 'verified'
+          ? 'Email confirmation received. If another confirmation email was sent, open that link too, then sign in with your new email.'
       : ''
   )
   const [loading, setLoading] = useState(false)

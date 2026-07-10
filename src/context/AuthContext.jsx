@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
   const updateEmail = (email) =>
     supabase.auth.updateUser(
       { email },
-      { emailRedirectTo: `${window.location.origin}/login` }
+      { emailRedirectTo: `${window.location.origin}/login?email_change=verified` }
     )
 
   /** Update password, revoke all sessions, and force a fresh sign-in. */
