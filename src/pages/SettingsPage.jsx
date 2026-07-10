@@ -1,5 +1,5 @@
 /**
- * SettingsPage.jsx - Account security, appearance, and backup settings.
+ * SettingsPage.jsx - Account, appearance, security, and backup settings.
  */
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -51,7 +51,7 @@ function Divider() {
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, signIn, signOut, requestPasswordReset, updatePasswordAndSignOut } = useAuth()
+  const { user, signIn, signOut, requestPasswordReset, updateEmail, updatePasswordAndSignOut } = useAuth()
   const { cryptoKey, updatePin, setupRecoveryCode, updatePinWithRecoveryCode, unlocking } = useEncryption()
   const {
     themeMode,
@@ -70,6 +70,9 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPasswords, setShowPasswords] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailPassword, setEmailPassword] = useState('')
+  const [showEmailPassword, setShowEmailPassword] = useState(false)
 
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
@@ -81,11 +84,47 @@ export default function SettingsPage() {
   const [oneTimeRecoveryCode, setOneTimeRecoveryCode] = useState('')
 
   const [passwordLoading, setPasswordLoading] = useState(false)
+  const [emailLoading, setEmailLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [pinLoading, setPinLoading] = useState(false)
   const [recoverySetupLoading, setRecoverySetupLoading] = useState(false)
   const [pinRecoveryLoading, setPinRecoveryLoading] = useState(false)
   const [openSection, setOpenSection] = useState('')
+
+  const handleChangeEmail = async (e) => {
+    e.preventDefault()
+    const nextEmail = newEmail.trim().toLowerCase()
+    if (!nextEmail) {
+      toast.error('Enter a new email address.')
+      return
+    }
+    if (nextEmail === user?.email?.toLowerCase()) {
+      toast.error('New email must be different from current email.')
+      return
+    }
+    if (!emailPassword) {
+      toast.error('Enter your login password to continue.')
+      return
+    }
+
+    setEmailLoading(true)
+    const { error: verifyError } = await signIn(user.email, emailPassword)
+    if (verifyError) {
+      toast.error('Login password is incorrect.')
+      setEmailLoading(false)
+      return
+    }
+
+    const { error } = await updateEmail(nextEmail)
+    setEmailLoading(false)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    setNewEmail('')
+    setEmailPassword('')
+    toast.success('Email change requested. Check your email to confirm the change.')
+  }
 
   const handleChangePassword = async (e) => {
     e.preventDefault()
@@ -248,6 +287,136 @@ export default function SettingsPage() {
 
       <main className="max-w-lg mx-auto px-4 py-8">
         <div className="bg-bg-surface border border-bg-border rounded-2xl overflow-hidden">
+          <SettingsSection
+            id="account"
+            title="Account"
+            description="Email address and account identity."
+            openSection={openSection}
+            setOpenSection={setOpenSection}
+          >
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary">Change email</h3>
+              <p className="text-text-muted text-xs mt-0.5">
+                Current email: <span className="text-text-secondary">{user?.email}</span>
+              </p>
+            </div>
+            <form onSubmit={handleChangeEmail} className="mt-3 space-y-3">
+              <div>
+                <label htmlFor="new-email" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  New email
+                </label>
+                <input
+                  id="new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label htmlFor="email-change-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Login password
+                </label>
+                <div className="relative">
+                  <input
+                    id="email-change-password"
+                    type={showEmailPassword ? 'text' : 'password'}
+                    value={emailPassword}
+                    onChange={e => setEmailPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                    aria-label="Toggle email password visibility"
+                  >
+                    {showEmailPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={emailLoading}
+                className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
+              >
+                {emailLoading ? 'Sending request...' : 'Change email'}
+              </button>
+            </form>
+          </SettingsSection>
+
+          <SettingsSection
+            id="appearance"
+            title="Appearance"
+            description="Theme mode and accent color synced to your account."
+            openSection={openSection}
+            setOpenSection={setOpenSection}
+          >
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary">Theme</h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {themeModes.map(option => {
+                  const selected = themeMode === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleThemeModeChange(option)}
+                      className={`min-h-[76px] rounded-xl border px-3 py-3 text-left transition-colors ${
+                        selected
+                          ? 'border-accent bg-accent-muted'
+                          : 'border-bg-border bg-bg-elevated hover:bg-bg-base'
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-text-primary">{option.name}</span>
+                        {selected && <Check size={15} className="text-accent shrink-0" />}
+                      </span>
+                      <span className="mt-1 block text-xs text-text-muted">{option.description}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <Divider />
+
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary">Accent Color</h3>
+              <div className="mt-3 grid gap-3">
+                {accentColors.map(option => {
+                  const selected = accentColor === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleAccentColorChange(option)}
+                      className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                        selected
+                          ? 'border-accent bg-accent-muted'
+                          : 'border-bg-border bg-bg-elevated hover:bg-bg-base'
+                      }`}
+                    >
+                      <span
+                        className="h-8 w-8 rounded-full border border-white/20 shrink-0"
+                        style={{ backgroundColor: option.swatch }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-text-primary">{option.name}</span>
+                        <span className="block text-xs text-text-muted mt-0.5">{option.description}</span>
+                      </span>
+                      {selected && <Check size={16} className="text-accent shrink-0" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </SettingsSection>
+
           <SettingsSection
             id="security"
             title="Security"
@@ -446,74 +615,6 @@ export default function SettingsPage() {
                 <p className="text-text-muted text-xs">Save this code now. It replaces the previous recovery code.</p>
               </div>
             )}
-          </SettingsSection>
-
-          <SettingsSection
-            id="appearance"
-            title="Appearance"
-            description="Theme mode and accent color synced to your account."
-            openSection={openSection}
-            setOpenSection={setOpenSection}
-          >
-            <div>
-              <h3 className="text-sm font-semibold text-text-primary">Theme</h3>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {themeModes.map(option => {
-                  const selected = themeMode === option.id
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => handleThemeModeChange(option)}
-                      className={`min-h-[76px] rounded-xl border px-3 py-3 text-left transition-colors ${
-                        selected
-                          ? 'border-accent bg-accent-muted'
-                          : 'border-bg-border bg-bg-elevated hover:bg-bg-base'
-                      }`}
-                    >
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-text-primary">{option.name}</span>
-                        {selected && <Check size={15} className="text-accent shrink-0" />}
-                      </span>
-                      <span className="mt-1 block text-xs text-text-muted">{option.description}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <Divider />
-
-            <div>
-              <h3 className="text-sm font-semibold text-text-primary">Accent Color</h3>
-              <div className="mt-3 grid gap-3">
-                {accentColors.map(option => {
-                  const selected = accentColor === option.id
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => handleAccentColorChange(option)}
-                      className={`w-full flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
-                        selected
-                          ? 'border-accent bg-accent-muted'
-                          : 'border-bg-border bg-bg-elevated hover:bg-bg-base'
-                      }`}
-                    >
-                      <span
-                        className="h-8 w-8 rounded-full border border-white/20 shrink-0"
-                        style={{ backgroundColor: option.swatch }}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-text-primary">{option.name}</span>
-                        <span className="block text-xs text-text-muted mt-0.5">{option.description}</span>
-                      </span>
-                      {selected && <Check size={16} className="text-accent shrink-0" />}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
           </SettingsSection>
 
           <SettingsSection

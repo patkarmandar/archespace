@@ -61,6 +61,13 @@ export function AuthProvider({ children }) {
       redirectTo: `${window.location.origin}/reset-password`,
     })
 
+  /** Request an account email change through Supabase Auth. */
+  const updateEmail = (email) =>
+    supabase.auth.updateUser(
+      { email },
+      { emailRedirectTo: `${window.location.origin}/login` }
+    )
+
   /** Update password, revoke all sessions, and force a fresh sign-in. */
   const updatePasswordAndSignOut = async (password, afterUpdate) => {
     const { error: updateError } = await supabase.auth.updateUser({ password })
@@ -95,6 +102,7 @@ export function AuthProvider({ children }) {
         signUp,
         signOut,
         requestPasswordReset,
+        updateEmail,
         updatePasswordAndSignOut,
         passwordRecovery,
       }}
