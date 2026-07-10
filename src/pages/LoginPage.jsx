@@ -15,6 +15,22 @@ import {
   getClientRateLimitStatus,
 } from '../lib/rateLimiter'
 
+function getInitialInfo(searchParams) {
+  if (searchParams.get('reset') === 'success') {
+    return 'Password updated. Please sign in with your new password.'
+  }
+  if (searchParams.get('email_change') === 'requested') {
+    return 'Email change requested. Check your current and new email inboxes, then sign in again.'
+  }
+  if (searchParams.get('email_change') === 'verified') {
+    return 'Email confirmation received. If another confirmation email was sent, open that link too, then sign in with your new email.'
+  }
+  if (searchParams.get('account_deleted') === '1') {
+    return 'Your account was permanently deleted.'
+  }
+  return ''
+}
+
 export default function LoginPage() {
   const { signIn, signUp, requestPasswordReset } = useAuth()
   const { theme, themes, toggle } = useTheme()
@@ -25,15 +41,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState(
-    searchParams.get('reset') === 'success'
-      ? 'Password updated. Please sign in with your new password.'
-      : searchParams.get('email_change') === 'requested'
-        ? 'Email change requested. Check your current and new email inboxes, then sign in again.'
-        : searchParams.get('email_change') === 'verified'
-          ? 'Email confirmation received. If another confirmation email was sent, open that link too, then sign in with your new email.'
-      : ''
-  )
+  const [info, setInfo] = useState(() => getInitialInfo(searchParams))
   const [loading, setLoading] = useState(false)
 
   const [, setCooldownTick] = useState(0)

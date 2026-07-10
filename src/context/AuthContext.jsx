@@ -68,6 +68,17 @@ export function AuthProvider({ children }) {
       { emailRedirectTo: `${window.location.origin}/login?email_change=verified` }
     )
 
+  /** Permanently delete the signed-in user's account through a database RPC. */
+  const deleteAccount = async () => {
+    const { error } = await supabase.rpc('delete_current_user')
+    if (error) return { error }
+    clearVaultSession()
+    setPasswordRecovery(false)
+    await supabase.auth.signOut({ scope: 'local' })
+    setUser(null)
+    return { error: null }
+  }
+
   /** Update password, revoke all sessions, and force a fresh sign-in. */
   const updatePasswordAndSignOut = async (password, afterUpdate) => {
     const { error: updateError } = await supabase.auth.updateUser({ password })
@@ -103,6 +114,7 @@ export function AuthProvider({ children }) {
         signOut,
         requestPasswordReset,
         updateEmail,
+        deleteAccount,
         updatePasswordAndSignOut,
         passwordRecovery,
       }}

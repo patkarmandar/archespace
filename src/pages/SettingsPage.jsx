@@ -4,7 +4,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Download, Upload, Eye, EyeOff, ChevronDown, Check } from 'lucide-react'
+import { ArrowLeft, Download, Upload, Eye, EyeOff, ChevronDown, Check, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContextCore'
 import { useEncryption } from '../context/EncryptionCore'
 import { useTheme } from '../context/ThemeCore'
@@ -51,8 +51,8 @@ function Divider() {
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, signIn, signOut, requestPasswordReset, updateEmail, updatePasswordAndSignOut } = useAuth()
-  const { cryptoKey, updatePin, setupRecoveryCode, updatePinWithRecoveryCode, unlocking } = useEncryption()
+  const { user, signIn, signOut, requestPasswordReset, updateEmail, deleteAccount, updatePasswordAndSignOut } = useAuth()
+  const { cryptoKey, unlock, updatePin, setupRecoveryCode, updatePinWithRecoveryCode, unlocking } = useEncryption()
   const {
     themeMode,
     themeModes,
@@ -73,6 +73,11 @@ export default function SettingsPage() {
   const [newEmail, setNewEmail] = useState('')
   const [emailPassword, setEmailPassword] = useState('')
   const [showEmailPassword, setShowEmailPassword] = useState(false)
+  const [deleteStep, setDeleteStep] = useState('')
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletePin, setDeletePin] = useState('')
+  const [showDeletePassword, setShowDeletePassword] = useState(false)
 
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
@@ -85,11 +90,22 @@ export default function SettingsPage() {
 
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
   const [pinLoading, setPinLoading] = useState(false)
   const [recoverySetupLoading, setRecoverySetupLoading] = useState(false)
   const [pinRecoveryLoading, setPinRecoveryLoading] = useState(false)
   const [openSection, setOpenSection] = useState('')
+  const deleteConfirmationPhrase = `DELETE ${user?.email || ''}`
+
+  const resetDeleteFlow = () => {
+    setDeleteStep('')
+    setDeleteConfirmText('')
+    setDeletePassword('')
+    setDeletePin('')
+    setShowDeletePassword(false)
+    setDeleteLoading(false)
+  }
 
   const handleChangeEmail = async (e) => {
     e.preventDefault()
@@ -127,6 +143,44 @@ export default function SettingsPage() {
     setEmailLoading(false)
     toast.success('Email change requested. Confirm it from your email, then sign in again.')
     navigate('/login?email_change=requested', { replace: true })
+  }
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault()
+    if (deleteConfirmText !== deleteConfirmationPhrase) {
+      toast.error(`Type "${deleteConfirmationPhrase}" to confirm.`)
+      return
+    }
+    if (!deletePassword || !deletePin) {
+      toast.error('Enter your login password and vault PIN.')
+      return
+    }
+
+    setDeleteLoading(true)
+    const { error: verifyError } = await signIn(user.email, deletePassword)
+    if (verifyError) {
+      toast.error('Login password is incorrect.')
+      setDeleteLoading(false)
+      return
+    }
+
+    try {
+      await unlock(deletePin)
+    } catch (err) {
+      toast.error(err?.message || 'Vault PIN is incorrect.')
+      setDeleteLoading(false)
+      return
+    }
+
+    const { error } = await deleteAccount()
+    setDeleteLoading(false)
+    if (error) {
+      toast.error(error.message || 'Failed to delete account.')
+      return
+    }
+
+    resetDeleteFlow()
+    navigate('/login?account_deleted=1', { replace: true })
   }
 
   const handleChangePassword = async (e) => {
@@ -353,6 +407,27 @@ export default function SettingsPage() {
                 {emailLoading ? 'Sending request...' : 'Change email'}
               </button>
             </form>
+
+            <Divider />
+
+            <div className="rounded-xl border border-danger/30 bg-danger/10 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-danger" />
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-danger">Delete Account Permanently</h3>
+                  <p className="mt-1 text-xs leading-5 text-text-muted">
+                    Permanently delete your account, spaces, items, encrypted vault, and settings.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteStep('warning')}
+                className="mt-4 w-full rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger transition-colors hover:bg-danger/15"
+              >
+                Delete Account
+              </button>
+            </div>
           </SettingsSection>
 
           <SettingsSection
@@ -671,6 +746,122 @@ export default function SettingsPage() {
           </button>
         </section>
       </main>
+
+      {deleteStep === 'warning' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl">
+            <div className="border-b border-bg-border px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-text-primary">Delete Account Permanently</h2>
+                  <p className="text-xs text-text-muted mt-0.5">Read this before continuing.</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3 px-5 py-4 text-sm leading-6 text-text-secondary">
+              <p>All spaces and items will be permanently deleted.</p>
+              <p>Your encrypted vault cannot be recovered afterward, even with your recovery code.</p>
+              <p className="font-semibold text-danger">This action is permanent. This cannot be undone.</p>
+            </div>
+            <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
+              <button
+                type="button"
+                onClick={resetDeleteFlow}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteStep('confirm')}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                I understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteStep === 'confirm' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <form onSubmit={handleDeleteAccount} className="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl">
+            <div className="border-b border-bg-border px-5 py-4">
+              <h2 className="text-base font-semibold text-text-primary">Confirm account deletion</h2>
+              <p className="text-xs text-text-muted mt-1">
+                Type <span className="font-mono text-danger">{deleteConfirmationPhrase}</span> and re-enter your credentials.
+              </p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <div>
+                <label htmlFor="delete-confirm-text" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Confirmation text
+                </label>
+                <input
+                  id="delete-confirm-text"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  required
+                  autoComplete="off"
+                  className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label htmlFor="delete-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Login password
+                </label>
+                <div className="relative">
+                  <input
+                    id="delete-password"
+                    type={showDeletePassword ? 'text' : 'password'}
+                    value={deletePassword}
+                    onChange={e => setDeletePassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeletePassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                    aria-label="Toggle delete password visibility"
+                  >
+                    {showDeletePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <PinInput
+                id="delete-vault-pin"
+                label="Vault PIN"
+                value={deletePin}
+                onChange={setDeletePin}
+                disabled={deleteLoading || unlocking}
+              />
+            </div>
+            <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
+              <button
+                type="button"
+                onClick={resetDeleteFlow}
+                disabled={deleteLoading}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={deleteLoading || unlocking}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors disabled:opacity-50"
+              >
+                {deleteLoading || unlocking ? 'Deleting...' : 'Delete permanently'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
