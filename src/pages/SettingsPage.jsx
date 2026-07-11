@@ -16,6 +16,7 @@ import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
 import WeakPinWarning from '../components/WeakPinWarning'
 import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
+import { logAudit } from '../lib/auditLog'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
   const open = openSection === id
@@ -201,7 +202,10 @@ export default function SettingsPage() {
       setPasswordLoading(false)
       return
     }
-    const { error } = await updatePasswordAndSignOut(newPassword)
+    const { error } = await updatePasswordAndSignOut(
+      newPassword,
+      () => logAudit({ action: 'password_change' })
+    )
     setPasswordLoading(false)
     if (error) {
       toast.error(error.message)

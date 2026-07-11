@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { clearVaultSession } from '../lib/crypto/vaultSession'
+import { logAudit } from '../lib/auditLog'
 import { AuthContext } from './AuthContextCore'
 
 export function AuthProvider({ children }) {
@@ -98,7 +99,9 @@ export function AuthProvider({ children }) {
   }
 
   /** End the current session */
-  const signOut = (options) => {
+  const signOut = async (options) => {
+    // Record the logout while the session (and auth.uid()) is still valid.
+    await logAudit({ action: 'logout' })
     clearVaultSession()
     setPasswordRecovery(false)
     return supabase.auth.signOut(options)

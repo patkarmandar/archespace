@@ -7,6 +7,7 @@ import { ArrowLeft, Eye, EyeOff, KeyRound, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeCore'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
+import { logAudit } from '../lib/auditLog'
 import { Spinner } from '../components/ui/UI'
 
 export default function PasswordResetPage() {
@@ -35,7 +36,10 @@ export default function PasswordResetPage() {
     }
 
     setSaving(true)
-    const { error: updateError } = await updatePasswordAndSignOut(password)
+    const { error: updateError } = await updatePasswordAndSignOut(
+      password,
+      () => logAudit({ action: 'password_reset' })
+    )
     setSaving(false)
     if (updateError) {
       setError(updateError.message)

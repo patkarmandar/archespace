@@ -9,6 +9,7 @@ import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft, Home } from 'lu
 import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
+import { logAudit } from '../lib/auditLog'
 import {
   recordClientRateLimitFailure,
   clearClientRateLimit,
@@ -132,6 +133,7 @@ export default function LoginPage() {
       return
     }
 
+    logAudit({ action: 'login' })
     clearClientRateLimit(loginRateKey)
     setCooldownTick(tick => tick + 1)
 

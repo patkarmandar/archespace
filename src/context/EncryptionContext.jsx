@@ -29,6 +29,7 @@ import {
   recordClientRateLimitFailure,
   clearClientRateLimit,
 } from '../lib/rateLimiter'
+import { logAudit } from '../lib/auditLog'
 
 const VAULT_STATUS_TIMEOUT_MS = 8000
 const VAULT_SESSION_RESTORE_TIMEOUT_MS = 4000
@@ -126,6 +127,7 @@ export function EncryptionProvider({ children }) {
       const { masterKey, recoveryCode, recoveryUnavailable } = await setupUserVault(userId, pin)
       await applyUnlockedKey(masterKey)
       await refreshVaultStatus()
+      logAudit({ action: 'vault_setup' })
       return { recoveryCode, recoveryUnavailable }
     } catch (err) {
       const msg = err?.message || 'Failed to set up vault'
@@ -143,6 +145,7 @@ export function EncryptionProvider({ children }) {
     try {
       const key = await changeVaultPinWithVerification(userId, currentPin, newPin)
       await applyUnlockedKey(key)
+      logAudit({ action: 'vault_pin_change' })
     } catch (err) {
       const msg = err?.message || 'Failed to change PIN'
       setUnlockError(msg)
@@ -159,6 +162,7 @@ export function EncryptionProvider({ children }) {
     try {
       const { masterKey, recoveryCode } = await createVaultRecoveryCode(userId, currentPin)
       await applyUnlockedKey(masterKey)
+      logAudit({ action: 'recovery_code_created' })
       return { recoveryCode }
     } catch (err) {
       const msg = err?.message || 'Failed to set up recovery code'
@@ -177,6 +181,7 @@ export function EncryptionProvider({ children }) {
       const { masterKey, recoveryCode: nextRecoveryCode } =
         await changeVaultPinWithRecoveryCode(userId, recoveryCode, newPin)
       await applyUnlockedKey(masterKey)
+      logAudit({ action: 'vault_pin_reset' })
       return { recoveryCode: nextRecoveryCode }
     } catch (err) {
       const msg = err?.message || 'Failed to change PIN'
@@ -195,6 +200,7 @@ export function EncryptionProvider({ children }) {
       const { masterKey, recoveryCode: nextRecoveryCode } =
         await recoverVaultWithRecoveryCode(userId, recoveryCode, newPin)
       await applyUnlockedKey(masterKey)
+      logAudit({ action: 'vault_pin_reset' })
       return { recoveryCode: nextRecoveryCode }
     } catch (err) {
       const msg = err?.message || 'Failed to recover vault PIN'

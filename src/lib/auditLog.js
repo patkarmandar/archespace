@@ -8,8 +8,8 @@
  */
 import { supabase } from './supabase'
 
-/** @param {{ action: 'export' | 'import', entityType?: string, details?: object }} entry */
-export async function logAudit({ action, entityType = 'spaces', details = {} }) {
+/** @param {{ action: string, entityType?: string, details?: object }} entry */
+export async function logAudit({ action, entityType = 'auth', details = {} }) {
   try {
     const { error } = await supabase.rpc('log_client_event', {
       p_action: action,

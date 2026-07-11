@@ -59,9 +59,8 @@ export async function exportSpaces(spaces, cryptoKey) {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
       await logAudit({
-        userId: session.user.id,
         action: 'export',
-        entityType: 'spaces',
+        entityType: 'backup',
         details: { count: spaces.length },
       })
     }
@@ -215,9 +214,8 @@ export async function importSpaces(file, userId, cryptoKey) {
   }
 
   await logAudit({
-    userId,
     action: 'import',
-    entityType: 'spaces',
+    entityType: 'backup',
     details: { spaces_count: parsed.length, items_count: totalItemsImported },
   })
 }
