@@ -1,19 +1,25 @@
 /**
- * auditLog.js - Best-effort audit logging (optional table).
+ * auditLog.js - Best-effort audit logging.
+ *
+ * The audit_log table is owner-only: end users have no read or write
+ * access to it. Client-only actions that aren't database row changes
+ * (export/import) are recorded through the scoped log_client_event RPC,
+ * which writes on the user's behalf without exposing the table.
  */
 import { supabase } from './supabase'
 
-/** @param {{ userId: string, action: string, entityType: string, entityId?: string, details?: object }} entry */
-export async function logAudit({ userId, action, entityType, entityId, details = {} }) {
+/** @param {{ action: 'export' | 'import', entityType?: string, details?: object }} entry */
+export async function logAudit({ action, entityType = 'spaces', details = {} }) {
   try {
-    await supabase.from('audit_log').insert({
-      user_id: userId,
-      action,
-      entity_type: entityType,
-      entity_id: entityId ?? null,
-      details,
+    const { error } = await supabase.rpc('log_client_event', {
+      p_action: action,
+      p_entity_type: entityType,
+      p_details: details,
     })
-  } catch {
-    // audit_log is optional; never block user actions
+    // Auditing must never block a user action, but a rejected call
+    // should still surface in the console instead of vanishing silently.
+    if (error) console.debug('[audit] log_client_event failed:', error.message)
+  } catch (err) {
+    console.debug('[audit] log_client_event threw:', err)
   }
 }
