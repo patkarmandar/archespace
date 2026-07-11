@@ -35,5 +35,10 @@
     "vite": "^8.0.12",
     "vite-plugin-pwa": "^1.2.0",
     "wrangler": "^4.108.0"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true,
+    "workerd": true
   }
 }
