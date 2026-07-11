@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS space_items (
   id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   space_id    uuid        REFERENCES spaces(id) ON DELETE CASCADE NOT NULL,
   user_id     uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  type        text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list', 'markdown')),
+  type        text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'numbered_list', 'card_list', 'markdown')),
   title       text        NOT NULL DEFAULT '',
   content     jsonb       NOT NULL DEFAULT '{}'::jsonb,
   position    integer     NOT NULL DEFAULT 0,

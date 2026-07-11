@@ -24,7 +24,7 @@ import {
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
   CheckSquare, Square, Maximize2, Minimize2, MoveRight,
 } from 'lucide-react'
-import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
+import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, NumberedListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
@@ -444,6 +444,7 @@ export default function SpaceItem({
           {item.type === 'markdown'      && <MarkdownEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'checkbox_list' && <ChecklistEditor  key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'menu_list'     && <MenuListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'numbered_list' && <NumberedListEditor key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'card_list'     && <CardListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
         </div>
       )}

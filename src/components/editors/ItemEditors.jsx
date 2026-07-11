@@ -6,6 +6,7 @@
  *   - MarkdownEditor   - Markdown with click-to-edit / blur-to-preview
  *   - ChecklistEditor  - Checkbox items (add / check / remove)
  *   - MenuListEditor   - Simple bullet list
+ *   - NumberedListEditor - Ordered list with auto numbering
  *   - CardListEditor   - Title + description card pairs
  *
  * Each editor receives the current `content` object and an
@@ -192,6 +193,7 @@ export function MarkdownEditor({ content, onChange }) {
 
 function ListEditor({ content, onChange, variant }) {
   const isChecklist = variant === 'checkbox'
+  const isNumbered = variant === 'numbered'
   const inputAttr = isChecklist ? 'data-checklist-input' : 'data-menu-input'
   const [items, setItems] = useState(content?.items || [])
   const containerRef = useRef(null)
@@ -292,6 +294,10 @@ function ListEditor({ content, onChange, variant }) {
                 ? <CheckSquare size={17} className="text-accent" />
                 : <Square size={17} />}
             </button>
+          ) : isNumbered ? (
+            <span className="shrink-0 mt-1 min-w-[1.4rem] text-right text-sm font-medium text-text-muted tabular-nums select-none">
+              {idx + 1}.
+            </span>
           ) : (
             <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-text-muted mt-2" />
           )}
@@ -338,6 +344,10 @@ export function ChecklistEditor(props) {
 
 export function MenuListEditor(props) {
   return <ListEditor {...props} variant="bullet" />
+}
+
+export function NumberedListEditor(props) {
+  return <ListEditor {...props} variant="numbered" />
 }
 
 

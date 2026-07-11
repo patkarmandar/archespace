@@ -81,6 +81,7 @@ function validateItemContent(type, content) {
       return typeof content.text === 'string'
     case 'checkbox_list':
     case 'menu_list':
+    case 'numbered_list':
     case 'card_list':
       if (!Array.isArray(content.items)) return false
       // Basic check for reasonable size to prevent massive arrays

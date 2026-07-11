@@ -14,6 +14,7 @@ const defaultContent = {
     items: [{ id: crypto.randomUUID(), text: '', checked: false }],
   },
   menu_list: { items: [] },
+  numbered_list: { items: [] },
   card_list: { items: [] },
   markdown: { text: '' },
 }
