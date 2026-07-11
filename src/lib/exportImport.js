@@ -79,6 +79,7 @@ function validateItemContent(type, content) {
 
   switch (type) {
     case 'textbox':
+    case 'markdown':
       return typeof content.text === 'string'
     case 'checkbox_list':
     case 'menu_list':

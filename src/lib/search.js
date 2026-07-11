@@ -9,7 +9,7 @@ function norm(s) {
 function itemSearchText(item) {
   const parts = [item.title]
   const c = item.content || {}
-  if (item.type === 'textbox') parts.push(c.text)
+  if (item.type === 'textbox' || item.type === 'markdown') parts.push(c.text)
   if (c.items && Array.isArray(c.items)) {
     for (const row of c.items) {
       parts.push(row.text, row.title, row.description)

@@ -24,7 +24,7 @@ import {
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
   CheckSquare, Square, Maximize2, Minimize2, MoveRight,
 } from 'lucide-react'
-import { TextboxEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
+import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
@@ -441,6 +441,7 @@ export default function SpaceItem({
         <div className={isFullscreen ? 'flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8' : 'px-4 py-4'}>
           {/* Render only the editor for this item's type (not all four) */}
           {item.type === 'textbox'       && <TextboxEditor    key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'markdown'      && <MarkdownEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'checkbox_list' && <ChecklistEditor  key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'menu_list'     && <MenuListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'card_list'     && <CardListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}

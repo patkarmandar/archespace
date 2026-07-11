@@ -15,6 +15,7 @@ const defaultContent = {
   },
   menu_list: { items: [] },
   card_list: { items: [] },
+  markdown: { text: '' },
 }
 
 export function useSpaceItems(spaceId) {

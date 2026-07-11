@@ -1,8 +1,9 @@
 /**
  * ItemEditors.jsx - Content editors for each space-item type.
  *
- * Exports four editor components, one per item type:
- *   - TextboxEditor    - Free-form text area (Note) with markdown preview
+ * Exports five editor components, one per item type:
+ *   - TextboxEditor    - Free-form plain text area (Note)
+ *   - MarkdownEditor   - Markdown with click-to-edit / blur-to-preview
  *   - ChecklistEditor  - Checkbox items (add / check / remove)
  *   - MenuListEditor   - Simple bullet list
  *   - CardListEditor   - Title + description card pairs
@@ -13,8 +14,8 @@
  * can track dirty state and auto-save.
  */
 
-import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, CheckSquare, Square, Eye, EyeOff, GripVertical } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Plus, Trash2, CheckSquare, Square, GripVertical, Pencil } from 'lucide-react'
 import MarkdownPreview from './MarkdownPreview'
 
 // ─────────────────────────────────────────────────────────
@@ -51,18 +52,17 @@ function ReorderBtn({ onDragStart, onDragEnd, onKeyDown }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// TextboxEditor (Note)
+// TextboxEditor (Note) - Plain text only, no markdown
 // ─────────────────────────────────────────────────────────
 
 /**
- * Auto-expanding textarea for free-form note content.
- * Includes a toggle for markdown preview.
+ * Auto-expanding textarea for free-form plain text note content.
+ * No markdown support - just simple text editing.
  *
  * @param {{ content: { text: string }, onChange: Function }} props
  */
 export function TextboxEditor({ content, onChange }) {
   const [text, setText] = useState(content?.text || '')
-  const [preview, setPreview]   = useState(false)
   const ref = useRef(null)
 
   const adjust = () => {
@@ -82,38 +82,104 @@ export function TextboxEditor({ content, onChange }) {
   }
 
   return (
-    <div className="space-y-2">
-      {/* Toolbar: markdown preview toggle */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setPreview(v => !v)}
-          className="flex items-center gap-1.5 text-xs text-text-muted hover:text-accent transition-colors px-2 py-1 rounded-lg hover:bg-accent-muted"
-          title={preview ? 'Switch to edit mode' : 'Preview markdown'}
-        >
-          {preview ? <EyeOff size={13} /> : <Eye size={13} />}
-          {preview ? 'Edit' : 'Preview'}
-        </button>
-      </div>
+    <div>
+      <textarea
+        ref={ref}
+        value={text}
+        onChange={handleChange}
+        placeholder="Start writing anything…"
+        rows={3}
+        className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none overflow-hidden leading-relaxed min-h-[80px]"
+      />
+    </div>
+  )
+}
 
-      {preview ? (
-        /* ── Markdown preview ── */
-        <div className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm text-text-primary leading-relaxed min-h-[80px] prose-custom">
-          {text ? (
-            <MarkdownPreview text={text} />
-          ) : (
-            <span className="text-text-muted italic">Nothing to preview</span>
-          )}
+
+// ─────────────────────────────────────────────────────────
+// MarkdownEditor - Click-to-edit / blur-to-preview
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Markdown editor with two modes:
+ *   - Preview mode (default): renders formatted markdown; click to edit
+ *   - Edit mode: raw textarea; blur (click outside) returns to preview
+ *
+ * @param {{ content: { text: string }, onChange: Function }} props
+ */
+export function MarkdownEditor({ content, onChange }) {
+  const [text, setText] = useState(content?.text || '')
+  const [editing, setEditing] = useState(false)
+  const ref = useRef(null)
+
+  const adjust = () => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  // Auto-resize whenever text changes or we enter edit mode
+  useEffect(() => {
+    if (editing) adjust()
+  }, [text, editing])
+
+  const handleChange = (e) => {
+    const nextText = e.target.value
+    setText(nextText)
+    onChange({ text: nextText })
+  }
+
+  const enterEditMode = useCallback(() => {
+    setEditing(true)
+    // Focus the textarea after it renders
+    setTimeout(() => ref.current?.focus(), 0)
+  }, [])
+
+  const exitEditMode = useCallback(() => {
+    setEditing(false)
+  }, [])
+
+  if (editing) {
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-end">
+          <span className="text-xs text-text-muted px-2 py-0.5 rounded-md bg-bg-elevated border border-bg-border">
+            Editing — click outside to preview
+          </span>
         </div>
-      ) : (
-        /* ── Editable textarea ── */
         <textarea
           ref={ref}
           value={text}
           onChange={handleChange}
-          placeholder="Start writing anything…"
+          onBlur={exitEditMode}
+          placeholder="Write markdown here…"
           rows={3}
-          className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none overflow-hidden leading-relaxed min-h-[80px]"
+          className="w-full bg-bg-elevated border border-accent/50 rounded-xl px-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors text-sm resize-none overflow-hidden leading-relaxed min-h-[80px] font-mono"
         />
+      </div>
+    )
+  }
+
+  // Preview mode
+  return (
+    <div
+      onClick={enterEditMode}
+      className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm text-text-primary leading-relaxed min-h-[80px] prose-custom cursor-text hover:border-accent/30 transition-colors group/md"
+      title="Click to edit"
+    >
+      {text ? (
+        <>
+          <MarkdownPreview text={text} />
+          <div className="flex justify-end mt-2 opacity-0 group-hover/md:opacity-100 transition-opacity">
+            <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+              <Pencil size={11} />
+              Click to edit
+            </span>
+          </div>
+        </>
+      ) : (
+        <span className="text-text-muted italic">Click to start writing markdown…</span>
       )}
     </div>
   )
