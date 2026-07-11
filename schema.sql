@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS spaces (
   position    integer     NOT NULL DEFAULT 0,
   pinned      boolean     NOT NULL DEFAULT false,
   color       text        DEFAULT NULL,
+  theme       text        DEFAULT NULL,
   tags        jsonb       NOT NULL DEFAULT '[]'::jsonb,
   deleted_at  timestamptz DEFAULT NULL,          -- soft-delete; NULL = active
   archived_at timestamptz DEFAULT NULL,
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS space_items (
   id            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
   space_id uuid        REFERENCES spaces(id) ON DELETE CASCADE NOT NULL,
   user_id       uuid        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  type          text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list')),
+  type          text        NOT NULL CHECK (type IN ('textbox', 'checkbox_list', 'menu_list', 'card_list', 'markdown')),
   title         text        NOT NULL DEFAULT '',
   content       jsonb       NOT NULL DEFAULT '{}'::jsonb,
   position      integer     NOT NULL DEFAULT 0,
@@ -365,3 +366,25 @@ REVOKE ALL ON FUNCTION record_vault_pin_unlock_success() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION get_vault_pin_lock_status() TO authenticated;
 GRANT EXECUTE ON FUNCTION record_vault_pin_unlock_failure() TO authenticated;
 GRANT EXECUTE ON FUNCTION record_vault_pin_unlock_success() TO authenticated;
+
+
+-- ────────────────────────────────────────────────────────────
+-- 8. ACCOUNT DELETION
+-- ────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION delete_current_user()
+RETURNS void AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  DELETE FROM auth.users
+  WHERE id = v_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth;
+
+REVOKE ALL ON FUNCTION delete_current_user() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION delete_current_user() TO authenticated;
