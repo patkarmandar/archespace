@@ -6,7 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextCore'
 import { useTheme } from '../context/ThemeCore'
 import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft, Home } from 'lucide-react'
-import { MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS } from '../lib/constants'
+import { MAX_LOGIN_ATTEMPTS, LOGIN_ATTEMPT_WINDOW_MS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
@@ -122,7 +122,7 @@ export default function LoginPage() {
     setLoading(true)
     const { error: signInError } = await signIn(email, password)
     if (signInError) {
-      recordClientRateLimitFailure(loginRateKey, MAX_LOGIN_ATTEMPTS, LOGIN_COOLDOWN_MS)
+      recordClientRateLimitFailure(loginRateKey, MAX_LOGIN_ATTEMPTS, LOGIN_ATTEMPT_WINDOW_MS, LOGIN_COOLDOWN_MS)
       const status = getClientRateLimitStatus(loginRateKey, MAX_LOGIN_ATTEMPTS)
       setError(signInError.message)
       if (status.blocked) {

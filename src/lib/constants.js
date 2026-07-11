@@ -13,7 +13,10 @@ export const PBKDF2_ITERATIONS = 310_000
 /** Max failed login attempts before cooldown */
 export const MAX_LOGIN_ATTEMPTS = 5
 
-/** Cooldown duration after max login attempts (ms) */
+/** Window over which failed login attempts accumulate toward the max (ms) */
+export const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000
+
+/** Cooldown/lockout duration after max login attempts (ms) */
 export const LOGIN_COOLDOWN_MS = 30_000
 
 /** Vault PIN unlock: max failed attempts before lockout */

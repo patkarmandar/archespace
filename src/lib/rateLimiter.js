@@ -48,8 +48,12 @@ export function checkClientRateLimit(action, maxAttempts, windowMs) {
   return { allowed: true, remaining: maxAttempts - entry.count }
 }
 
-/** Record a failed attempt without performing an allowed check first. */
-export function recordClientRateLimitFailure(action, maxAttempts, windowMs) {
+/**
+ * Record a failed attempt without performing an allowed check first.
+ * `windowMs` is how long failures accumulate; `lockoutMs` (defaults to
+ * `windowMs`) is how long the block lasts once maxAttempts is reached.
+ */
+export function recordClientRateLimitFailure(action, maxAttempts, windowMs, lockoutMs = windowMs) {
   const store = readStore()
   const entry = store[action]
   const now = Date.now()
@@ -59,7 +63,7 @@ export function recordClientRateLimitFailure(action, maxAttempts, windowMs) {
   } else {
     entry.count += 1
     if (entry.count >= maxAttempts) {
-      entry.resetAt = now + windowMs
+      entry.resetAt = now + lockoutMs
     }
   }
   writeStore(store)

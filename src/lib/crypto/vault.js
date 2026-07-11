@@ -368,7 +368,15 @@ async function unlockRecoveryWrappedVault(meta, recoveryCode) {
 async function unlockPinWrappedVault(meta, pin) {
   const pinSalt = saltFromBase64(meta.salt)
   const pinKey = await deriveEncryptionKey(pin, pinSalt)
-  const rawB64 = await decryptString(meta.wrapped_key, pinKey)
+  let rawB64
+  try {
+    rawB64 = await decryptString(meta.wrapped_key, pinKey)
+  } catch {
+    // A wrong PIN makes AES-GCM decryption throw (OperationError) rather than
+    // reaching the key_check below. Normalise it to the incorrect-PIN error so
+    // callers (server RPC + client rate limiter) record the failed attempt.
+    throw new Error('Incorrect PIN - cannot unlock your encrypted vault.')
+  }
   const masterKey = await importRawAesKey(bytesFromBase64(rawB64))
   const check = await decryptString(meta.key_check, masterKey)
   if (check !== VAULT_CHECK_PLAINTEXT) {
