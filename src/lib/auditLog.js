@@ -8,12 +8,11 @@
  */
 import { supabase } from './supabase'
 
-/** @param {{ action: string, entityType?: string, details?: object }} entry */
-export async function logAudit({ action, entityType = 'auth', details = {} }) {
+/** @param {{ action: string, details?: object }} entry */
+export async function logAudit({ action, details = {} }) {
   try {
     const { error } = await supabase.rpc('log_client_event', {
       p_action: action,
-      p_entity_type: entityType,
       p_details: details,
     })
     // Auditing must never block a user action, but a rejected call

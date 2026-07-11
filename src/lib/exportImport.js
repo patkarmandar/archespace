@@ -60,7 +60,6 @@ export async function exportSpaces(spaces, cryptoKey) {
     if (session?.user) {
       await logAudit({
         action: 'export',
-        entityType: 'backup',
         details: { count: spaces.length },
       })
     }
@@ -215,7 +214,6 @@ export async function importSpaces(file, userId, cryptoKey) {
 
   await logAudit({
     action: 'import',
-    entityType: 'backup',
     details: { spaces_count: parsed.length, items_count: totalItemsImported },
   })
 }

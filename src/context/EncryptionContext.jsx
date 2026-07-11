@@ -78,10 +78,13 @@ export function EncryptionProvider({ children }) {
     return () => clearTimeout(timer)
   }, [refreshVaultStatus])
 
-  const lock = useCallback(() => {
+  const lock = useCallback((reason) => {
     clearVaultSession()
     setCryptoKey(null)
     setUnlockError('')
+    // `reason` is a string for programmatic calls ('auto'); when lock is
+    // wired directly to an onClick it receives an event, so default to 'manual'.
+    logAudit({ action: 'vault_lock', details: { reason: typeof reason === 'string' ? reason : 'manual' } })
   }, [])
 
   const applyUnlockedKey = useCallback(async (key) => {
@@ -106,6 +109,7 @@ export function EncryptionProvider({ children }) {
       const key = await unlockUserVault(userId, pin)
       clearClientRateLimit(rateKey)
       await applyUnlockedKey(key)
+      logAudit({ action: 'vault_unlock' })
       return key
     } catch (err) {
       const msg = err?.message || 'Failed to unlock vault'
@@ -266,13 +270,13 @@ export function EncryptionProvider({ children }) {
 
     const remaining = VAULT_AUTO_LOCK_MS - (Date.now() - unlockedAt)
     if (remaining <= 0) {
-      lockRef.current()
+      lockRef.current('auto')
       window.dispatchEvent(new CustomEvent('arche:vault-auto-locked'))
       return
     }
 
     const timer = setTimeout(() => {
-      lockRef.current()
+      lockRef.current('auto')
       window.dispatchEvent(new CustomEvent('arche:vault-auto-locked'))
     }, remaining)
 
