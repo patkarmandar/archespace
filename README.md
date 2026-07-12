@@ -2,12 +2,17 @@
 
 Arche Space is an open source, private, encrypted space for organizing ideas, plans, notes, checklists, and cards. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
 
+It follows a zero-knowledge architecture: your content is encrypted in the browser and the backend only ever stores ciphertext, so the server, its operators, and the developers never see your data in readable form.
+
 ## Table of contents
 
 - [Features](#features)
+- [Item types](#item-types)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Security model](#security-model)
+- [Audit logging](#audit-logging)
 - [Setup](#setup)
+- [Email templates](#email-templates)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
@@ -19,12 +24,9 @@ Arche Space is an open source, private, encrypted space for organizing ideas, pl
 ## Features
 
 - Multiple spaces for separating ideas, projects, plans, references, and personal systems.
-- Markdown notes for free-form writing.
-- Checklists for tasks, routines, and progress tracking.
-- Menu-style lists for lightweight structured information.
-- Cards with title and description fields for planning and grouping ideas.
+- Six item types for different kinds of content (see [Item types](#item-types)).
 - Pinning for important spaces and items.
-- Drag-and-drop reordering for spaces and page items.
+- Drag-and-drop reordering for spaces and page items, plus keyboard reordering inside lists.
 - Unified dashboard search across spaces, tags, and item content.
 - Command palette with `Ctrl+K` / `Cmd+K`.
 - Bulk actions for spaces and items.
@@ -34,11 +36,26 @@ Arche Space is an open source, private, encrypted space for organizing ideas, pl
 - Auto-save for edited items.
 - Backup import/export to JSON.
 - Private, encrypted vault to keep your content secure (see [Security model](#security-model)).
+- Owner-only audit log of authentication and security events (see [Audit logging](#audit-logging)).
+- Permanent account deletion with a branded confirmation email.
 - Appearance settings with `System`, `Dark`, and `Light` theme modes.
 - Accent color settings with multiple color options.
 - Single-user self-hosting mode by default, with an optional multi-user mode.
 - Offline queue for pending changes while the browser is offline.
 - PWA support for installing as an app.
+
+## Item types
+
+| Type | Description |
+|------|-------------|
+| Note | Free-form plain text. |
+| Markdown | Rich text with markdown formatting and click-to-edit preview. |
+| List | Simple bullet list. |
+| Numbered List | Ordered list with automatic numbering that updates as rows are added, removed, or reordered. |
+| Checklist | Items with checkboxes and progress tracking. |
+| Cards | Title and description pairs for planning and grouping ideas. |
+
+All list-style types support adding, removing, drag-and-drop reordering, and keyboard reordering with `Arrow Up` / `Arrow Down`.
 
 ## Keyboard shortcuts
 
@@ -49,6 +66,7 @@ Arche Space is an open source, private, encrypted space for organizing ideas, pl
 | `N` | Create a new space on the dashboard |
 | `Ctrl+S` / `Cmd+S` | Save all dirty items on the current page |
 | `Esc` | Close menus, modals, or active overlays |
+| `Arrow Up` / `Arrow Down` | Reorder the focused row inside a list, numbered list, or checklist |
 
 ## Security model
 
@@ -65,7 +83,7 @@ Arche Space uses a browser-side vault model. You sign in with Supabase Auth usin
 - The unlocked vault key lives only in browser session storage and auto-locks after 24 hours.
 - The login session has an absolute lifetime of 1 week.
 - Password reset and password change flows globally sign out existing sessions.
-- Vault PIN failed attempts are rate limited and locked after repeated failures.
+- Failed login attempts and failed vault PIN attempts are rate limited, and repeated PIN failures lock the vault server-side.
 - Supabase Row Level Security restricts each user to their own rows.
 
 **Recovery**
@@ -75,11 +93,26 @@ Arche Space uses a browser-side vault model. You sign in with Supabase Auth usin
 - If the PIN is forgotten, the "Forgot PIN" flow uses the recovery code to set a new vault PIN.
 - Resetting with a recovery code generates a new recovery code and invalidates the previous one.
 
+**Account deletion**
+
+- Deleting an account permanently removes the user and, by cascade, all of their spaces, items, and encrypted vault data.
+- A confirmation email is sent automatically after deletion, server-side, using the Resend HTTP API. The Resend API key is stored encrypted in Supabase Vault and never reaches the browser.
+
 **Limits to be aware of**
 
 - The app cannot recover encrypted content without either the current vault PIN or the current recovery code - there's no backdoor.
 - If both the vault PIN and recovery code are lost, encrypted space data cannot be decrypted.
 - JSON exports are downloaded to your machine and should be stored carefully; imported backups are encrypted before upload.
+
+## Audit logging
+
+Arche Space keeps an owner-only `audit_log` table for authentication and security events. It is deliberately scoped:
+
+- **Auth events only.** Space and item content is never written to the audit log.
+- **Owner-only access.** Row Level Security has no policies and table grants are revoked, so end users cannot read or write it directly. Writes come only from `SECURITY DEFINER` triggers and a whitelisted RPC. The app owner reads it from the Supabase dashboard or with the service role.
+- **Survives deletion.** The `user_id` foreign key is `ON DELETE SET NULL`, so history is retained after an account is removed.
+
+Recorded actions include: `account_created`, `account_deleted`, `email_change`, `password_reset_requested` (server-side, via triggers on `auth.users`), and `login`, `logout`, `password_change`, `password_reset`, `vault_setup`, `vault_unlock`, `vault_lock`, `vault_pin_change`, `vault_pin_reset`, `recovery_code_created`, `export`, `import` (client-side, via the `log_client_event` RPC).
 
 ## Setup
 
@@ -102,11 +135,25 @@ npm install
 2. Run the full `schema.sql` file in the Supabase SQL Editor.
 3. Enable the Email provider in Supabase Auth.
 4. Configure Resend as the SMTP server in Supabase Auth for password reset and auth emails.
-5. Add your deployed app URL to Supabase Auth redirect URLs.
-6. Add `https://your-domain/reset-password` to Supabase Auth redirect URLs for password reset links.
-7. Keep Supabase Auth sign-in rate limits at `30/hour per IP` or lower for production.
+5. Paste the branded email templates from `email-templates/` into Supabase Auth (see [Email templates](#email-templates)).
+6. Add your deployed app URL to Supabase Auth redirect URLs.
+7. Add `https://your-domain/reset-password` to Supabase Auth redirect URLs for password reset links.
+8. Keep Supabase Auth sign-in rate limits at `30/hour per IP` or lower for production.
 
-### 4. Configure environment variables
+### 4. Enable the account-deletion email
+
+The deletion confirmation email is sent from a Postgres trigger using the Resend HTTP API, with the key stored in Supabase Vault:
+
+1. Enable the `pg_net` extension (the statement is included in `schema.sql`, or enable it under Database → Extensions).
+2. Store your Resend API key in Vault (run once in the SQL Editor; do not commit the key):
+
+   ```sql
+   select vault.create_secret('re_your_real_key', 'RESEND_API_KEY');
+   ```
+
+3. In `schema.sql`, set the `v_from` and `v_support` addresses in `notify_account_deleted()` to a domain you have verified in Resend.
+
+### 5. Configure environment variables
 
 Create a `.env` file with:
 
@@ -115,7 +162,7 @@ VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-### 5. Choose single-user or multi-user mode
+### 6. Choose single-user or multi-user mode
 
 **Single-user mode** is the default - create one user in the Supabase Auth dashboard and keep public sign-up disabled.
 
@@ -133,7 +180,7 @@ VITE_MULTI_USER=true
 
 Also enable Supabase Auth email sign-ups, tighten sign-up and password-reset rate limits, and verify RLS policies before public deployment.
 
-### 6. Run the app
+### 7. Run the app
 
 ```bash
 # Start the development server
@@ -142,14 +189,29 @@ npm run dev
 # Build for production
 npm run build
 
-# Preview the production build locally
+# Preview the production build locally (Wrangler)
 npm run preview
+
+# Deploy to Cloudflare (Wrangler)
+npm run deploy
 ```
 
-### Upgrading an existing deployment
+## Email templates
 
-- Re-run `schema.sql` on older deployments to add vault recovery, PIN lockout, and user settings tables/columns.
-- Run `NOTIFY pgrst, 'reload schema';` after database changes if the Supabase schema cache does not refresh immediately.
+Branded, minimal HTML templates for every Supabase auth email live in `email-templates/`. Paste each into **Supabase Dashboard → Authentication → Email Templates**; the folder's `README.md` maps each file to its template slot, the `{{ .Variable }}` tokens it uses, and a suggested subject line.
+
+| File | Supabase template |
+|------|-------------------|
+| `confirm-signup.html` | Confirm signup |
+| `invite-user.html` | Invite user |
+| `magic-link.html` | Magic Link |
+| `change-email.html` | Change Email Address |
+| `reset-password.html` | Reset Password |
+| `reauthentication.html` | Reauthentication |
+| `password-changed.html` | Password Changed |
+| `email-changed.html` | Email Changed |
+
+The account-deletion email is separate; its HTML lives inside `notify_account_deleted()` in `schema.sql` because Supabase Auth does not send it.
 
 ## Tech stack
 
@@ -160,16 +222,19 @@ npm run preview
 | Styling | Tailwind CSS 3, CSS custom properties (theme mode and accent colors) |
 | Data fetching / caching | TanStack Query 5 |
 | Backend | Supabase Auth, Supabase PostgreSQL, Supabase Row Level Security, Supabase Realtime |
-| Email delivery | Resend SMTP (via Supabase Auth) |
+| Server-side email | `pg_net` + Resend HTTP API (account-deletion email), with the key in Supabase Vault |
+| Auth email delivery | Resend SMTP (via Supabase Auth) |
 | Encryption | Web Crypto API |
 | Icons | Lucide React |
 | File handling | JSZip |
+| Hosting / deploy | Cloudflare (Wrangler), or any static host |
 | Linting | ESLint 10 |
 
 ## Project structure
 
 ```text
 Arche/
+  email-templates/
   public/
     _headers
   src/
@@ -201,23 +266,23 @@ Key areas:
 
 - `src/pages/` contains the public home page, login, password reset, dashboard, space view, archive, recycle bin, and settings pages.
 - `src/components/` contains reusable UI, item editors, layout shell, action menus, vault unlock gate, and space components.
-- `src/components/editors/` contains note, checklist, list, and card editors, including drag-handle item reordering.
+- `src/components/editors/` contains note, markdown, checklist, list, numbered list, and card editors, including drag-handle item reordering.
 - `src/context/` contains auth, encryption, appearance/theme, toast, shortcuts, command palette, and page action providers.
 - `src/hooks/` contains data hooks for spaces, items, archive, recycle bin, global search, offline sync, drag reordering, and session timeout.
 - `src/lib/crypto/` contains AES-GCM encryption, PBKDF2 key derivation, vault setup, vault unlock, session storage, PIN recovery code, and encoding helpers.
-- `src/lib/` contains Supabase client setup, data protection helpers, import/export, offline queue, rate limiting, audit logging, password policy, and shared utilities.
-- `schema.sql` contains tables, indexes, RLS policies, triggers, RPC functions, realtime setup, vault recovery columns, user settings, and PIN lockout functions.
+- `src/lib/` contains Supabase client setup, data protection helpers, item type definitions, import/export, offline queue, rate limiting, audit logging, password policy, and shared utilities.
+- `schema.sql` contains tables, indexes, RLS policies, triggers, RPC functions, realtime setup, vault recovery and PIN lockout functions, the account-deletion email trigger, and the auth audit log.
+- `email-templates/` contains ready-to-paste Supabase auth email templates.
 - `public/_headers` contains deployment headers for hosts such as Netlify and Cloudflare Pages.
 - `vite.config.js` contains React, PWA, and manual chunk splitting configuration.
 
 ## Deployment notes
 
-- Deploy the built `dist/` directory to a static host.
-- Configure SPA fallback to `index.html`.
-- Keep `dist/404.html` for hosts that need an SPA fallback file.
+- Build with `npm run build` and deploy the `dist/` directory to a static host, or use `npm run deploy` for Cloudflare via Wrangler.
+- Configure SPA fallback to `index.html`. `dist/404.html` is generated during build for hosts that need an SPA fallback file.
 - Configure Supabase redirect URLs for `/login` and `/reset-password`.
-- Configure Resend SMTP in Supabase Auth before relying on password reset emails.
-- Run the latest `schema.sql` before deploying app versions that use vault recovery or account appearance settings.
+- Configure Resend SMTP in Supabase Auth before relying on password reset and other auth emails.
+- Enable `pg_net` and store `RESEND_API_KEY` in Supabase Vault before relying on the account-deletion email.
 - Rebuild after changing environment variables.
 - Hard refresh after deploying PWA changes if a browser keeps an old service worker cache.
 
@@ -250,7 +315,10 @@ For development questions, architecture discussions, feature requests, bug repor
 ## Credits
 
 - Built with React, Vite, Tailwind CSS, Supabase, TanStack Query, Lucide, JSZip, and the Web Crypto API.
-- Email delivery for Supabase Auth flows is intended to be handled through Resend SMTP.
+- Backend and authentication powered by Supabase.
+- Hosted and deployed on Cloudflare.
+- Source hosted on GitHub.
+- Email delivery powered by Resend.
 - Created and maintained by the Arche Space project.
 
 ## License
