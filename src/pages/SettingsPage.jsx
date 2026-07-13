@@ -17,6 +17,7 @@ import WeakPinWarning from '../components/WeakPinWarning'
 import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
+import { BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
   const open = openSection === id
@@ -749,6 +750,19 @@ export default function SettingsPage() {
             Sign out
           </button>
         </section>
+
+        <p className="mt-6 text-center text-xs text-text-muted">
+          Build{' '}
+          <a
+            href={COMMIT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline hover:text-text-secondary transition-colors"
+            title="View this build's source commit"
+          >
+            {BUILD_HASH}
+          </a>
+        </p>
       </main>
 
       {deleteStep === 'warning' && (
