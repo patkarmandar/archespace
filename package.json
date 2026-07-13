@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\"",
     "lint": "eslint .",
-    "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "preview": "npm run build && wrangler dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
