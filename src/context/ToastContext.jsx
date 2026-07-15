@@ -104,7 +104,7 @@ export function ToastProvider({ children }) {
               role="alert"
               aria-live="polite"
             >
-              <Icon size={18} className={`${color} shrink-0`} />
+              <Icon size={20} className={`${color} shrink-0`} />
               <span className="flex-1 text-sm text-text-primary">{message}</span>
               <button
                 onClick={() => dismiss(id)}

@@ -118,7 +118,7 @@ export default function RecycleBinPage() {
             onClick={() => navigate('/app')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
             <span className="hidden sm:inline">Back</span>
           </button>
 
@@ -164,7 +164,7 @@ export default function RecycleBinPage() {
         ) : total === 0 ? (
           <div className="text-center py-20">
             <div className="w-14 h-14 rounded-2xl bg-bg-surface border border-bg-border flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={22} className="text-text-muted" />
+              <Trash2 size={20} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Recycle bin is empty</p>
             <p className="text-text-muted text-sm mt-1">Deleted spaces and items will appear here</p>
@@ -195,14 +195,14 @@ export default function RecycleBinPage() {
                             })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-success/10 hover:border-success/30 hover:text-success text-text-secondary transition-all text-xs font-medium"
                           >
-                            <RotateCcw size={13} /> Restore
+                            <RotateCcw size={14} /> Restore
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmPurge({ type: 'space', id: col.id, name: col.name })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all text-xs font-medium"
                           >
-                            <Trash2 size={13} /> Delete forever
+                            <Trash2 size={14} /> Delete forever
                           </button>
                         </>
                       }
@@ -242,14 +242,14 @@ export default function RecycleBinPage() {
                             })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-success/10 hover:border-success/30 hover:text-success text-text-secondary transition-all text-xs font-medium"
                           >
-                            <RotateCcw size={13} /> Restore
+                            <RotateCcw size={14} /> Restore
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmPurge({ type: 'item', id: item.id, name: item.title || 'Untitled' })}
                             className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary transition-all text-xs font-medium"
                           >
-                            <Trash2 size={13} /> Delete forever
+                            <Trash2 size={14} /> Delete forever
                           </button>
                         </>
                       }
@@ -299,7 +299,7 @@ export default function RecycleBinPage() {
                 disabled={emptyBin.isPending}
                 className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
               >
-                {emptyBin.isPending && <Spinner size={13} />}
+                {emptyBin.isPending && <Spinner size={14} />}
                 Empty bin permanently
               </button>
             </div>

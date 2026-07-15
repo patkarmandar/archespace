@@ -157,7 +157,7 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-elevated'
             }`}
           >
-            {Icon && <Icon size={13} className="shrink-0" />}
+            {Icon && <Icon size={14} className="shrink-0" />}
             <span className="truncate">{itemLabel}</span>
           </button>
         ))}

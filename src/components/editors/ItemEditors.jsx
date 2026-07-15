@@ -30,7 +30,7 @@ function DelBtn({ onClick }) {
       onClick={onClick}
       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all shrink-0"
     >
-      <Trash2 size={13} />
+      <Trash2 size={14} />
     </button>
   )
 }
@@ -47,7 +47,7 @@ function ReorderBtn({ onDragStart, onDragEnd, onKeyDown }) {
       aria-label="Reorder item"
       className="opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-text-muted hover:text-accent hover:bg-accent-muted transition-all shrink-0"
     >
-      <GripVertical size={13} />
+      <GripVertical size={14} />
     </button>
   )
 }
@@ -174,7 +174,7 @@ export function MarkdownEditor({ content, onChange }) {
           <MarkdownPreview text={text} />
           <div className="flex justify-end mt-2 opacity-0 group-hover/md:opacity-100 transition-opacity">
             <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-              <Pencil size={11} />
+              <Pencil size={14} />
               Click to edit
             </span>
           </div>
@@ -291,8 +291,8 @@ function ListEditor({ content, onChange, variant }) {
               className="shrink-0 mt-0.5 text-text-muted hover:text-accent transition-colors"
             >
               {item.checked
-                ? <CheckSquare size={17} className="text-accent" />
-                : <Square size={17} />}
+                ? <CheckSquare size={16} className="text-accent" />
+                : <Square size={16} />}
             </button>
           ) : isNumbered ? (
             <span className="shrink-0 mt-1 min-w-[1.4rem] text-right text-sm font-medium text-text-muted tabular-nums select-none">

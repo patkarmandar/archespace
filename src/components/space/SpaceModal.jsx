@@ -102,7 +102,7 @@ export function SpaceModal({ initial, onSave, onClose }) {
             disabled={!name.trim() || saving}
             className="px-4 py-2 text-sm font-semibold bg-accent hover:bg-accent-hover text-white rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {saving && <Spinner size={12} />}
+            {saving && <Spinner size={14} />}
             {initial ? 'Save changes' : 'Create'}
           </button>
         </div>

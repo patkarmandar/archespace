@@ -292,7 +292,7 @@ export default function SpaceItem({
         )}
 
         {/* Pin indicator */}
-        {item.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
+        {item.pinned && <Pin size={14} className="text-accent shrink-0 fill-accent" />}
 
         {/* Type badge */}
         <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-lg ${style.bg} ${style.text} border ${style.border}`}>
@@ -363,14 +363,14 @@ export default function SpaceItem({
               >
                 {saving
                   ? <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
-                  : <Save size={12} />}
+                  : <Save size={14} />}
                 Save
               </button>
               <button
                 onClick={handleDiscard}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all"
               >
-                <X size={12} /> Discard
+                <X size={14} /> Discard
               </button>
             </>
           ) : (
@@ -379,10 +379,10 @@ export default function SpaceItem({
               {editingTitle ? (
                 <>
                   <button onClick={saveTitle} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-success/15 border border-success/30 text-success hover:bg-success/25 transition-all">
-                    <Check size={12} /> Save
+                    <Check size={14} /> Save
                   </button>
                   <button onClick={() => { setTitleVal(item.title); setEditingTitle(false) }} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all">
-                    <X size={12} /> Cancel
+                    <X size={14} /> Cancel
                   </button>
                 </>
               ) : (
@@ -444,14 +444,14 @@ export default function SpaceItem({
       {/* ── Unsaved collapse warning ─────────────────── */}
       {collapseGuard && (
         <div className="px-4 py-3 bg-amber-400/8 border-b border-amber-400/20 flex items-center gap-3 flex-wrap">
-          <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+          <AlertTriangle size={16} className="text-amber-400 shrink-0" />
           <span className="text-sm text-amber-400 flex-1">You have unsaved changes.</span>
           <div className="flex gap-2">
             <button
               onClick={handleSave}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent hover:bg-accent-hover text-white transition-colors"
             >
-              <Save size={12} /> Save & collapse
+              <Save size={14} /> Save & collapse
             </button>
             <button
               onClick={() => { handleDiscard(); onCollapsedChange?.(true) }}
@@ -463,7 +463,7 @@ export default function SpaceItem({
               onClick={() => setCollapseGuard(false)}
               className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
         </div>

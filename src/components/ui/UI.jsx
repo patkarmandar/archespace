@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useId, useRef } from 'react'
+import { X } from 'lucide-react'
 
 /**
  * Animated loading spinner.
@@ -97,9 +98,7 @@ export function Modal({ title, onClose, children, footer }) {
             aria-label="Close dialog"
             className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+            <X size={16} />
           </button>
         </div>
 

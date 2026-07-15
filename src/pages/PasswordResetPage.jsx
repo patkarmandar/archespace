@@ -64,7 +64,7 @@ export default function PasswordResetPage() {
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
         <div className="text-center mb-6 sm:mb-10">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg shadow-accent/10">
-            <KeyRound size={28} className="text-accent" />
+            <KeyRound size={24} className="text-accent" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-semibold text-text-primary mb-1.5 sm:mb-2">Reset Password</h1>
           <p className="text-text-muted text-sm">Choose a new login password.</p>
@@ -73,7 +73,7 @@ export default function PasswordResetPage() {
         <div className="bg-bg-surface border border-bg-border rounded-2xl p-6 shadow-xl shadow-black/10">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Spinner size={22} />
+              <Spinner size={20} />
             </div>
           ) : !user || !passwordRecovery ? (
             <div className="space-y-4">

@@ -215,7 +215,7 @@ export default function LoginPage() {
               onClick={() => { setMode('signin'); setError(''); setInfo('') }}
               className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-accent transition-colors mb-4"
             >
-              <ArrowLeft size={13} /> Back to sign in
+              <ArrowLeft size={14} /> Back to sign in
             </button>
           )}
 

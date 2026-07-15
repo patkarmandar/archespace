@@ -60,7 +60,7 @@ export function SpaceCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            {col.pinned && <Pin size={11} className="text-accent shrink-0 fill-accent" />}
+            {col.pinned && <Pin size={14} className="text-accent shrink-0 fill-accent" />}
             <h3 className="font-semibold text-text-primary truncate">{col.name}</h3>
           </div>
           {col.description && (

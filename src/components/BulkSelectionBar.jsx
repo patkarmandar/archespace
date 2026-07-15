@@ -44,7 +44,7 @@ export default function BulkSelectionBar({ count, total, onClear, onSelectAll, a
                   : 'border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary'
               }`}
             >
-              <Icon size={15} />
+              <Icon size={16} />
             </button>
           ))}
         </div>
@@ -54,7 +54,7 @@ export default function BulkSelectionBar({ count, total, onClear, onSelectAll, a
           title="Clear selection"
           className="p-2 rounded-lg border border-bg-border hover:bg-bg-elevated text-text-muted"
         >
-          <X size={15} />
+          <X size={16} />
         </button>
       </div>
     </div>

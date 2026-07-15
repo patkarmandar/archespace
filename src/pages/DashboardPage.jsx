@@ -304,7 +304,7 @@ export default function DashboardPage() {
               onClick={() => { openPalette(); setMobileMenuOpen(false) }}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
-              <Command size={15} />
+              <Command size={16} />
               Commands
             </button>
             <button
@@ -312,7 +312,7 @@ export default function DashboardPage() {
               onClick={() => { navigate('/archive'); setMobileMenuOpen(false) }}
               className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
-              <Archive size={15} />
+              <Archive size={16} />
               Archive
               {archiveTotal > 0 && (
                 <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-accent text-white text-[10px] font-bold px-1">
@@ -325,7 +325,7 @@ export default function DashboardPage() {
               onClick={() => { navigate('/recycle-bin'); setMobileMenuOpen(false) }}
               className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
-              <Trash2 size={15} />
+              <Trash2 size={16} />
               Recycle bin
               {binTotal > 0 && (
                 <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold px-1">
@@ -338,7 +338,7 @@ export default function DashboardPage() {
               onClick={() => { navigate('/settings'); setMobileMenuOpen(false) }}
               className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
             >
-              <Settings size={15} />
+              <Settings size={16} />
               Settings
             </button>
           </div>
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                 onClick={() => setModal({ type: 'create' })}
                 className="mt-4 inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
               >
-                <Plus size={15} /> New space
+                <Plus size={16} /> New space
               </button>
             )}
           </div>

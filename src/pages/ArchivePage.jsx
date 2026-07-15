@@ -63,7 +63,7 @@ export default function ArchivePage() {
             onClick={() => navigate('/app')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
             <span className="hidden sm:inline">Back</span>
           </button>
           <div className="flex-1 min-w-0">
@@ -95,7 +95,7 @@ export default function ArchivePage() {
         ) : total === 0 ? (
           <div className="text-center py-20">
             <div className="w-14 h-14 rounded-2xl bg-bg-surface border border-bg-border flex items-center justify-center mx-auto mb-4">
-              <Archive size={22} className="text-text-muted" />
+              <Archive size={20} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Archive is empty</p>
             <p className="text-text-muted text-sm mt-1">Archive spaces from the dashboard menu</p>
@@ -124,7 +124,7 @@ export default function ArchivePage() {
                           })}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border hover:bg-success/10 hover:text-success text-text-secondary text-xs font-medium"
                         >
-                          <RotateCcw size={13} /> Unarchive
+                          <RotateCcw size={14} /> Unarchive
                         </button>
                       }
                     >
@@ -157,7 +157,7 @@ export default function ArchivePage() {
                           })}
                           className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border hover:bg-success/10 hover:text-success text-text-secondary text-xs font-medium"
                         >
-                          <RotateCcw size={13} /> Unarchive
+                          <RotateCcw size={14} /> Unarchive
                         </button>
                       }
                     >

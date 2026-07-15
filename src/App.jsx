@@ -5,6 +5,7 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate, Outlet, useRouteError } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContextCore'
@@ -133,10 +134,12 @@ function RouteErrorBoundary() {
     >
       <div className="max-w-md text-center space-y-4">
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto text-3xl"
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}
         >
-          {isChunkError ? '🔄' : '⚠️'}
+          {isChunkError
+            ? <RefreshCw size={24} style={{ color: 'var(--accent)' }} />
+            : <AlertTriangle size={24} style={{ color: 'var(--danger)' }} />}
         </div>
 
         <h1 className="text-xl font-semibold">

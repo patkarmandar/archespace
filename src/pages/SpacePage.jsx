@@ -229,7 +229,7 @@ export default function SpacePage() {
             onClick={() => navigate('/app')}
             className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
             <span className="hidden sm:inline">Back</span>
           </button>
 
@@ -270,7 +270,7 @@ export default function SpacePage() {
               className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl p-2 sm:px-3 sm:py-2 text-sm font-semibold transition-colors shadow-lg shadow-accent/20"
               title="Add item"
             >
-              <Plus size={15} />
+              <Plus size={16} />
               <span className="hidden sm:inline">Add item</span>
             </button>
           </div>
@@ -296,7 +296,7 @@ export default function SpacePage() {
           /* Empty state */
           <div className="text-center py-20">
             <div className="w-14 h-14 rounded-2xl bg-bg-surface border border-bg-border flex items-center justify-center mx-auto mb-4">
-              <Plus size={22} className="text-text-muted" />
+              <Plus size={20} className="text-text-muted" />
             </div>
             <p className="text-text-secondary font-medium">Nothing here yet</p>
             <p className="text-text-muted text-sm mt-1">Add your first item to this space</p>
@@ -304,7 +304,7 @@ export default function SpacePage() {
               onClick={() => setAddModal(true)}
               className="mt-4 inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors"
             >
-              <Plus size={15} /> Add first item
+              <Plus size={16} /> Add first item
             </button>
           </div>
         ) : (

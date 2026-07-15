@@ -100,7 +100,7 @@ export default function HomePage() {
         <header className="absolute left-0 right-0 top-0 z-50 flex items-center justify-between px-4 py-4 sm:px-8 sm:py-5">
           <Link to="/" className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/10">
-              <Sparkles size={18} className="text-emerald-200" />
+              <Sparkles size={20} className="text-emerald-200" />
             </span>
             <span className="text-sm font-semibold tracking-wide">Arche Space</span>
           </Link>
@@ -112,7 +112,7 @@ export default function HomePage() {
               rel="noreferrer"
               className="home-link-lift hidden sm:inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/15 hover:text-white transition-colors"
             >
-              <GithubMark size={15} />
+              <GithubMark size={16} />
               GitHub
             </a>
             <Link
@@ -120,7 +120,7 @@ export default function HomePage() {
               className="home-link-lift inline-flex items-center gap-2 rounded-lg bg-emerald-300 px-4 py-2 text-sm font-semibold text-[#10201c] hover:bg-emerald-200 transition-colors"
             >
               Sign in
-              <ArrowRight size={15} />
+              <ArrowRight size={16} />
             </Link>
           </nav>
         </header>
@@ -179,7 +179,7 @@ export default function HomePage() {
             <div className="space-y-3">
               {privacyPoints.map(point => (
                 <div key={point} className="flex items-start gap-3 rounded-lg bg-white/[0.06] p-4">
-                  <LockKeyhole size={17} className="mt-0.5 shrink-0 text-emerald-200" />
+                  <LockKeyhole size={16} className="mt-0.5 shrink-0 text-emerald-200" />
                   <span className="text-sm leading-6 text-white/78">{point}</span>
                 </div>
               ))}
