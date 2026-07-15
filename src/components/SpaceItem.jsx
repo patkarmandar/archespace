@@ -23,6 +23,7 @@ import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
   CheckSquare, Square, Maximize2, Minimize2, MoveRight,
+  ClipboardCopy, ClipboardCheck,
 } from 'lucide-react'
 import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, NumberedListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
@@ -30,6 +31,7 @@ import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
 import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem } from '../lib/dataProtection'
+import { itemToClipboardText } from '../lib/itemClipboard'
 import { TYPE_LABELS, TYPE_STYLES } from '../lib/itemTypes'
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants'
 
@@ -65,6 +67,7 @@ export default function SpaceItem({
   const [pendingSync, setPendingSync] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editorVersion, setEditorVersion] = useState(0)
+  const [copied, setCopied] = useState(false)
 
   const latestState = useRef({ title: item.title, content: item.content })
   
@@ -73,6 +76,7 @@ export default function SpaceItem({
   }, [titleVal, localContent])
 
   const autoSaveTimer = useRef(null)
+  const copyTimer = useRef(null)
   const style = TYPE_STYLES[item.type]
   const checklistProgress = item.type === 'checkbox_list' ? getChecklistProgress(localContent) : null
 
@@ -95,9 +99,12 @@ export default function SpaceItem({
     onDirtyChange?.(item.id, isDirty)
   }, [isDirty, item.id, onDirtyChange])
 
-  // ── Cleanup auto-save timer on unmount ──
+  // ── Cleanup timers on unmount ──
   useEffect(() => {
-    return () => clearTimeout(autoSaveTimer.current)
+    return () => {
+      clearTimeout(autoSaveTimer.current)
+      clearTimeout(copyTimer.current)
+    }
   }, [])
 
   useEffect(() => {
@@ -187,6 +194,19 @@ export default function SpaceItem({
 
   /** Manual save button handler */
   const handleSave = () => performSave()
+
+  /** Copy the item's current content to the clipboard as plain text */
+  const handleCopy = useCallback(async () => {
+    const text = itemToClipboardText({ type: item.type, content: latestState.current.content })
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard access denied (e.g. insecure context); silently ignore.
+    }
+  }, [item.type])
 
   /** Discard all local edits and revert to server state */
   const handleDiscard = () => {
@@ -367,6 +387,19 @@ export default function SpaceItem({
                 </>
               ) : (
                 <>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className={`p-2 rounded-lg border transition-all ${
+                      copied
+                        ? 'border-success/30 bg-success/10 text-success'
+                        : 'border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated'
+                    }`}
+                    aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+                    title={copied ? 'Copied' : 'Copy to clipboard'}
+                  >
+                    {copied ? <ClipboardCheck size={14} /> : <ClipboardCopy size={14} />}
+                  </button>
                   <button
                     type="button"
                     onClick={handleCollapseClick}
