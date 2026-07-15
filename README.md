@@ -34,15 +34,16 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Recycle bin with restore and permanent delete.
 - Archive area for hiding content without deleting it.
 - Auto-save for edited items.
+- One-click copy of any item's content to the clipboard as clean plain text.
 - Backup import/export to JSON.
-- Private, encrypted vault to keep your content secure (see [Security model](#security-model)).
-- Owner-only audit log of authentication and security events (see [Audit logging](#audit-logging)).
-- Permanent account deletion with a branded confirmation email.
 - Appearance settings with `System`, `Dark`, and `Light` theme modes.
 - Accent color settings with multiple color options.
-- Single-user self-hosting mode by default, with an optional multi-user mode.
+- Private, encrypted vault to keep your content secure (see [Security model](#security-model)).
 - Offline queue for pending changes while the browser is offline.
+- Single-user self-hosting mode by default, with an optional multi-user mode.
+- Verifiable build hash shown in Settings, linking to the exact source commit on GitHub.
 - PWA support for installing as an app.
+- Owner-only audit log of authentication and security events (see [Audit logging](#audit-logging)).
 
 ## Item types
 
@@ -103,6 +104,7 @@ Arche Space uses a browser-side vault model. You sign in with Supabase Auth usin
 - The app cannot recover encrypted content without either the current vault PIN or the current recovery code - there's no backdoor.
 - If both the vault PIN and recovery code are lost, encrypted space data cannot be decrypted.
 - JSON exports are downloaded to your machine and should be stored carefully; imported backups are encrypted before upload.
+- Client-side encryption is only as safe as the code your browser runs - a tampered build or malicious dependency could bypass it. Self-hosting, HTTPS, and reviewed dependencies reduce this, and Settings shows the exact build commit (linked to GitHub) so you can verify the running code.
 
 ## Audit logging
 
@@ -191,10 +193,9 @@ npm run build
 
 # Preview the production build locally (Wrangler)
 npm run preview
-
-# Deploy to Cloudflare (Wrangler)
-npm run deploy
 ```
+
+Production is deployed by Cloudflare's Git-connected builds: pushing to `main` triggers a build (`npm ci && npm run build`) and deploy automatically, so there is no manual deploy step.
 
 ## Email templates
 
@@ -227,13 +228,16 @@ The account-deletion email is separate; its HTML lives inside `notify_account_de
 | Encryption | Web Crypto API |
 | Icons | Lucide React |
 | File handling | JSZip |
-| Hosting / deploy | Cloudflare (Wrangler), or any static host |
-| Linting | ESLint 10 |
+| Hosting / deploy | Cloudflare (Git-connected builds), or any static host |
+| CI / tooling | GitHub Actions (lint, build, audit), Dependabot, ESLint 10 |
 
 ## Project structure
 
 ```text
 Arche/
+  .github/
+    workflows/
+  docs/
   email-templates/
   public/
     _headers
@@ -270,7 +274,8 @@ Key areas:
 - `src/context/` contains auth, encryption, appearance/theme, toast, shortcuts, command palette, and page action providers.
 - `src/hooks/` contains data hooks for spaces, items, archive, recycle bin, global search, offline sync, drag reordering, and session timeout.
 - `src/lib/crypto/` contains AES-GCM encryption, PBKDF2 key derivation, vault setup, vault unlock, session storage, PIN recovery code, and encoding helpers.
-- `src/lib/` contains Supabase client setup, data protection helpers, item type definitions, import/export, offline queue, rate limiting, audit logging, password policy, and shared utilities.
+- `src/lib/` contains Supabase client setup, data protection helpers, item type definitions, clipboard serialization, import/export, offline queue, rate limiting, audit logging, password policy, build info, and shared utilities.
+- `.github/` contains the CI workflow and Dependabot configuration; `docs/` contains audit and planning notes.
 - `schema.sql` contains tables, indexes, RLS policies, triggers, RPC functions, realtime setup, vault recovery and PIN lockout functions, the account-deletion email trigger, and the auth audit log.
 - `email-templates/` contains ready-to-paste Supabase auth email templates.
 - `public/_headers` contains deployment headers for hosts such as Netlify and Cloudflare Pages.
@@ -278,7 +283,7 @@ Key areas:
 
 ## Deployment notes
 
-- Build with `npm run build` and deploy the `dist/` directory to a static host, or use `npm run deploy` for Cloudflare via Wrangler.
+- On Cloudflare, connect the repository so pushes to `main` build and deploy automatically (Git-connected builds run `npm ci && npm run build`). For any other host, run `npm run build` and deploy the `dist/` directory.
 - Configure SPA fallback to `index.html`. `dist/404.html` is generated during build for hosts that need an SPA fallback file.
 - Configure Supabase redirect URLs for `/login` and `/reset-password`.
 - Configure Resend SMTP in Supabase Auth before relying on password reset and other auth emails.
@@ -308,6 +313,7 @@ Contributions are welcome, including bug fixes, features, docs, and translations
 - Keep PRs focused and include a short description of the change and why it is needed.
 - Run `npm run lint` before submitting.
 - Run `npm run build` before submitting.
+- CI runs lint, build, and a dependency audit on every pull request, and Dependabot proposes weekly dependency updates. The Node version is pinned in `.nvmrc`.
 - For larger changes, schema changes, or security-relevant work, open an issue or reach out first so the approach can be discussed.
 
 For development questions, architecture discussions, feature requests, bug reports, or anything related to contributing code, contact **[dev@archespace.cc](mailto:dev@archespace.cc)**.
