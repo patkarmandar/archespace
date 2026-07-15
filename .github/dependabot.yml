@@ -8,6 +8,11 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # Tailwind v4 is a breaking, CSS-first rewrite; stay on v3 until a
+      # deliberate migration. Minor/patch v3 updates still come through.
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
