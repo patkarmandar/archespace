@@ -62,10 +62,18 @@ export function AuthProvider({ children }) {
       redirectTo: `${window.location.origin}/reset-password`,
     })
 
-  /** Request an account email change through Supabase Auth. */
-  const updateEmail = (email) =>
+  /** Send a reauthentication code (OTP) to the user's current email. */
+  const reauthenticate = () => supabase.auth.reauthenticate()
+
+  /**
+   * Request an account email change through Supabase Auth.
+   * Pass the reauthentication `nonce` (code sent to the current email) so
+   * the change is authorised. With Supabase "Secure email change" disabled,
+   * only the new address receives a confirmation link.
+   */
+  const updateEmail = (email, nonce) =>
     supabase.auth.updateUser(
-      { email },
+      nonce ? { email, nonce } : { email },
       { emailRedirectTo: `${window.location.origin}/login?email_change=verified` }
     )
 
@@ -81,8 +89,10 @@ export function AuthProvider({ children }) {
   }
 
   /** Update password, revoke all sessions, and force a fresh sign-in. */
-  const updatePasswordAndSignOut = async (password, afterUpdate) => {
-    const { error: updateError } = await supabase.auth.updateUser({ password })
+  const updatePasswordAndSignOut = async (password, afterUpdate, nonce) => {
+    const { error: updateError } = await supabase.auth.updateUser(
+      nonce ? { password, nonce } : { password }
+    )
     if (updateError) return { error: updateError }
     if (afterUpdate) {
       try {
@@ -116,6 +126,7 @@ export function AuthProvider({ children }) {
         signUp,
         signOut,
         requestPasswordReset,
+        reauthenticate,
         updateEmail,
         deleteAccount,
         updatePasswordAndSignOut,

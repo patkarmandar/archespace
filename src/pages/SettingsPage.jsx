@@ -18,6 +18,7 @@ import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
 import { BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
+import ReauthCode from '../components/ReauthCode'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
   const open = openSection === id
@@ -53,7 +54,7 @@ function Divider() {
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, signIn, signOut, requestPasswordReset, updateEmail, deleteAccount, updatePasswordAndSignOut } = useAuth()
+  const { user, signIn, signOut, requestPasswordReset, reauthenticate, updateEmail, deleteAccount, updatePasswordAndSignOut } = useAuth()
   const { cryptoKey, unlock, updatePin, setupRecoveryCode, updatePinWithRecoveryCode, unlocking } = useEncryption()
   const {
     themeMode,
@@ -98,6 +99,7 @@ export default function SettingsPage() {
   const [recoverySetupLoading, setRecoverySetupLoading] = useState(false)
   const [pinRecoveryLoading, setPinRecoveryLoading] = useState(false)
   const [openSection, setOpenSection] = useState('')
+  const [emailStep, setEmailStep] = useState('form')     // 'form' | 'code'
   const deleteConfirmationPhrase = `DELETE ${user?.email || ''}`
 
   const resetDeleteFlow = () => {
@@ -107,6 +109,17 @@ export default function SettingsPage() {
     setDeletePin('')
     setShowDeletePassword(false)
     setDeleteLoading(false)
+  }
+
+  const sendEmailCode = async () => {
+    const { error } = await reauthenticate()
+    if (error) {
+      toast.error(`Could not send code: ${error.message}`)
+      return false
+    }
+    setEmailStep('code')
+    toast.info('We sent a 6-digit code to your current email.')
+    return true
   }
 
   const handleChangeEmail = async (e) => {
@@ -132,8 +145,16 @@ export default function SettingsPage() {
       setEmailLoading(false)
       return
     }
+    // Send a reauthentication code to the CURRENT (old) email.
+    await sendEmailCode()
+    setEmailLoading(false)
+  }
 
-    const { error } = await updateEmail(nextEmail)
+  // Confirm with the code from the old email; a link then goes to the new email.
+  const handleConfirmEmailChange = async (code) => {
+    const nextEmail = newEmail.trim().toLowerCase()
+    setEmailLoading(true)
+    const { error } = await updateEmail(nextEmail, code)
     if (error) {
       setEmailLoading(false)
       toast.error(error.message)
@@ -141,9 +162,10 @@ export default function SettingsPage() {
     }
     setNewEmail('')
     setEmailPassword('')
+    setEmailStep('form')
     await signOut({ scope: 'local' })
     setEmailLoading(false)
-    toast.success('Email change requested. Confirm it from your email, then sign in again.')
+    toast.success('Confirmation link sent to your new email. Confirm it, then sign in again.')
     navigate('/login?email_change=requested', { replace: true })
   }
 
@@ -196,10 +218,19 @@ export default function SettingsPage() {
       toast.error('New passwords do not match.')
       return
     }
+    if (!currentPassword) {
+      toast.error('Enter your current password.')
+      return
+    }
     setPasswordLoading(true)
     const { error: verifyError } = await signIn(user.email, currentPassword)
     if (verifyError) {
-      toast.error('Current password is incorrect.')
+      const msg = verifyError.message || ''
+      toast.error(
+        /invalid login credentials/i.test(msg)
+          ? 'Current password is incorrect.'
+          : `Could not verify password: ${msg}`
+      )
       setPasswordLoading(false)
       return
     }
@@ -362,9 +393,10 @@ export default function SettingsPage() {
                 Current email: <span className="text-text-secondary">{user?.email}</span>
               </p>
               <p className="text-text-muted text-xs mt-1.5">
-                Supabase may send confirmation links to both your current and new email addresses. The email changes only after the required links are confirmed.
+                We'll email a 6-digit code to your current address to confirm it's you. After you enter it, a confirmation link is sent to your new address, and the change takes effect once you open that link.
               </p>
             </div>
+            {emailStep === 'form' ? (
             <form onSubmit={handleChangeEmail} className="mt-3 space-y-3">
               <div>
                 <label htmlFor="new-email" className="block text-xs font-medium text-text-secondary mb-1.5">
@@ -409,9 +441,18 @@ export default function SettingsPage() {
                 disabled={emailLoading}
                 className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
               >
-                {emailLoading ? 'Sending request...' : 'Change email'}
+                {emailLoading ? 'Sending code…' : 'Change email'}
               </button>
             </form>
+            ) : (
+              <ReauthCode
+                email={user?.email}
+                busy={emailLoading}
+                onConfirm={handleConfirmEmailChange}
+                onCancel={() => { setEmailStep('form'); setEmailPassword('') }}
+                onResend={sendEmailCode}
+              />
+            )}
 
             <Divider />
 
@@ -573,7 +614,7 @@ export default function SettingsPage() {
                 disabled={passwordLoading}
                 className="w-full bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
               >
-                {passwordLoading ? 'Updating...' : 'Change login password'}
+                {passwordLoading ? 'Updating…' : 'Change login password'}
               </button>
               <button
                 type="button"
