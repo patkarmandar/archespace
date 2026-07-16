@@ -1,13 +1,14 @@
 /**
  * AppChrome.jsx - Global UI shell (palette, session toasts, offline sync).
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContextCore'
 import { useToast } from '../../context/ToastCore'
 import { useCommandPalette } from '../../context/CommandPaletteCore'
 import { useShortcut } from '../../context/ShortcutsCore'
 import { useOfflineSync } from '../../hooks/useOfflineSync'
 import CommandPalette from '../CommandPalette'
+import ShortcutsHelp from '../ShortcutsHelp'
 
 import { usePageActions } from '../../context/PageActionsCore'
 
@@ -17,6 +18,7 @@ export default function AppChrome() {
   const { openPalette } = useCommandPalette()
   const pageActions = usePageActions()
   const pageActionsRef = useRef(pageActions)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
     pageActionsRef.current = pageActions
@@ -29,6 +31,14 @@ export default function AppChrome() {
   useShortcut('new-space', () => pageActionsRef.current.onNewSpace?.(), !!user)
   useShortcut('save', () => window.dispatchEvent(new CustomEvent('arche:flush-saves')), !!user)
   useShortcut('escape', () => pageActionsRef.current.onEscape?.(), !!user)
+  useShortcut('shortcuts', () => setShowShortcuts(true), !!user)
+
+  // Let the command palette / header buttons open the shortcuts help too.
+  useEffect(() => {
+    const open = () => setShowShortcuts(true)
+    window.addEventListener('arche:open-shortcuts', open)
+    return () => window.removeEventListener('arche:open-shortcuts', open)
+  }, [])
 
   useEffect(() => {
     const onExpired = () => {
@@ -48,9 +58,12 @@ export default function AppChrome() {
   if (!user) return null
 
   return (
-    <CommandPalette
-      onNewSpace={() => pageActionsRef.current.onNewSpace?.()}
-      onOpenSearch={() => pageActionsRef.current.onOpenSearch?.()}
-    />
+    <>
+      <CommandPalette
+        onNewSpace={() => pageActionsRef.current.onNewSpace?.()}
+        onOpenSearch={() => pageActionsRef.current.onOpenSearch?.()}
+      />
+      {showShortcuts && <ShortcutsHelp onClose={() => setShowShortcuts(false)} />}
+    </>
   )
 }

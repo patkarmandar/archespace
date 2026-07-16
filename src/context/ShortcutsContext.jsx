@@ -33,6 +33,12 @@ export function ShortcutsProvider({ children }) {
 
       if (isTyping && !mod) return
 
+      if (e.key === '?' && !mod) {
+        e.preventDefault()
+        handlersRef.current.get('shortcuts')?.()
+        return
+      }
+
       if (mod && e.key === 's') {
         e.preventDefault()
         handlersRef.current.get('save')?.()

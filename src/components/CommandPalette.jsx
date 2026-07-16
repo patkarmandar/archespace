@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Home, Archive, Trash2, Search, Settings, Sparkles,
+  Plus, Home, Archive, Trash2, Search, Settings, Sparkles, Keyboard,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteCore'
 import { useTheme } from '../context/ThemeCore'
@@ -23,6 +23,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
     { id: 'archive', label: 'Open archive', icon: Archive, run: () => { closePalette(); navigate('/archive') } },
     { id: 'bin', label: 'Open recycle bin', icon: Trash2, run: () => { closePalette(); navigate('/recycle-bin') } },
     { id: 'settings', label: 'Settings', icon: Settings, run: () => { closePalette(); navigate('/settings') } },
+    { id: 'shortcuts', label: 'Keyboard shortcuts', hint: '?', icon: Keyboard, run: () => { closePalette(); window.dispatchEvent(new CustomEvent('arche:open-shortcuts')) } },
     {
       id: 'theme',
       label: 'Switch app theme',

@@ -14,7 +14,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Search, Folder,
-  Trash2, Archive, Command, CheckSquare, Settings, Lock, Menu,
+  Trash2, Archive, Command, CheckSquare, Settings, Lock, Menu, Keyboard,
 } from 'lucide-react'
 import GlobalSearchResults from '../components/GlobalSearchResults'
 import { useDragReorder } from '../hooks/useDragReorder'
@@ -232,6 +232,15 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('arche:open-shortcuts'))}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard size={14} />
+              <span className="hidden nav:inline">Shortcuts</span>
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/archive')}
               className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Archive"
@@ -306,6 +315,14 @@ export default function DashboardPage() {
             >
               <Command size={16} />
               Commands
+            </button>
+            <button
+              type="button"
+              onClick={() => { window.dispatchEvent(new CustomEvent('arche:open-shortcuts')); setMobileMenuOpen(false) }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-bg-border hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
+            >
+              <Keyboard size={16} />
+              Keyboard shortcuts
             </button>
             <button
               type="button"
