@@ -17,7 +17,7 @@ import WeakPinWarning from '../components/WeakPinWarning'
 import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
-import { BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
+import { APP_VERSION, BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
 import ReauthCode from '../components/ReauthCode'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
@@ -793,7 +793,7 @@ export default function SettingsPage() {
         </section>
 
         <p className="mt-6 text-center text-xs text-text-muted">
-          Build{' '}
+          Arche Space <span className="text-text-secondary">v{APP_VERSION}</span> · build{' '}
           <a
             href={COMMIT_URL}
             target="_blank"
