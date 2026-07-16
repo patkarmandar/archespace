@@ -1,5 +1,9 @@
 # Arche Space
 
+[![Build](https://github.com/patkarmandar/Arche/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/Arche/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/patkarmandar/Arche)](https://github.com/patkarmandar/Arche/blob/main/package.json)
+[![Live](https://img.shields.io/badge/live-archespace.cc-32d3aa)](https://archespace.cc)
+
 Arche Space is an open source, private, encrypted space for organizing ideas, plans, notes, checklists, and cards. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
 
 It follows a zero-knowledge architecture: your content is encrypted in the browser and the backend only ever stores ciphertext, so the server, its operators, and the developers never see your data in readable form.
@@ -29,6 +33,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Drag-and-drop reordering for spaces and page items, plus keyboard reordering inside lists.
 - Unified dashboard search across spaces, tags, and item content.
 - Command palette with `Ctrl+K` / `Cmd+K`.
+- Keyboard shortcuts for common actions, with an in-app shortcuts dialog (see [Keyboard shortcuts](#keyboard-shortcuts)).
 - Bulk actions for spaces and items.
 - Duplicate, move, archive, restore, and delete workflows.
 - Recycle bin with restore and permanent delete.
@@ -62,6 +67,7 @@ All list-style types support adding, removing, drag-and-drop reordering, and key
 
 | Shortcut | Action |
 |----------|--------|
+| `?` | Show the keyboard shortcuts dialog |
 | `Ctrl+K` / `Cmd+K` | Open command palette |
 | `/` | Focus dashboard search |
 | `N` | Create a new space on the dashboard |
