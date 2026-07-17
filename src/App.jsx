@@ -5,7 +5,6 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate, Outlet, useRouteError } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContextCore'
@@ -19,6 +18,7 @@ import { PageActionsProvider } from './context/PageActionsContext'
 import { useSessionTimeout } from './hooks/useSessionTimeout'
 
 import ErrorBoundary from './components/ErrorBoundary'
+import ErrorScreen from './components/ErrorScreen'
 import AppChrome from './components/layout/AppChrome'
 import { Spinner } from './components/ui/UI'
 
@@ -133,59 +133,14 @@ function RouteErrorBoundary() {
     error?.message?.includes('Failed to fetch')
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-6"
-      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
-    >
-      <div className="max-w-md text-center space-y-4">
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}
-        >
-          {isChunkError
-            ? <RefreshCw size={24} style={{ color: 'var(--accent)' }} />
-            : <AlertTriangle size={24} style={{ color: 'var(--danger)' }} />}
-        </div>
-
-        <h1 className="text-xl font-semibold">
-          {isChunkError ? 'App updated - reload needed' : 'Something went wrong'}
-        </h1>
-
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {isChunkError
-            ? 'A new version of Arche was deployed. Please reload to get the latest update.'
-            : 'An unexpected error occurred. Try reloading the page or going back to the dashboard.'}
-        </p>
-
-        {!isChunkError && error?.message && (
-          <details className="text-left text-xs rounded-xl p-3" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)' }}>
-            <summary className="cursor-pointer font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Error details
-            </summary>
-            <pre className="mt-2 whitespace-pre-wrap break-all" style={{ color: 'var(--danger)' }}>
-              {error.message}
-            </pre>
-          </details>
-        )}
-
-        <div className="flex gap-3 justify-center pt-2">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-          >
-            Reload page
-          </button>
-          <button
-            onClick={() => { window.location.href = '/app' }}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}
-          >
-            Go to dashboard
-          </button>
-        </div>
-      </div>
-    </div>
+    <ErrorScreen
+      variant={isChunkError ? 'chunk' : 'error'}
+      title={isChunkError ? 'App updated - reload needed' : 'Something went wrong'}
+      message={isChunkError
+        ? 'A new version of Arche was deployed. Please reload to get the latest update.'
+        : 'An unexpected error occurred. Try reloading the page or going back to the dashboard.'}
+      errorMessage={isChunkError ? undefined : error?.message}
+    />
   )
 }
 
