@@ -19,6 +19,7 @@ import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
 import { APP_VERSION, BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
 import ReauthCode from '../components/ReauthCode'
+import Modal from '../components/ui/Modal'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
   const open = openSection === id
@@ -807,49 +808,55 @@ export default function SettingsPage() {
       </main>
 
       {deleteStep === 'warning' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl">
-            <div className="border-b border-bg-border px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-text-primary">Delete Account Permanently</h2>
-                  <p className="text-xs text-text-muted mt-0.5">Read this before continuing.</p>
-                </div>
+        <Modal
+          onClose={resetDeleteFlow}
+          labelledBy="delete-warning-title"
+          panelClassName="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl"
+        >
+          <div className="border-b border-bg-border px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h2 id="delete-warning-title" className="text-base font-semibold text-text-primary">Delete Account Permanently</h2>
+                <p className="text-xs text-text-muted mt-0.5">Read this before continuing.</p>
               </div>
             </div>
-            <div className="space-y-3 px-5 py-4 text-sm leading-6 text-text-secondary">
-              <p>All spaces and items will be permanently deleted.</p>
-              <p>Your encrypted vault cannot be recovered afterward, even with your recovery code.</p>
-              <p className="font-semibold text-danger">This action is permanent. This cannot be undone.</p>
-            </div>
-            <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
-              <button
-                type="button"
-                onClick={resetDeleteFlow}
-                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteStep('confirm')}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
-              >
-                I understand
-              </button>
-            </div>
           </div>
-        </div>
+          <div className="space-y-3 px-5 py-4 text-sm leading-6 text-text-secondary">
+            <p>All spaces and items will be permanently deleted.</p>
+            <p>Your encrypted vault cannot be recovered afterward, even with your recovery code.</p>
+            <p className="font-semibold text-danger">This action is permanent. This cannot be undone.</p>
+          </div>
+          <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
+            <button
+              type="button"
+              onClick={resetDeleteFlow}
+              className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteStep('confirm')}
+              className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+            >
+              I understand
+            </button>
+          </div>
+        </Modal>
       )}
 
       {deleteStep === 'confirm' && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <form onSubmit={handleDeleteAccount} className="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl">
+        <Modal
+          onClose={resetDeleteFlow}
+          labelledBy="delete-confirm-title"
+          onSubmit={handleDeleteAccount}
+          panelClassName="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl"
+        >
             <div className="border-b border-bg-border px-5 py-4">
-              <h2 className="text-base font-semibold text-text-primary">Confirm account deletion</h2>
+              <h2 id="delete-confirm-title" className="text-base font-semibold text-text-primary">Confirm account deletion</h2>
               <p className="text-xs text-text-muted mt-1">
                 Type <span className="font-mono text-danger">{deleteConfirmationPhrase}</span> and re-enter your credentials.
               </p>
@@ -918,8 +925,7 @@ export default function SettingsPage() {
                 {deleteLoading || unlocking ? 'Deleting...' : 'Delete permanently'}
               </button>
             </div>
-          </form>
-        </div>
+        </Modal>
       )}
     </div>
   )
