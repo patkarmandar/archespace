@@ -7,6 +7,13 @@ import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem, decryptItem, decryptItems } from '../lib/dataProtection'
 import { invalidateSpaceItems } from '../lib/queryInvalidation'
+import {
+  makeSoftDelete,
+  makeBulkSoftDelete,
+  makeBulkSetPinned,
+  makeTogglePin,
+  makeReorder,
+} from './entityMutations'
 
 const defaultContent = {
   textbox: { text: '' },
@@ -112,42 +119,17 @@ export function useSpaceItems(spaceId) {
     onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
-  const togglePin = useMutation({
-    mutationFn: async ({ id, pinned }) => {
-      const { error } = await supabase
-        .from('space_items')
-        .update({ pinned: !pinned })
-        .eq('id', id)
-      if (error) throw error
-    },
-    onMutate: async ({ id, pinned }) => {
-      await qc.cancelQueries({ queryKey: ['items', spaceId] })
-      const previous = qc.getQueryData(['items', spaceId])
-      qc.setQueryData(['items', spaceId], (old) =>
-        old?.map(item => item.id === id ? { ...item, pinned: !pinned } : item)
-      )
-      return { previous }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['items', spaceId], context.previous)
-    },
-    onSettled: () => {
-      invalidateSpaceItems(qc, spaceId)
-    },
-  })
+  const togglePin = useMutation(makeTogglePin({
+    table: 'space_items',
+    qc,
+    queryKey: ['items', spaceId],
+    invalidate: () => invalidateSpaceItems(qc, spaceId),
+  }))
 
-  const remove = useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('space_items')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => {
-      invalidateSpaceItems(qc, spaceId)
-    },
-  })
+  const remove = useMutation(makeSoftDelete({
+    table: 'space_items',
+    invalidate: () => invalidateSpaceItems(qc, spaceId),
+  }))
 
   const archive = useMutation({
     mutationFn: async (id) => {
@@ -191,40 +173,17 @@ export function useSpaceItems(spaceId) {
     },
   })
 
-  const reorder = useMutation({
-    mutationFn: async (orderedItems) => {
-      const updates = orderedItems.map((item, index) => ({
-        id: item.id,
-        position: index,
-      }))
-      const { error } = await supabase.rpc('update_item_positions', { updates })
-      if (error) throw error
-    },
-    onMutate: async (orderedItems) => {
-      await qc.cancelQueries({ queryKey: ['items', spaceId] })
-      const previous = qc.getQueryData(['items', spaceId])
-      qc.setQueryData(['items', spaceId], orderedItems.map((item, i) => ({
-        ...item, position: i,
-      })))
-      return { previous }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['items', spaceId], context.previous)
-    },
-    onSettled: () => invalidateSpaceItems(qc, spaceId),
-  })
+  const reorder = useMutation(makeReorder({
+    qc,
+    queryKey: ['items', spaceId],
+    rpc: 'update_item_positions',
+    invalidate: () => invalidateSpaceItems(qc, spaceId),
+  }))
 
-  const bulkRemove = useMutation({
-    mutationFn: async (ids) => {
-      if (!ids?.length) return
-      const { error } = await supabase
-        .from('space_items')
-        .update({ deleted_at: new Date().toISOString() })
-        .in('id', ids)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateSpaceItems(qc, spaceId),
-  })
+  const bulkRemove = useMutation(makeBulkSoftDelete({
+    table: 'space_items',
+    invalidate: () => invalidateSpaceItems(qc, spaceId),
+  }))
 
   const move = useMutation({
     mutationFn: async ({ ids, targetSpaceId }) => {
@@ -272,17 +231,10 @@ export function useSpaceItems(spaceId) {
     onSuccess: () => invalidateSpaceItems(qc, spaceId),
   })
 
-  const bulkSetPinned = useMutation({
-    mutationFn: async ({ ids, pinned }) => {
-      if (!ids?.length) return
-      const { error } = await supabase
-        .from('space_items')
-        .update({ pinned })
-        .in('id', ids)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateSpaceItems(qc, spaceId),
-  })
+  const bulkSetPinned = useMutation(makeBulkSetPinned({
+    table: 'space_items',
+    invalidate: () => invalidateSpaceItems(qc, spaceId),
+  }))
 
   const bulkDuplicate = useMutation({
     mutationFn: async (itemsToCopy) => {

@@ -9,6 +9,13 @@ import { useEncryption } from '../context/EncryptionCore'
 import { encryptSpace, decryptSpace, decryptSpaces } from '../lib/dataProtection'
 import { duplicateSpaceWithItems } from '../lib/spaceDuplicate'
 import { invalidateSpaceCollections, invalidateSpaceList } from '../lib/queryInvalidation'
+import {
+  makeSoftDelete,
+  makeBulkSoftDelete,
+  makeBulkSetPinned,
+  makeTogglePin,
+  makeReorder,
+} from './entityMutations'
 
 export function useSpaces() {
   const qc = useQueryClient()
@@ -108,61 +115,24 @@ export function useSpaces() {
     onSuccess: () => invalidateSpaceList(qc),
   })
 
-  const togglePin = useMutation({
-    mutationFn: async ({ id, pinned }) => {
-      const { error } = await supabase
-        .from('spaces')
-        .update({ pinned: !pinned })
-        .eq('id', id)
-      if (error) throw error
-    },
-    onMutate: async ({ id, pinned }) => {
-      await qc.cancelQueries({ queryKey: ['spaces'] })
-      const previous = qc.getQueryData(['spaces'])
-      qc.setQueryData(['spaces'], (old) =>
-        old?.map(c => c.id === id ? { ...c, pinned: !pinned } : c)
-      )
-      return { previous }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['spaces'], context.previous)
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
-  })
+  const togglePin = useMutation(makeTogglePin({
+    table: 'spaces',
+    qc,
+    queryKey: ['spaces'],
+    invalidate: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
+  }))
 
-  const reorder = useMutation({
-    mutationFn: async (orderedSpaces) => {
-      const updates = orderedSpaces.map((col, index) => ({
-        id: col.id,
-        position: index,
-      }))
-      const { error } = await supabase.rpc('update_space_positions', { updates })
-      if (error) throw error
-    },
-    onMutate: async (orderedSpaces) => {
-      await qc.cancelQueries({ queryKey: ['spaces'] })
-      const previous = qc.getQueryData(['spaces'])
-      qc.setQueryData(['spaces'], orderedSpaces.map((col, i) => ({
-        ...col, position: i,
-      })))
-      return { previous }
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) qc.setQueryData(['spaces'], context.previous)
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
-  })
+  const reorder = useMutation(makeReorder({
+    qc,
+    queryKey: ['spaces'],
+    rpc: 'update_space_positions',
+    invalidate: () => qc.invalidateQueries({ queryKey: ['spaces'] }),
+  }))
 
-  const remove = useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase
-        .from('spaces')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateSpaceCollections(qc),
-  })
+  const remove = useMutation(makeSoftDelete({
+    table: 'spaces',
+    invalidate: () => invalidateSpaceCollections(qc),
+  }))
 
   const archive = useMutation({
     mutationFn: async (id) => {
@@ -192,17 +162,10 @@ export function useSpaces() {
     onSuccess: () => invalidateSpaceCollections(qc),
   })
 
-  const bulkRemove = useMutation({
-    mutationFn: async (ids) => {
-      if (!ids?.length) return
-      const { error } = await supabase
-        .from('spaces')
-        .update({ deleted_at: new Date().toISOString() })
-        .in('id', ids)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateSpaceCollections(qc),
-  })
+  const bulkRemove = useMutation(makeBulkSoftDelete({
+    table: 'spaces',
+    invalidate: () => invalidateSpaceCollections(qc),
+  }))
 
   const bulkArchive = useMutation({
     mutationFn: async (ids) => {
@@ -224,17 +187,10 @@ export function useSpaces() {
     onSuccess: () => invalidateSpaceCollections(qc),
   })
 
-  const bulkSetPinned = useMutation({
-    mutationFn: async ({ ids, pinned }) => {
-      if (!ids?.length) return
-      const { error } = await supabase
-        .from('spaces')
-        .update({ pinned })
-        .in('id', ids)
-      if (error) throw error
-    },
-    onSuccess: () => invalidateSpaceCollections(qc),
-  })
+  const bulkSetPinned = useMutation(makeBulkSetPinned({
+    table: 'spaces',
+    invalidate: () => invalidateSpaceCollections(qc),
+  }))
 
   const bulkDuplicate = useMutation({
     mutationFn: async (cols) => {
