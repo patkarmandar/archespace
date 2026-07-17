@@ -275,12 +275,29 @@ RETURNS void AS $$
 DECLARE
   v_max_attempts constant integer := 5;
   v_lock_minutes constant integer := 5;
+  v_attempts     integer;
+  v_locked_until timestamptz;
 BEGIN
+  SELECT pin_failed_attempts, pin_locked_until
+    INTO v_attempts, v_locked_until
+  FROM user_encryption WHERE user_id = auth.uid();
+
+  IF NOT FOUND THEN RETURN; END IF;
+
+  -- A previous lock has fully expired: start a fresh count so the user
+  -- gets another full set of attempts rather than re-locking on every try.
+  IF v_locked_until IS NOT NULL AND v_locked_until <= now() THEN
+    v_attempts := 0;
+  END IF;
+
+  v_attempts := v_attempts + 1;
+
   UPDATE user_encryption
-  SET pin_failed_attempts = pin_failed_attempts + 1,
+  SET pin_failed_attempts = v_attempts,
       pin_locked_until = CASE
-        WHEN pin_failed_attempts + 1 >= v_max_attempts THEN now() + (v_lock_minutes || ' minutes')::interval
-        ELSE pin_locked_until END
+        WHEN v_attempts >= v_max_attempts THEN now() + (v_lock_minutes || ' minutes')::interval
+        ELSE NULL
+      END
   WHERE user_id = auth.uid();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
