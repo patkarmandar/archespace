@@ -58,7 +58,12 @@ const ArchivePage = lazyWithRetry(() => import('./pages/ArchivePage'))
 const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage'))
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 1000 * 30, retry: 1 } },
+  // Realtime subscriptions keep the cache fresh, so a refetch on every window
+  // focus is redundant work (each one re-decrypts every space/item). Rely on
+  // staleTime + realtime instead.
+  defaultOptions: {
+    queries: { staleTime: 1000 * 30, retry: 1, refetchOnWindowFocus: false },
+  },
 })
 
 function PageLoader() {

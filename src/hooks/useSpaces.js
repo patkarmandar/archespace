@@ -33,17 +33,24 @@ export function useSpaces() {
   })
 
   useEffect(() => {
+    // Coalesce bursts of row changes (e.g. a reorder updating many rows, or the
+    // realtime echo of our own optimistic writes) into a single invalidation.
+    let timer
     const channel = supabase
       .channel('spaces-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'spaces' },
         () => {
-          invalidateSpaceCollections(qc)
+          clearTimeout(timer)
+          timer = setTimeout(() => invalidateSpaceCollections(qc), 250)
         }
       )
       .subscribe()
-    return () => supabase.removeChannel(channel)
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
   }, [qc])
 
   const create = useMutation({

@@ -42,6 +42,9 @@ export function useSpaceItems(spaceId) {
 
   useEffect(() => {
     if (!spaceId) return
+    // Coalesce bursts of row changes (e.g. a reorder updating many rows, or the
+    // realtime echo of our own optimistic writes) into a single invalidation.
+    let timer
     const channel = supabase
       .channel(`items-${spaceId}`)
       .on(
@@ -53,11 +56,15 @@ export function useSpaceItems(spaceId) {
           filter: `space_id=eq.${spaceId}`,
         },
         () => {
-          invalidateSpaceItems(qc, spaceId)
+          clearTimeout(timer)
+          timer = setTimeout(() => invalidateSpaceItems(qc, spaceId), 250)
         }
       )
       .subscribe()
-    return () => supabase.removeChannel(channel)
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
   }, [spaceId, qc])
 
   const create = useMutation({
