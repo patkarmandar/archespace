@@ -1,5 +1,5 @@
 /**
- * exportImport.js - Data export and import utilities for Arche.
+ * exportImport.js - Data export and import utilities for Arche Space.
  *
  * Provides functions to export active spaces as a JSON file,
  * and to import a JSON backup file with deep validation.

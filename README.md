@@ -1,7 +1,7 @@
 # Arche Space
 
-[![Build](https://github.com/patkarmandar/Arche/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/Arche/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/github/package-json/v/patkarmandar/Arche)](https://github.com/patkarmandar/Arche/blob/main/package.json)
+[![Build](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/github/package-json/v/patkarmandar/archespace)](https://github.com/patkarmandar/archespace/blob/main/package.json)
 [![Live](https://img.shields.io/badge/live-archespace.cc-32d3aa)](https://archespace.cc)
 
 Arche Space is an open source, private, encrypted space for organizing ideas, plans, notes, checklists, and cards. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
@@ -127,8 +127,8 @@ Recorded actions include: `account_created`, `account_deleted`, `email_change`, 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/patkarmandar/Arche
-cd Arche
+git clone https://github.com/patkarmandar/archespace
+cd archespace
 ```
 
 ### 2. Install dependencies
@@ -240,7 +240,7 @@ The account-deletion email is separate; its HTML lives inside `notify_account_de
 ## Project structure
 
 ```text
-Arche/
+archespace/
   .github/
     workflows/
   docs/

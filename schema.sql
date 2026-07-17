@@ -1,8 +1,8 @@
 -- ============================================================
--- Arche - Database Schema (Supabase / PostgreSQL)
+-- Arche Space - Database Schema (Supabase / PostgreSQL)
 -- ============================================================
 --
--- This is the complete schema for the Arche app.
+-- This is the complete schema for the Arche Space app.
 -- Run it once in the Supabase SQL Editor on a
 -- new project to create every table (with all columns already in
 -- place), index, function, trigger, RLS policy, and realtime

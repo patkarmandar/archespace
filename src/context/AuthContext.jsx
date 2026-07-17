@@ -1,5 +1,5 @@
 /**
- * AuthContext.jsx - Authentication provider for Arche.
+ * AuthContext.jsx - Authentication provider for Arche Space.
  *
  * Wraps the app in a React context that exposes:
  *   - `user`    - the current Supabase User object (or null)

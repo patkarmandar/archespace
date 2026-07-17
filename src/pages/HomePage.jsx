@@ -107,7 +107,7 @@ export default function HomePage() {
 
           <nav className="flex items-center gap-2">
             <a
-              href="https://github.com/patkarmandar/Arche"
+              href="https://github.com/patkarmandar/archespace"
               target="_blank"
               rel="noreferrer"
               className="home-link-lift hidden sm:inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/15 hover:text-white transition-colors"
@@ -152,7 +152,7 @@ export default function HomePage() {
               <ArrowRight size={16} />
             </Link>
             <a
-              href="https://github.com/patkarmandar/Arche"
+              href="https://github.com/patkarmandar/archespace"
               target="_blank"
               rel="noreferrer"
               className="home-link-lift inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white hover:bg-white/15 transition-colors"

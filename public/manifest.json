@@ -1,6 +1,6 @@
 {
-  "name": "Arche - Private Space",
-  "short_name": "Arche",
+  "name": "Arche Space",
+  "short_name": "Arche Space",
   "description": "An open source, private, encrypted space for organizing ideas, plans, notes, checklists, and cards.",
   "start_url": "/",
   "display": "standalone",

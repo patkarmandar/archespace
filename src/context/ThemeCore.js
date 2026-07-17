@@ -28,7 +28,7 @@ export const ACCENT_COLORS = [
   {
     id: 'lavender',
     name: 'Lavender Indigo',
-    description: 'The original Arche accent, refined.',
+    description: 'The original Arche Space accent, refined.',
     swatch: '#7c6af7',
   },
   {
