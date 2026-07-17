@@ -460,7 +460,10 @@ export default function SpaceItem({
               Discard & collapse
             </button>
             <button
+              type="button"
               onClick={() => setCollapseGuard(false)}
+              aria-label="Dismiss warning"
+              title="Dismiss"
               className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all"
             >
               <X size={14} />

@@ -24,10 +24,13 @@ import MarkdownPreview from './MarkdownPreview'
 // ─────────────────────────────────────────────────────────
 
 /** Small icon-only delete button, visible only when the row is hovered */
-function DelBtn({ onClick }) {
+function DelBtn({ onClick, label = 'Delete item' }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-label={label}
+      title={label}
       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all shrink-0"
     >
       <Trash2 size={14} />
@@ -287,7 +290,10 @@ function ListEditor({ content, onChange, variant }) {
         >
           {isChecklist ? (
             <button
+              type="button"
               onClick={() => updateItem(item.id, 'checked', !item.checked)}
+              aria-label={item.checked ? 'Mark item as not done' : 'Mark item as done'}
+              aria-pressed={item.checked}
               className="shrink-0 mt-0.5 text-text-muted hover:text-accent transition-colors"
             >
               {item.checked
@@ -394,7 +400,7 @@ export function CardListEditor({ content, onChange }) {
               placeholder="Title…"
               className="flex-1 bg-transparent text-sm font-semibold focus:outline-none text-text-primary placeholder-text-muted"
             />
-            <DelBtn onClick={() => removeItem(item.id)} />
+            <DelBtn onClick={() => removeItem(item.id)} label="Delete card" />
           </div>
 
           <textarea
