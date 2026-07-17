@@ -1,9 +1,14 @@
 /**
- * vaultPin.js - Vault PIN validation (4–12 digits).
+ * vaultPin.js - Vault secret validation.
+ *
+ * The vault secret can be a numeric PIN or an alphanumeric passphrase
+ * (letters, numbers, symbols). Only length is enforced (min stays low for
+ * backwards compatibility); weak choices are surfaced via a warning, not
+ * blocked, so existing short PINs keep working.
  */
 import { VAULT_PIN_MAX_LENGTH, VAULT_PIN_MIN_LENGTH } from '../constants'
 
-const PIN_DIGITS_ONLY = /^\d+$/
+const DIGITS_ONLY = /^\d+$/
 
 /**
  * @param {string} pin
@@ -11,23 +16,27 @@ const PIN_DIGITS_ONLY = /^\d+$/
  */
 export function validateVaultPin(pin) {
   const value = String(pin ?? '')
-  if (!PIN_DIGITS_ONLY.test(value)) {
-    return 'PIN must contain only digits.'
-  }
   if (value.length < VAULT_PIN_MIN_LENGTH || value.length > VAULT_PIN_MAX_LENGTH) {
-    return `PIN must be ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digits.`
+    return `Must be ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} characters.`
   }
   return null
 }
 
 /**
- * Security warning for weak PINs. 4-digit PINs remain valid.
+ * Security warning for weak vault secrets. Short and/or digits-only values
+ * are the most guessable; returns null once reasonably strong.
  * @param {string} pin
  * @returns {string|null}
  */
 export function getWeakPinWarning(pin) {
   const value = String(pin ?? '')
-  if (!PIN_DIGITS_ONLY.test(value)) return null
-  if (value.length !== VAULT_PIN_MIN_LENGTH) return null
-  return 'A 4-digit PIN has only 10,000 combinations and is vulnerable to guessing. Use 6 or more digits for stronger protection.'
+  if (value.length < VAULT_PIN_MIN_LENGTH) return null // handled by validation
+
+  if (DIGITS_ONLY.test(value) && value.length < 8) {
+    return `A ${value.length}-digit PIN is easy to guess. Use 8+ digits, or add letters and symbols for much stronger protection.`
+  }
+  if (value.length < 6) {
+    return 'This is short. A longer PIN or passphrase (letters, numbers, symbols) is much harder to guess.'
+  }
+  return null
 }

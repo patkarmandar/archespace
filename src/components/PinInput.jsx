@@ -1,5 +1,6 @@
 /**
- * PinInput.jsx - Numeric PIN field (4–12 digits).
+ * PinInput.jsx - Vault secret field: a numeric PIN or an alphanumeric
+ * passphrase (letters, numbers, symbols).
  */
 import { VAULT_PIN_MAX_LENGTH } from '../lib/constants'
 
@@ -22,15 +23,14 @@ export default function PinInput({
       <input
         id={id}
         type="password"
-        inputMode="numeric"
-        pattern="[0-9]*"
+        inputMode="text"
         maxLength={VAULT_PIN_MAX_LENGTH}
         value={value}
-        onChange={e => onChange(e.target.value.replace(/\D/g, ''))}
+        onChange={e => onChange(e.target.value)}
         required
         autoComplete={autoComplete}
         disabled={disabled}
-        className={`w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm tracking-[0.35em] font-mono focus:outline-none focus:border-accent disabled:opacity-50 ${className}`}
+        className={`w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-accent disabled:opacity-50 ${className}`}
       />
     </div>
   )

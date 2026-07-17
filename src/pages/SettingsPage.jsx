@@ -14,7 +14,7 @@ import { exportSpaces, importSpaces } from '../lib/exportImport'
 import PinInput from '../components/PinInput'
 import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
 import WeakPinWarning from '../components/WeakPinWarning'
-import { VAULT_PIN_MIN_LENGTH, VAULT_PIN_MAX_LENGTH } from '../lib/constants'
+import { VAULT_PIN_MIN_LENGTH } from '../lib/constants'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
 import { APP_VERSION, BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
@@ -631,7 +631,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-sm font-semibold text-text-primary">Change vault PIN</h3>
               <p className="text-text-muted text-xs mt-0.5">
-                Unlocks encrypted data. {VAULT_PIN_MIN_LENGTH}-{VAULT_PIN_MAX_LENGTH} digits.
+                Unlocks encrypted data. PIN or passphrase, at least {VAULT_PIN_MIN_LENGTH} characters.
               </p>
             </div>
             <form onSubmit={handleChangePin} className="mt-3 space-y-3">

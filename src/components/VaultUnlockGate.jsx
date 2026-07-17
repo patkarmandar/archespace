@@ -6,7 +6,7 @@ import { Shield, Lock } from 'lucide-react'
 import { useAuth } from '../context/AuthContextCore'
 import { useEncryption } from '../context/EncryptionCore'
 import PinInput from './PinInput'
-import { VAULT_PIN_MAX_LENGTH, VAULT_PIN_MIN_LENGTH } from '../lib/constants'
+import { VAULT_PIN_MIN_LENGTH } from '../lib/constants'
 import { validateVaultPin, getWeakPinWarning } from '../lib/crypto/vaultPin'
 import WeakPinWarning from './WeakPinWarning'
 
@@ -178,7 +178,7 @@ export default function VaultUnlockGate({ children }) {
           </h1>
           <p className="text-text-muted text-sm mt-1.5 sm:mt-2 leading-relaxed">
             {needsSetup
-              ? `Choose a ${VAULT_PIN_MIN_LENGTH}–${VAULT_PIN_MAX_LENGTH} digit PIN. A one-time recovery code will be shown next.`
+              ? `Choose a PIN or passphrase — at least ${VAULT_PIN_MIN_LENGTH} characters (letters, numbers, or symbols). A one-time recovery code will be shown next.`
               : forgotPin
                 ? 'Enter your recovery code and choose a new vault PIN.'
               : 'Enter your vault PIN to decrypt your spaces on this device.'}

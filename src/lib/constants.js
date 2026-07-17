@@ -30,7 +30,8 @@ export const SESSION_ABSOLUTE_MAX_MS = 7 * 24 * 60 * 60 * 1000
 
 // ── Vault PIN ──────────────────────────────────────────────
 export const VAULT_PIN_MIN_LENGTH = 4
-export const VAULT_PIN_MAX_LENGTH = 12
+// Raised to accommodate passphrases (letters, numbers, symbols), not just PINs.
+export const VAULT_PIN_MAX_LENGTH = 64
 
 /** Auto-lock vault after this duration while signed in (ms) - 24 hours */
 export const VAULT_AUTO_LOCK_MS = 24 * 60 * 60 * 1000
