@@ -7,10 +7,8 @@
 import { supabase } from '../supabase'
 import { encryptString, decryptString } from './cipher'
 import {
-  deriveEncryptionKey,
-  generateSalt,
-  saltToBase64,
-  saltFromBase64,
+  deriveVaultKey,
+  newSaltDescriptor,
 } from './keyDerivation'
 import { validateVaultPin } from './vaultPin'
 import { bytesFromBase64, bytesToBase64 } from './encoding'
@@ -293,15 +291,15 @@ export async function changeVaultPinWithRecoveryCode(userId, recoveryCode, newPi
 }
 
 async function persistPinWrappedVault(userId, pin, masterKey, { recoveryCode = '' } = {}) {
-  const pinSalt = generateSalt()
-  const pinKey = await deriveEncryptionKey(pin, pinSalt)
+  const pinSalt = newSaltDescriptor()
+  const pinKey = await deriveVaultKey(pin, pinSalt)
   const raw = await exportRawAesKey(masterKey)
   const wrappedKey = await encryptString(bytesToBase64(raw), pinKey)
   const keyCheck = await encryptString(VAULT_CHECK_PLAINTEXT, masterKey)
 
   const payload = {
     user_id: userId,
-    salt: saltToBase64(pinSalt),
+    salt: pinSalt,
     key_check: keyCheck,
     wrapped_key: wrappedKey,
     vault_format: VAULT_FORMAT_PIN_WRAPPED,
@@ -309,9 +307,9 @@ async function persistPinWrappedVault(userId, pin, masterKey, { recoveryCode = '
 
   if (recoveryCode) {
     const normalizedCode = normalizeRecoveryCode(recoveryCode)
-    const recoverySalt = generateSalt()
-    const recoveryKey = await deriveEncryptionKey(normalizedCode, recoverySalt)
-    payload.recovery_salt = saltToBase64(recoverySalt)
+    const recoverySalt = newSaltDescriptor()
+    const recoveryKey = await deriveVaultKey(normalizedCode, recoverySalt)
+    payload.recovery_salt = recoverySalt
     payload.recovery_wrapped_key = await encryptString(bytesToBase64(raw), recoveryKey)
   }
 
@@ -334,10 +332,10 @@ async function persistPinWrappedVault(userId, pin, masterKey, { recoveryCode = '
 async function persistRecoveryWrappedVault(userId, masterKey, recoveryCode) {
   const raw = await exportRawAesKey(masterKey)
   const normalizedCode = normalizeRecoveryCode(recoveryCode)
-  const recoverySalt = generateSalt()
-  const recoveryKey = await deriveEncryptionKey(normalizedCode, recoverySalt)
+  const recoverySalt = newSaltDescriptor()
+  const recoveryKey = await deriveVaultKey(normalizedCode, recoverySalt)
   const payload = {
-    recovery_salt: saltToBase64(recoverySalt),
+    recovery_salt: recoverySalt,
     recovery_wrapped_key: await encryptString(bytesToBase64(raw), recoveryKey),
   }
 
@@ -354,8 +352,7 @@ async function persistRecoveryWrappedVault(userId, masterKey, recoveryCode) {
 }
 
 async function unlockRecoveryWrappedVault(meta, recoveryCode) {
-  const recoverySalt = saltFromBase64(meta.recovery_salt)
-  const recoveryKey = await deriveEncryptionKey(normalizeRecoveryCode(recoveryCode), recoverySalt)
+  const recoveryKey = await deriveVaultKey(normalizeRecoveryCode(recoveryCode), meta.recovery_salt)
   const rawB64 = await decryptString(meta.recovery_wrapped_key, recoveryKey)
   const masterKey = await importRawAesKey(bytesFromBase64(rawB64))
   const check = await decryptString(meta.key_check, masterKey)
@@ -366,8 +363,7 @@ async function unlockRecoveryWrappedVault(meta, recoveryCode) {
 }
 
 async function unlockPinWrappedVault(meta, pin) {
-  const pinSalt = saltFromBase64(meta.salt)
-  const pinKey = await deriveEncryptionKey(pin, pinSalt)
+  const pinKey = await deriveVaultKey(pin, meta.salt)
   let rawB64
   try {
     rawB64 = await decryptString(meta.wrapped_key, pinKey)
