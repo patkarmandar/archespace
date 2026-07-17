@@ -83,7 +83,10 @@ function stripEventHandlers(html) {
  * @param {string} md - Raw markdown text
  * @returns {string}   - HTML string safe for dangerouslySetInnerHTML
  */
-function markdownToHtml(md) {
+// Exported for unit tests (XSS hardening). Not a component; the Fast-Refresh
+// rule doesn't apply to this pure helper.
+// eslint-disable-next-line react-refresh/only-export-components
+export function markdownToHtml(md) {
   if (!md) return ''
 
   // 1. Escape HTML entities to prevent XSS
