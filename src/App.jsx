@@ -68,7 +68,7 @@ const queryClient = new QueryClient({
 
 function PageLoader() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+    <div className="min-h-screen flex items-center justify-center bg-bg-base">
       <Spinner size={24} />
     </div>
   )

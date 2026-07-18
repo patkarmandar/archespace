@@ -22,8 +22,7 @@ export function Spinner({ size = 16 }) {
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      className="animate-spin"
-      style={{ color: 'var(--accent)' }}
+      className="animate-spin text-accent"
     >
       {/* Background ring */}
       <circle

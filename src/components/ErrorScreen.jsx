@@ -12,32 +12,26 @@ export default function ErrorScreen({ variant = 'error', title, message, errorMe
   const isChunk = variant === 'chunk'
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-6"
-      style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}
-    >
+    <div className="min-h-screen flex items-center justify-center p-6 bg-bg-base text-text-primary">
       <div className="max-w-md text-center space-y-4">
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)' }}
-        >
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto bg-bg-surface border border-bg-border">
           {isChunk
-            ? <RefreshCw size={24} style={{ color: 'var(--accent)' }} />
-            : <AlertTriangle size={24} style={{ color: 'var(--danger)' }} />}
+            ? <RefreshCw size={24} className="text-accent" />
+            : <AlertTriangle size={24} className="text-danger" />}
         </div>
 
         <h1 className="text-xl font-semibold">{title}</h1>
 
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm text-text-secondary">
           {message}
         </p>
 
         {errorMessage && (
-          <details className="text-left text-xs rounded-xl p-3" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--bg-border)' }}>
-            <summary className="cursor-pointer font-medium" style={{ color: 'var(--text-secondary)' }}>
+          <details className="text-left text-xs rounded-xl p-3 bg-bg-elevated border border-bg-border">
+            <summary className="cursor-pointer font-medium text-text-secondary">
               Error details
             </summary>
-            <pre className="mt-2 whitespace-pre-wrap break-all" style={{ color: 'var(--danger)' }}>
+            <pre className="mt-2 whitespace-pre-wrap break-all text-danger">
               {errorMessage}
             </pre>
           </details>
@@ -46,15 +40,13 @@ export default function ErrorScreen({ variant = 'error', title, message, errorMe
         <div className="flex gap-3 justify-center pt-2">
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-            style={{ background: 'var(--accent)', color: '#fff' }}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-accent text-white"
           >
             Reload page
           </button>
           <button
             onClick={() => { window.location.href = '/app' }}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ background: 'var(--bg-surface)', border: '1px solid var(--bg-border)', color: 'var(--text-secondary)' }}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors bg-bg-surface border border-bg-border text-text-secondary"
           >
             Go to dashboard
           </button>
