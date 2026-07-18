@@ -38,6 +38,7 @@ export default function BulkSelectionBar({ count, total, onClear, onSelectAll, a
               type="button"
               onClick={onClick}
               title={label}
+              aria-label={label}
               className={`p-2 rounded-lg border text-sm transition-all ${
                 variant === 'danger'
                   ? 'border-bg-border bg-bg-surface hover:bg-danger/10 hover:border-danger/30 hover:text-danger text-text-secondary'
@@ -52,6 +53,7 @@ export default function BulkSelectionBar({ count, total, onClear, onSelectAll, a
           type="button"
           onClick={onClear}
           title="Clear selection"
+          aria-label="Clear selection"
           className="p-2 rounded-lg border border-bg-border hover:bg-bg-elevated text-text-muted"
         >
           <X size={16} />

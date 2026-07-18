@@ -217,6 +217,7 @@ export default function DashboardPage() {
                 }}
                 className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
                 title="Lock vault"
+                aria-label="Lock vault"
               >
                 <Lock size={14} />
                 <span className="hidden nav:inline">Lock vault</span>
@@ -227,6 +228,7 @@ export default function DashboardPage() {
               onClick={() => openPalette()}
               className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Commands (⌘K)"
+              aria-label="Commands"
             >
               <Command size={14} />
               <span className="hidden nav:inline">Commands</span>
@@ -236,6 +238,7 @@ export default function DashboardPage() {
               onClick={() => window.dispatchEvent(new CustomEvent('arche:open-shortcuts'))}
               className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
             >
               <Keyboard size={14} />
               <span className="hidden nav:inline">Shortcuts</span>
@@ -245,6 +248,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/archive')}
               className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Archive"
+              aria-label="Archive"
             >
               <Archive size={14} />
               <span className="hidden nav:inline">Archive</span>
@@ -259,6 +263,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/recycle-bin')}
               className="relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Recycle bin"
+              aria-label="Recycle bin"
             >
               <Trash2 size={14} />
               <span className="hidden nav:inline">Bin</span>
@@ -273,6 +278,7 @@ export default function DashboardPage() {
               onClick={() => navigate('/settings')}
               className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary hover:text-text-primary transition-all text-sm font-medium"
               title="Settings"
+              aria-label="Settings"
             >
               <Settings size={14} />
               <span className="hidden nav:inline">Settings</span>
@@ -290,6 +296,7 @@ export default function DashboardPage() {
                 }}
                 className="p-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary transition-all"
                 title="Lock vault"
+                aria-label="Lock vault"
               >
                 <Lock size={16} />
               </button>

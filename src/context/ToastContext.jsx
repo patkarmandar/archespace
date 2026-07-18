@@ -101,8 +101,8 @@ export function ToastProvider({ children }) {
                 exiting ? 'animate-slide-out' : 'animate-slide-in'
               }`}
               style={{ background: 'var(--glass-bg)' }}
-              role="alert"
-              aria-live="polite"
+              role={type === 'error' ? 'alert' : 'status'}
+              aria-live={type === 'error' ? 'assertive' : 'polite'}
             >
               <Icon size={20} className={`${color} shrink-0`} />
               <span className="flex-1 text-sm text-text-primary">{message}</span>

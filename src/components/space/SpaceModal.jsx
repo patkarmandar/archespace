@@ -63,6 +63,8 @@ export function SpaceModal({ initial, onSave, onClose }) {
                 !color ? 'border-accent ring-2 ring-accent/30' : 'border-bg-border'
               } bg-bg-elevated`}
               title="Default"
+              aria-label="Default color"
+              aria-pressed={!color}
             />
             {SPACE_COLORS.map(c => (
               <button
@@ -73,6 +75,8 @@ export function SpaceModal({ initial, onSave, onClose }) {
                   color === c.id ? 'border-white ring-2 ring-accent/40 scale-110' : 'border-transparent'
                 }`}
                 title={c.label}
+                aria-label={`${c.label} color`}
+                aria-pressed={color === c.id}
               />
             ))}
           </div>
