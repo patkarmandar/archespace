@@ -1,55 +1,83 @@
+import { useEffect, useRef } from 'react'
 import { Folder, FileText } from 'lucide-react'
 import { TYPE_LABELS } from '../lib/itemTypes'
 import { GLOBAL_SEARCH_RESULT_LIMIT } from '../lib/constants'
+import { SEARCH_ITEM_DISPLAY_LIMIT, searchOptionId } from '../lib/search'
 
 export default function GlobalSearchResults({
   search,
   globalMatches,
   itemMeta,
   onSelectSpace,
+  onSelectItem,
+  activeOptionId,
+  listboxId = 'global-search-listbox',
   truncated = false,
   className = '',
 }) {
-  const hasResults = globalMatches.spaces.length > 0 || globalMatches.items.length > 0
+  const spaces = globalMatches.spaces
+  const items = globalMatches.items.slice(0, SEARCH_ITEM_DISPLAY_LIMIT)
+  const hasResults = spaces.length > 0 || items.length > 0
+  const listRef = useRef(null)
+
+  // Keep the active (keyboard-highlighted) option scrolled into view.
+  useEffect(() => {
+    if (!activeOptionId) return
+    listRef.current?.querySelector(`[id="${activeOptionId}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [activeOptionId])
+
+  const optionClass = (active) =>
+    `w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-sm ${
+      active ? 'bg-accent-muted text-text-primary' : 'hover:bg-bg-elevated'
+    }`
 
   return (
     // Keep the search input focused when clicking anywhere in the dropdown
-    // (buttons or padding), so its onBlur can hide results immediately without
-    // a timeout race.
+    // (buttons or padding), so its onBlur can hide results immediately.
     <div className={className} onMouseDown={(e) => e.preventDefault()}>
       {!hasResults ? (
         <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
       ) : (
-        <>
-          {globalMatches.spaces.length > 0 && (
+        <div ref={listRef} role="listbox" id={listboxId} aria-label="Search results">
+          {spaces.length > 0 && (
             <section>
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Spaces</p>
-              <ul className="space-y-1">
-                {globalMatches.spaces.map(c => (
-                  <li key={c.id}>
+              <div className="space-y-1">
+                {spaces.map(c => {
+                  const optId = searchOptionId('space', c.id)
+                  return (
                     <button
+                      key={c.id}
                       type="button"
+                      role="option"
+                      id={optId}
+                      aria-selected={optId === activeOptionId}
                       onClick={() => onSelectSpace(c.id)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                      className={optionClass(optId === activeOptionId)}
                     >
                       <Folder size={14} className="text-accent shrink-0" />
                       <span className="font-medium text-text-primary truncate">{c.name}</span>
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  )
+                })}
+              </div>
             </section>
           )}
-          {globalMatches.items.length > 0 && (
-            <section>
+          {items.length > 0 && (
+            <section className={spaces.length > 0 ? 'mt-3' : ''}>
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-2 px-1">Items</p>
-              <ul className="space-y-1">
-                {globalMatches.items.slice(0, 30).map(item => (
-                  <li key={item.id}>
+              <div className="space-y-1">
+                {items.map(item => {
+                  const optId = searchOptionId('item', item.id)
+                  return (
                     <button
+                      key={item.id}
                       type="button"
-                      onClick={() => onSelectSpace(item.space_id)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
+                      role="option"
+                      id={optId}
+                      aria-selected={optId === activeOptionId}
+                      onClick={() => onSelectItem(item)}
+                      className={optionClass(optId === activeOptionId)}
                     >
                       <FileText size={14} className="text-text-muted shrink-0" />
                       <div className="min-w-0 flex-1">
@@ -59,15 +87,15 @@ export default function GlobalSearchResults({
                         </p>
                       </div>
                     </button>
-                  </li>
-                ))}
-              </ul>
-              {globalMatches.items.length > 30 && (
-                <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - 30} more items</p>
+                  )
+                })}
+              </div>
+              {globalMatches.items.length > SEARCH_ITEM_DISPLAY_LIMIT && (
+                <p className="text-xs text-text-muted mt-2 px-3">+{globalMatches.items.length - SEARCH_ITEM_DISPLAY_LIMIT} more items</p>
               )}
             </section>
           )}
-        </>
+        </div>
       )}
       {truncated && (
         <p className="text-[11px] text-text-muted mt-3 px-1 pt-2 border-t border-bg-border">

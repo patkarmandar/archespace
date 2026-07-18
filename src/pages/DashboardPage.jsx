@@ -31,7 +31,7 @@ import { useRecycleBin } from '../hooks/useRecycleBin'
 import { useArchive } from '../hooks/useArchive'
 import { useSpaceStats } from '../hooks/useSpaceStats'
 import { useGlobalSearchData } from '../hooks/useGlobalSearch'
-import { filterGlobalSearch } from '../lib/search'
+import { filterGlobalSearch, searchOptionId, SEARCH_ITEM_DISPLAY_LIMIT } from '../lib/search'
 import { Modal } from '../components/ui/UI'
 import { SpaceModal } from '../components/space/SpaceModal'
 import { SpaceCard } from '../components/space/SpaceCard'
@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const [modal, setModal] = useState(null) // { type: 'create' } | { type: 'edit', col } | null
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
+  const [searchActive, setSearchActive] = useState(-1)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState(() => new Set())
@@ -138,11 +139,54 @@ export default function DashboardPage() {
 
   const showSearchResults = search.trim().length > 0 && searchFocused
 
-  const goSpaceFromSearch = useCallback((spaceId) => {
+  const closeSearch = useCallback(() => {
     setSearchFocused(false)
     setSearch('')
+    setSearchActive(-1)
+  }, [])
+
+  const goSpaceFromSearch = useCallback((spaceId) => {
+    closeSearch()
     navigate(`/space/${spaceId}`)
-  }, [navigate])
+  }, [closeSearch, navigate])
+
+  const goItemFromSearch = useCallback((item) => {
+    closeSearch()
+    navigate(`/space/${item.space_id}`, { state: { focusItemId: item.id } })
+  }, [closeSearch, navigate])
+
+  // Flat, ordered list of visible results for keyboard nav - must match
+  // GlobalSearchResults' render order (spaces, then capped items).
+  const searchOptions = useMemo(() => [
+    ...globalMatches.spaces.map(s => ({
+      id: searchOptionId('space', s.id),
+      run: () => goSpaceFromSearch(s.id),
+    })),
+    ...globalMatches.items.slice(0, SEARCH_ITEM_DISPLAY_LIMIT).map(i => ({
+      id: searchOptionId('item', i.id),
+      run: () => goItemFromSearch(i),
+    })),
+  ], [globalMatches, goSpaceFromSearch, goItemFromSearch])
+
+  const searchActiveIndex = searchOptions.length === 0 ? -1 : Math.min(searchActive, searchOptions.length - 1)
+  const activeOptionId = searchActiveIndex >= 0 ? searchOptions[searchActiveIndex].id : undefined
+
+  const handleSearchKeyDown = useCallback((e) => {
+    if (!showSearchResults || searchOptions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSearchActive(i => Math.min(i + 1, searchOptions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSearchActive(i => Math.max(i - 1, -1))
+    } else if (e.key === 'Enter' && searchActiveIndex >= 0) {
+      e.preventDefault()
+      searchOptions[searchActiveIndex].run()
+    } else if (e.key === 'Escape') {
+      setSearch('')
+      setSearchActive(-1)
+    }
+  }, [showSearchResults, searchOptions, searchActiveIndex])
 
   const {
     dragIndex, dragOverIndex,
@@ -187,9 +231,15 @@ export default function DashboardPage() {
                 ref={searchInputRef}
                 placeholder="Search…"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => { setSearch(e.target.value); setSearchActive(-1) }}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
+                onKeyDown={handleSearchKeyDown}
+                role="combobox"
+                aria-expanded={showSearchResults}
+                aria-controls="global-search-listbox"
+                aria-activedescendant={activeOptionId}
+                aria-autocomplete="list"
                 className="w-full bg-bg-elevated border border-bg-border rounded-xl pl-9 pr-12 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
               />
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-mono hidden sm:inline">/</kbd>
@@ -200,6 +250,9 @@ export default function DashboardPage() {
                   itemMeta={globalSearchData?.itemMeta}
                   truncated={globalSearchData?.truncated}
                   onSelectSpace={goSpaceFromSearch}
+                  onSelectItem={goItemFromSearch}
+                  activeOptionId={activeOptionId}
+                  listboxId="global-search-listbox"
                   className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
                 />
               )}
@@ -380,9 +433,15 @@ export default function DashboardPage() {
               ref={mobileSearchInputRef}
               placeholder="Search…"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setSearchActive(-1) }}
               onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 100)}
+              onBlur={() => setSearchFocused(false)}
+              onKeyDown={handleSearchKeyDown}
+              role="combobox"
+              aria-expanded={showSearchResults}
+              aria-controls="global-search-listbox-mobile"
+              aria-activedescendant={activeOptionId}
+              aria-autocomplete="list"
               className="w-full bg-bg-surface border border-bg-border rounded-xl pl-9 pr-3 py-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
             />
             {showSearchResults && (
@@ -392,6 +451,9 @@ export default function DashboardPage() {
                 itemMeta={globalSearchData?.itemMeta}
                 truncated={globalSearchData?.truncated}
                 onSelectSpace={goSpaceFromSearch}
+                onSelectItem={goItemFromSearch}
+                activeOptionId={activeOptionId}
+                listboxId="global-search-listbox-mobile"
                 className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
               />
             )}

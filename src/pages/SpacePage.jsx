@@ -14,7 +14,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { useParams, useNavigate, useBlocker } from 'react-router-dom'
+import { useParams, useNavigate, useBlocker, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, CheckSquare } from 'lucide-react'
 import { ITEM_TYPE_OPTIONS } from '../lib/itemTypes'
 import { useDragReorder } from '../hooks/useDragReorder'
@@ -30,6 +30,7 @@ import { Modal } from '../components/ui/UI'
 export default function SpacePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { toast } = useToast()
 
   // Single call to useSpaces (avoids duplicate subscriptions)
@@ -64,6 +65,7 @@ export default function SpacePage() {
   const [collapsedIds, setCollapsedIds] = useState(() => new Set())
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(null)
   const [moveRequest, setMoveRequest] = useState(null)
+  const [flashItemId, setFlashItemId] = useState(null)
 
   const selectedCount = selectedIds.size
   const selectedItems = useMemo(
@@ -175,6 +177,18 @@ export default function SpacePage() {
   }, [hasUnsaved])
 
   const navBlocker = useBlocker(hasUnsaved)
+
+  // ── Scroll to and briefly highlight an item opened from global search ──
+  useEffect(() => {
+    const target = location.state?.focusItemId
+    if (!target || isLoading) return
+    document
+      .querySelector(`[data-item-id="${target}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const raf = requestAnimationFrame(() => setFlashItemId(target))
+    const timer = setTimeout(() => setFlashItemId(null), 2200)
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [location.state, isLoading])
 
   // ── Add item ──
   const handleAddItem = async (type) => {
@@ -343,13 +357,16 @@ export default function SpacePage() {
             {items.map((item, index) => (
               <div
                 key={item.id}
+                data-item-id={item.id}
                 onDragOver={selectMode ? undefined : (e) => handleDragOver(e, index)}
                 onDrop={selectMode ? undefined : () => handleDrop(index)}
                 className={`transition-all duration-300 animate-fade-in-up ${
                   !selectMode && dragOverIndex === index && dragIndex !== index
                     ? 'border-t-2 border-accent pt-1'
                     : ''
-                } ${!selectMode && dragIndex === index ? 'opacity-40 scale-95' : ''}`}
+                } ${!selectMode && dragIndex === index ? 'opacity-40 scale-95' : ''} ${
+                  flashItemId === item.id ? 'rounded-2xl ring-2 ring-accent' : ''
+                }`}
                 style={{ animationDelay: `${index * 40}ms` }}
               >
                 <SpaceItem

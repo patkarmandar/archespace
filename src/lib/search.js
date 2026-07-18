@@ -2,6 +2,14 @@
  * search.js - Client-side global search helpers.
  */
 
+/** How many item matches the search dropdown renders (shared with keyboard nav). */
+export const SEARCH_ITEM_DISPLAY_LIMIT = 30
+
+/** Stable DOM id for a search-result option (combobox listbox). */
+export function searchOptionId(kind, id) {
+  return `search-opt-${kind}-${id}`
+}
+
 function norm(s) {
   return (s || '').toLowerCase()
 }
