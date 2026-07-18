@@ -121,6 +121,13 @@ body {
   outline: 2px solid var(--accent) !important;
   outline-offset: 2px;
 }
+/* Text fields already signal focus with their accent border, so don't stack
+   the ring on top of them (that reads as a double outline). */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+}
 
 /* ── Toast stack lifts above the bulk-selection bar ─────── */
 .toast-stack { transition: bottom 0.2s ease; }
