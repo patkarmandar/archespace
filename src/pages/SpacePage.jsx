@@ -3,7 +3,7 @@
  *
  * Features:
  *   - Inline header editing (name + description)
- *   - Add items via a type-picker modal (Note / Checklist / List / Cards)
+ *   - Add items via a type-picker modal (Note / Markdown / Checklist / List / Numbered List / Cards)
  *   - Drag-and-drop reordering (HTML5 Drag API)
  *   - Pin / delete / collapse individual items
  *   - Unsaved-changes badge + beforeunload warning

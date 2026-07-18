@@ -99,6 +99,17 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ── Keyboard focus visibility (a11y) ───────────────────── */
+/* Enforced with !important so it wins over the scattered Tailwind
+   `focus:outline-none` resets - keyboard users always get a ring.
+   `:focus-visible` only matches keyboard/assistive focus, so mouse
+   clicks don't draw it. Modern browsers round the outline to the
+   element's border-radius automatically. */
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}
+
 /* ── Glass header utility (used by sticky headers) ──────── */
 .glass {
   background: var(--glass-bg);
@@ -216,6 +227,20 @@ body {
 .delay-75 { animation-delay: 75ms; }
 .delay-150 { animation-delay: 150ms; }
 .delay-300 { animation-delay: 300ms; }
+
+/* ── Reduced motion (a11y) ──────────────────────────────── */
+/* Respect the OS "reduce motion" setting: near-instant animations,
+   no infinite loops (home floats, spinner), and instant transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* Markdown Prose Styling */
 .prose-custom h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-primary); }
