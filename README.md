@@ -31,7 +31,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Six item types for different kinds of content (see [Item types](#item-types)).
 - Pinning for important spaces and items.
 - Drag-and-drop reordering for spaces and page items, plus keyboard reordering inside lists.
-- Unified dashboard search across spaces, tags, and item content.
+- Unified dashboard search across spaces, tags, and item content, with keyboard navigation and jump-to-item.
 - Command palette with `Ctrl+K` / `Cmd+K`.
 - Keyboard shortcuts for common actions, with an in-app shortcuts dialog (see [Keyboard shortcuts](#keyboard-shortcuts)).
 - Bulk actions for spaces and items.
@@ -44,7 +44,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Appearance settings with `System`, `Dark`, and `Light` theme modes.
 - Accent color settings with multiple color options.
 - Private, encrypted vault to keep your content secure (see [Security model](#security-model)).
-- Accessible dialogs and controls, including focus-trapped modals, keyboard dismissal, and labeled icon-only buttons.
+- Accessibility throughout: full keyboard operation (cards, menus, command palette, and search), a visible focus indicator, screen-reader live regions.
 - Offline queue for pending changes while the browser is offline.
 - Single-user self-hosting mode by default, with an optional multi-user mode.
 - Verifiable build hash shown in Settings, linking to the exact source commit on GitHub.
