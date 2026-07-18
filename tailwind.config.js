@@ -27,7 +27,10 @@ export default {
           muted: 'var(--text-muted)',
         },
         success: 'var(--success)',
-        danger: 'var(--danger)',
+        danger: {
+          DEFAULT: 'var(--danger)',
+          hover: 'var(--danger-hover)',
+        },
       },
     },
   },

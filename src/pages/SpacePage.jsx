@@ -522,7 +522,7 @@ export default function SpacePage() {
               </button>
               <button
                 onClick={() => navBlocker.proceed()}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-danger-hover text-white rounded-xl transition-colors"
               >
                 Leave anyway
               </button>
@@ -561,7 +561,7 @@ export default function SpacePage() {
                     onError: () => toast.error('Failed to delete items'),
                   })
                 }}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-danger-hover text-white rounded-xl transition-colors"
               >
                 Move to bin
               </button>
@@ -634,7 +634,7 @@ export default function SpacePage() {
                   })
                   setDeleteConfirm(null)
                 }}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-danger-hover text-white rounded-xl transition-colors"
               >
                 Move to bin
               </button>

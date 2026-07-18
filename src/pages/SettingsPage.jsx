@@ -824,7 +824,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setDeleteStep('confirm')}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-danger-hover text-white rounded-xl transition-colors"
               >
                 I understand
               </button>
@@ -862,7 +862,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={deleteLoading || unlocking}
-                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors disabled:opacity-50"
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-danger-hover text-white rounded-xl transition-colors disabled:opacity-50"
               >
                 {deleteLoading || unlocking ? 'Deleting...' : 'Delete permanently'}
               </button>
