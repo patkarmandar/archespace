@@ -20,6 +20,18 @@ export function SpaceCard({
     ? `${itemStats.total} ${itemStats.total === 1 ? 'item' : 'items'}${itemStats.pinned ? ` · ${itemStats.pinned} pinned` : ''}`
     : '0 items'
 
+  const activate = () => (selectMode ? onToggleSelect?.() : navigate(`/space/${col.id}`))
+
+  // Only act when the card itself is focused, so Enter/Space on a nested
+  // control (the ActionMenu button) doesn't also navigate.
+  const handleKeyDown = (e) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      activate()
+    }
+  }
+
   return (
     <div
       draggable={!search && !selectMode}
@@ -27,7 +39,14 @@ export function SpaceCard({
       onDragOver={(e) => !selectMode && handleDragOver(e, index)}
       onDrop={() => !selectMode && handleDrop(index)}
       onDragEnd={handleDragEnd}
-      onClick={() => (selectMode ? onToggleSelect?.() : navigate(`/space/${col.id}`))}
+      onClick={activate}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selectMode ? selected : undefined}
+      aria-label={selectMode
+        ? `${selected ? 'Deselect' : 'Select'} space: ${col.name}`
+        : `Open space: ${col.name}`}
       className={`group relative border rounded-2xl p-4 cursor-pointer hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up ${
         selected ? 'ring-2 ring-accent border-accent bg-accent/5' :
         col.pinned ? 'bg-accent/5 border-accent hover:border-accent/80' : 'bg-bg-surface border-bg-border hover:border-accent/40'
