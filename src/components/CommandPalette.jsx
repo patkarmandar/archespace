@@ -1,7 +1,7 @@
 /**
  * CommandPalette.jsx - Cmd+K quick actions (⌘K / Ctrl+K).
  */
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Plus, Home, Archive, Trash2, Search, Settings, Sparkles, Keyboard,
@@ -13,6 +13,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const { open, closePalette, extraCommands } = useCommandPalette()
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
+  const activeRef = useRef(null)
   const navigate = useNavigate()
   const { toggle } = useTheme()
 
@@ -57,6 +58,11 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, filtered, activeIndex, closePalette])
 
+  // Keep the highlighted command visible while arrow-navigating.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [activeIndex])
+
   if (!open) return null
 
   return (
@@ -87,6 +93,7 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
               <li key={cmd.id}>
                 <button
                   type="button"
+                  ref={i === activeIndex ? activeRef : null}
                   onClick={() => cmd.run()}
                   onMouseEnter={() => setActive(i)}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors ${

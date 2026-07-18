@@ -60,6 +60,9 @@ export const GLOBAL_SEARCH_RESULT_LIMIT = 500
 /** Toast auto-dismiss delay (ms) */
 export const TOAST_DISMISS_MS = 3000
 
+/** Error toasts linger longer so they can be read */
+export const TOAST_ERROR_DISMISS_MS = 7000
+
 /** Maximum visible toasts */
 export const MAX_TOASTS = 5
 

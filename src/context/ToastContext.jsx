@@ -13,7 +13,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react'
-import { TOAST_DISMISS_MS, MAX_TOASTS } from '../lib/constants'
+import { TOAST_DISMISS_MS, TOAST_ERROR_DISMISS_MS, MAX_TOASTS } from '../lib/constants'
 import { ToastContext } from './ToastCore'
 
 /** Icon + accent colour per toast type */
@@ -67,15 +67,32 @@ export function ToastProvider({ children }) {
    */
   const show = useCallback((type, message) => {
     const id = crypto.randomUUID()
+    const duration = type === 'error' ? TOAST_ERROR_DISMISS_MS : TOAST_DISMISS_MS
 
     setToasts(prev => {
       // Trim oldest if we're at the limit
       const trimmed = prev.length >= MAX_TOASTS ? prev.slice(1) : prev
-      return [...trimmed, { id, type, message, exiting: false }]
+      return [...trimmed, { id, type, message, exiting: false, duration }]
     })
 
     // Auto-dismiss after delay
-    const timerId = setTimeout(() => dismiss(id), TOAST_DISMISS_MS)
+    const timerId = setTimeout(() => dismiss(id), duration)
+    timerMap.current.set(id, timerId)
+  }, [dismiss])
+
+  /** Pause a toast's auto-dismiss while the pointer is over it */
+  const pauseTimer = useCallback((id) => {
+    const timerId = timerMap.current.get(id)
+    if (timerId) {
+      clearTimeout(timerId)
+      timerMap.current.delete(id)
+    }
+  }, [])
+
+  /** Restart auto-dismiss when the pointer leaves */
+  const resumeTimer = useCallback((id, duration) => {
+    if (timerMap.current.has(id)) return
+    const timerId = setTimeout(() => dismiss(id), duration)
     timerMap.current.set(id, timerId)
   }, [dismiss])
 
@@ -92,7 +109,7 @@ export function ToastProvider({ children }) {
 
       {/* ── Toast stack (bottom-right, fixed) ── */}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
-        {toasts.map(({ id, type, message, exiting }) => {
+        {toasts.map(({ id, type, message, exiting, duration }) => {
           const { Icon, color, bg, border } = TYPE_CONFIG[type] || TYPE_CONFIG.info
           return (
             <div
@@ -103,6 +120,8 @@ export function ToastProvider({ children }) {
               style={{ background: 'var(--glass-bg)' }}
               role={type === 'error' ? 'alert' : 'status'}
               aria-live={type === 'error' ? 'assertive' : 'polite'}
+              onMouseEnter={() => pauseTimer(id)}
+              onMouseLeave={() => resumeTimer(id, duration)}
             >
               <Icon size={20} className={`${color} shrink-0`} />
               <span className="flex-1 text-sm text-text-primary">{message}</span>

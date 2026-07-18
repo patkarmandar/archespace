@@ -13,7 +13,10 @@ export default function GlobalSearchResults({
   const hasResults = globalMatches.spaces.length > 0 || globalMatches.items.length > 0
 
   return (
-    <div className={className}>
+    // Keep the search input focused when clicking anywhere in the dropdown
+    // (buttons or padding), so its onBlur can hide results immediately without
+    // a timeout race.
+    <div className={className} onMouseDown={(e) => e.preventDefault()}>
       {!hasResults ? (
         <p className="text-sm text-text-muted py-2 px-1">No results for &ldquo;{search}&rdquo;</p>
       ) : (
@@ -26,7 +29,6 @@ export default function GlobalSearchResults({
                   <li key={c.id}>
                     <button
                       type="button"
-                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => onSelectSpace(c.id)}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                     >
@@ -46,7 +48,6 @@ export default function GlobalSearchResults({
                   <li key={item.id}>
                     <button
                       type="button"
-                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => onSelectSpace(item.space_id)}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-bg-elevated text-left text-sm"
                     >
