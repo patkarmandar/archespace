@@ -1,11 +1,13 @@
 import { Folder, FileText } from 'lucide-react'
 import { TYPE_LABELS } from '../lib/itemTypes'
+import { GLOBAL_SEARCH_RESULT_LIMIT } from '../lib/constants'
 
 export default function GlobalSearchResults({
   search,
   globalMatches,
   itemMeta,
   onSelectSpace,
+  truncated = false,
   className = '',
 }) {
   const hasResults = globalMatches.spaces.length > 0 || globalMatches.items.length > 0
@@ -65,6 +67,11 @@ export default function GlobalSearchResults({
             </section>
           )}
         </>
+      )}
+      {truncated && (
+        <p className="text-[11px] text-text-muted mt-3 px-1 pt-2 border-t border-bg-border">
+          Only your {GLOBAL_SEARCH_RESULT_LIMIT} most recent spaces and items are searched. Refine your search if something's missing.
+        </p>
       )}
     </div>
   )

@@ -42,10 +42,18 @@ export function useGlobalSearchData() {
         decryptedItems.map(i => [i.id, { spaceName: colMap[i.space_id] || 'Unknown' }])
       )
 
+      // Both queries cap at GLOBAL_SEARCH_RESULT_LIMIT most-recent rows. Hitting
+      // the cap means older rows weren't fetched, so search silently misses
+      // them — surface that so the UI can tell the user.
+      const truncated =
+        (spaces?.length || 0) >= GLOBAL_SEARCH_RESULT_LIMIT ||
+        (items?.length || 0) >= GLOBAL_SEARCH_RESULT_LIMIT
+
       return {
         spaces: decryptedCols,
         items: decryptedItems,
         itemMeta,
+        truncated,
       }
     },
     staleTime: 1000 * 60 * 5,

@@ -198,6 +198,7 @@ export default function DashboardPage() {
                   search={search}
                   globalMatches={globalMatches}
                   itemMeta={globalSearchData?.itemMeta}
+                  truncated={globalSearchData?.truncated}
                   onSelectSpace={goSpaceFromSearch}
                   className="absolute top-full mt-2 left-0 right-0 z-40 max-h-[60vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
                 />
@@ -382,6 +383,7 @@ export default function DashboardPage() {
                 search={search}
                 globalMatches={globalMatches}
                 itemMeta={globalSearchData?.itemMeta}
+                truncated={globalSearchData?.truncated}
                 onSelectSpace={goSpaceFromSearch}
                 className="mt-2 z-30 max-h-[50vh] overflow-y-auto rounded-2xl border border-bg-border bg-bg-surface shadow-2xl p-3 space-y-3"
               />
