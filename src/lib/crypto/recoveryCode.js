@@ -6,10 +6,17 @@ const RECOVERY_CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
 export const RECOVERY_CODE_LENGTH = 12
 
 export function generateRecoveryCode() {
-  const bytes = crypto.getRandomValues(new Uint8Array(RECOVERY_CODE_LENGTH))
+  const n = RECOVERY_CODE_ALPHABET.length
+  // Largest multiple of n that fits in a byte (252 for n=36). Reject bytes at
+  // or above it so every symbol is equally likely — a plain `byte % n` would
+  // bias the first (256 % n) symbols. ~1.6% of draws are rejected.
+  const limit = Math.floor(256 / n) * n
+  const buf = new Uint8Array(1)
   let code = ''
-  for (let i = 0; i < bytes.length; i++) {
-    code += RECOVERY_CODE_ALPHABET[bytes[i] % RECOVERY_CODE_ALPHABET.length]
+  while (code.length < RECOVERY_CODE_LENGTH) {
+    crypto.getRandomValues(buf)
+    if (buf[0] >= limit) continue
+    code += RECOVERY_CODE_ALPHABET[buf[0] % n]
   }
   return code
 }
