@@ -30,6 +30,7 @@ export default function VaultUnlockGate({ children }) {
   const [oneTimeRecoveryCode, setOneTimeRecoveryCode] = useState('')
   const [recoverySetupWarning, setRecoverySetupWarning] = useState('')
   const [forgotPin, setForgotPin] = useState(false)
+  const [formError, setFormError] = useState('')
 
   if (!user) return children
   if (authLoading || vaultStatus.loading || sessionRestoring) {
@@ -47,6 +48,7 @@ export default function VaultUnlockGate({ children }) {
     setPin('')
     setConfirmPin('')
     setRecoveryCodeInput('')
+    setFormError('')
   }
 
   const showRecoveryCode = (recoveryCode) => {
@@ -56,6 +58,11 @@ export default function VaultUnlockGate({ children }) {
   const handleUnlock = async (e) => {
     e.preventDefault()
     clearUnlockError()
+    setFormError('')
+    if (!pin) {
+      setFormError('Enter your vault PIN.')
+      return
+    }
     try {
       await unlock(pin)
       resetFields()
@@ -67,12 +74,14 @@ export default function VaultUnlockGate({ children }) {
   const handleSetup = async (e) => {
     e.preventDefault()
     clearUnlockError()
+    setFormError('')
     const err = validateVaultPin(pin)
     if (err) {
-      clearUnlockError()
+      setFormError(err)
       return
     }
     if (pin !== confirmPin) {
+      setFormError('PINs do not match.')
       return
     }
     try {
@@ -93,8 +102,20 @@ export default function VaultUnlockGate({ children }) {
   const handleRecover = async (e) => {
     e.preventDefault()
     clearUnlockError()
+    setFormError('')
+    if (!recoveryCodeInput.trim()) {
+      setFormError('Enter your recovery code.')
+      return
+    }
     const err = validateVaultPin(pin)
-    if (err || pin !== confirmPin) return
+    if (err) {
+      setFormError(err)
+      return
+    }
+    if (pin !== confirmPin) {
+      setFormError('PINs do not match.')
+      return
+    }
     try {
       const { recoveryCode } = await recoverPinWithCode(recoveryCodeInput, pin)
       showRecoveryCode(recoveryCode)
@@ -105,12 +126,8 @@ export default function VaultUnlockGate({ children }) {
     }
   }
 
-  const pinMismatch = confirmPin.length > 0 && pin !== confirmPin
   const isNewPinMode = needsSetup || forgotPin
-  const setupPinInvalid = isNewPinMode && pin.length > 0 && validateVaultPin(pin)
   const weakPinWarning = isNewPinMode && !validateVaultPin(pin) ? getWeakPinWarning(pin) : null
-  const canSubmitSetup = pin.length >= VAULT_PIN_MIN_LENGTH && pin === confirmPin && !validateVaultPin(pin)
-  const canSubmitRecover = canSubmitSetup && recoveryCodeInput.length > 0
 
   if (oneTimeRecoveryCode) {
     return (
@@ -198,7 +215,7 @@ export default function VaultUnlockGate({ children }) {
                 id="vault-recovery-code"
                 type="text"
                 value={recoveryCodeInput}
-                onChange={e => setRecoveryCodeInput(e.target.value)}
+                onChange={e => { setRecoveryCodeInput(e.target.value); setFormError('') }}
                 required
                 autoComplete="off"
                 inputMode="text"
@@ -212,7 +229,7 @@ export default function VaultUnlockGate({ children }) {
             id="vault-pin"
             label={needsSetup || forgotPin ? 'New vault PIN' : 'Vault PIN'}
             value={pin}
-            onChange={setPin}
+            onChange={v => { setPin(v); setFormError('') }}
             autoComplete={needsSetup || forgotPin ? 'new-password' : 'off'}
             disabled={unlocking}
           />
@@ -222,7 +239,7 @@ export default function VaultUnlockGate({ children }) {
               id="vault-pin-confirm"
               label="Confirm vault PIN"
               value={confirmPin}
-              onChange={setConfirmPin}
+              onChange={v => { setConfirmPin(v); setFormError('') }}
               autoComplete="new-password"
               disabled={unlocking}
             />
@@ -230,12 +247,8 @@ export default function VaultUnlockGate({ children }) {
 
           <WeakPinWarning message={weakPinWarning} />
 
-          {setupPinInvalid && (
-            <p className="text-danger text-xs">{setupPinInvalid}</p>
-          )}
-
-          {pinMismatch && (needsSetup || forgotPin) && (
-            <p className="text-danger text-xs">PINs do not match.</p>
+          {formError && (
+            <p className="text-danger text-xs">{formError}</p>
           )}
 
           {unlockError && (
@@ -246,14 +259,7 @@ export default function VaultUnlockGate({ children }) {
 
           <button
             type="submit"
-            disabled={
-              unlocking ||
-              (needsSetup
-                ? !canSubmitSetup
-                : forgotPin
-                  ? !canSubmitRecover
-                  : pin.length < VAULT_PIN_MIN_LENGTH)
-            }
+            disabled={unlocking}
             className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white rounded-xl py-3 text-sm font-semibold disabled:opacity-50"
           >
             <Lock size={14} />
