@@ -17,7 +17,7 @@
  * (auto-save after 5s).
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react'
 import { createPortal } from 'react-dom'
 import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
@@ -38,7 +38,7 @@ import { AUTO_SAVE_DELAY_MS } from '../lib/constants'
 /**
  * @param {{ item: Object, onUpdate: Function, onTogglePin: Function, onDelete: Function, onDirtyChange?: Function, dragHandleProps?: Object }} props
  */
-export default function SpaceItem({
+function SpaceItem({
   item,
   onUpdate,
   onTogglePin,
@@ -47,7 +47,10 @@ export default function SpaceItem({
   onArchive,
   onMove,
   onDirtyChange,
-  dragHandleProps,
+  index,
+  onDragStart,
+  onDragEnd,
+  dragDisabled = false,
   collapsed = false,
   onCollapsedChange,
   selectMode = false,
@@ -79,6 +82,20 @@ export default function SpaceItem({
   const copyTimer = useRef(null)
   const style = TYPE_STYLES[item.type]
   const checklistProgress = item.type === 'checkbox_list' ? getChecklistProgress(localContent) : null
+
+  // Built here (rather than passed as a fresh object from the parent) so that
+  // React.memo can skip re-rendering this card when the list re-renders for
+  // reasons that don't affect it (drag-hover, a sibling going dirty, etc.).
+  const dragHandleProps = useMemo(
+    () => (dragDisabled
+      ? {}
+      : {
+          draggable: true,
+          onDragStart: (e) => { e.stopPropagation(); onDragStart?.(index) },
+          onDragEnd,
+        }),
+    [dragDisabled, index, onDragStart, onDragEnd]
+  )
 
   // ── Sync from server when not dirty (realtime / parent update) ──
   const [syncedItem, setSyncedItem] = useState({ id: item.id, title: item.title, content: item.content })
@@ -229,12 +246,12 @@ export default function SpaceItem({
       return
     }
     setCollapseGuard(false)
-    onCollapsedChange?.(!collapsed)
+    onCollapsedChange?.(item.id, !collapsed)
   }
 
   const handleFullscreenClick = () => {
     if (!isFullscreen && collapsed) {
-      onCollapsedChange?.(false)
+      onCollapsedChange?.(item.id, false)
       setCollapseGuard(false)
     }
     setIsFullscreen(v => !v)
@@ -275,7 +292,7 @@ export default function SpaceItem({
         {selectMode ? (
           <button
             type="button"
-            onClick={() => onSelectedChange?.(!selected)}
+            onClick={() => onSelectedChange?.(item.id)}
             className="shrink-0 text-text-muted hover:text-accent transition-colors"
             aria-label={selected ? 'Deselect' : 'Select'}
           >
@@ -454,7 +471,7 @@ export default function SpaceItem({
               <Save size={14} /> Save & collapse
             </button>
             <button
-              onClick={() => { handleDiscard(); onCollapsedChange?.(true) }}
+              onClick={() => { handleDiscard(); onCollapsedChange?.(item.id, true) }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-bg-border bg-bg-surface hover:bg-bg-elevated text-text-secondary transition-all"
             >
               Discard & collapse
@@ -489,3 +506,5 @@ export default function SpaceItem({
 
   return isFullscreen ? createPortal(itemCard, document.body) : itemCard
 }
+
+export default memo(SpaceItem)

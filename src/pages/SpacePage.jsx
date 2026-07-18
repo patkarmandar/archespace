@@ -120,6 +120,46 @@ export default function SpacePage() {
     })
   }, [])
 
+  // ── Stable, memo-friendly per-item callbacks ──
+  // Refs hold the latest values so these handlers keep a stable identity; that
+  // lets the memoized SpaceItem skip re-rendering the whole list on each edit.
+  const dirtyItemsRef = useRef(dirtyItems)
+  const itemsRef = useRef(items)
+  const toastRef = useRef(toast)
+  useEffect(() => {
+    dirtyItemsRef.current = dirtyItems
+    itemsRef.current = items
+    toastRef.current = toast
+  })
+
+  const updateAsync = update.mutateAsync
+  const togglePinMutate = togglePin.mutate
+  const duplicateMutate = duplicate.mutate
+  const archiveMutate = archive.mutate
+
+  const handleItemUpdate = useCallback((payload) => updateAsync(payload), [updateAsync])
+  const handleTogglePin = useCallback(
+    (itemId, pinned) => togglePinMutate({ id: itemId, pinned }),
+    [togglePinMutate]
+  )
+  const handleDuplicateItem = useCallback((it) => duplicateMutate(it, {
+    onSuccess: () => toastRef.current.success('Item duplicated'),
+    onError: () => toastRef.current.error('Failed to duplicate'),
+  }), [duplicateMutate])
+  const handleArchiveItem = useCallback((itemId) => archiveMutate(itemId, {
+    onSuccess: () => toastRef.current.success('Item archived'),
+    onError: () => toastRef.current.error('Failed to archive'),
+  }), [archiveMutate])
+  const openMoveItems = useCallback((ids) => {
+    if (!ids?.length) return
+    if (ids.some(itemId => dirtyItemsRef.current.has(itemId))) {
+      toastRef.current.error('Save or discard unsaved changes before moving items')
+      return
+    }
+    setMoveRequest({ ids })
+  }, [])
+  const handleMoveOne = useCallback((itemId) => openMoveItems([itemId]), [openMoveItems])
+
   // ── Warn on page close / in-app navigation if unsaved edits exist ──
   const hasUnsaved = dirtyItems.size > 0
 
@@ -162,10 +202,10 @@ export default function SpacePage() {
     },
   })
 
-  const handleDragStart = (index) => {
+  const handleItemDragStart = useCallback((index) => {
     onDragStart(index)
-    dragItemRef.current = items[index]
-  }
+    dragItemRef.current = itemsRef.current[index]
+  }, [onDragStart])
 
   const runBulkAction = async (fn) => {
     if (selectedCount === 0) return
@@ -180,16 +220,6 @@ export default function SpacePage() {
     } catch {
       toast.error('Bulk action failed')
     }
-  }
-
-  const openMoveItems = (ids) => {
-    if (!ids?.length) return
-    const dirtyMove = ids.some(itemId => dirtyItems.has(itemId))
-    if (dirtyMove) {
-      toast.error('Save or discard unsaved changes before moving items')
-      return
-    }
-    setMoveRequest({ ids })
   }
 
   const handleMoveItems = async (targetSpaceId) => {
@@ -324,32 +354,22 @@ export default function SpacePage() {
               >
                 <SpaceItem
                   item={item}
+                  index={index}
                   selectMode={selectMode}
                   selected={selectedIds.has(item.id)}
-                  onSelectedChange={() => toggleSelected(item.id)}
+                  onSelectedChange={toggleSelected}
                   collapsed={collapsedIds.has(item.id)}
-                  onCollapsedChange={(c) => setItemCollapsed(item.id, c)}
-                  onUpdate={payload => update.mutateAsync(payload)}
-                  onTogglePin={(itemId, pinned) => togglePin.mutate({ id: itemId, pinned })}
-                  onDelete={itemId => setDeleteConfirm(itemId)}
-                  onDuplicate={(it) => duplicate.mutate(it, {
-                    onSuccess: () => toast.success('Item duplicated'),
-                    onError: () => toast.error('Failed to duplicate'),
-                  })}
-                  onMove={(itemId) => openMoveItems([itemId])}
-                  onArchive={(itemId) => archive.mutate(itemId, {
-                    onSuccess: () => toast.success('Item archived'),
-                    onError: () => toast.error('Failed to archive'),
-                  })}
+                  onCollapsedChange={setItemCollapsed}
+                  onUpdate={handleItemUpdate}
+                  onTogglePin={handleTogglePin}
+                  onDelete={setDeleteConfirm}
+                  onDuplicate={handleDuplicateItem}
+                  onMove={handleMoveOne}
+                  onArchive={handleArchiveItem}
                   onDirtyChange={handleDirtyChange}
-                  dragHandleProps={selectMode ? {} : {
-                    draggable: true,
-                    onDragStart: (e) => {
-                      e.stopPropagation()
-                      handleDragStart(index)
-                    },
-                    onDragEnd: handleDragEnd,
-                  }}
+                  onDragStart={handleItemDragStart}
+                  onDragEnd={handleDragEnd}
+                  dragDisabled={selectMode}
                 />
               </div>
             ))}

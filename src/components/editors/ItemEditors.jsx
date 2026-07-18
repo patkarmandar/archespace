@@ -208,10 +208,13 @@ function ListEditor({ content, onChange, variant }) {
     el.style.height = `${el.scrollHeight}px`
   }
 
+  // Resize every textarea only when rows are added/removed. Edits resize their
+  // own textarea inline (below), so there's no need to sweep the whole list —
+  // via querySelectorAll — on every keystroke.
   useEffect(() => {
     const inputs = containerRef.current?.querySelectorAll(`[${inputAttr}]`)
     inputs?.forEach(adjustItemText)
-  }, [items, inputAttr])
+  }, [items.length, inputAttr])
 
   const push = (newItems) => {
     setItems(newItems)
