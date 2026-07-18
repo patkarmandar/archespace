@@ -19,7 +19,7 @@ import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
 import { logAudit } from '../lib/auditLog'
 import { APP_VERSION, BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
 import ReauthCode from '../components/ReauthCode'
-import Modal from '../components/ui/Modal'
+import { Modal } from '../components/ui/UI'
 import { queryKeys } from '../lib/queryKeys'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
@@ -810,106 +810,47 @@ export default function SettingsPage() {
 
       {deleteStep === 'warning' && (
         <Modal
+          title="Delete account permanently"
           onClose={resetDeleteFlow}
-          labelledBy="delete-warning-title"
-          panelClassName="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl"
-        >
-          <div className="border-b border-bg-border px-5 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
-                <AlertTriangle size={20} />
-              </div>
-              <div>
-                <h2 id="delete-warning-title" className="text-base font-semibold text-text-primary">Delete Account Permanently</h2>
-                <p className="text-xs text-text-muted mt-0.5">Read this before continuing.</p>
-              </div>
+          footer={
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={resetDeleteFlow}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteStep('confirm')}
+                className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
+              >
+                I understand
+              </button>
             </div>
-          </div>
-          <div className="space-y-3 px-5 py-4 text-sm leading-6 text-text-secondary">
-            <p>All spaces and items will be permanently deleted.</p>
-            <p>Your encrypted vault cannot be recovered afterward, even with your recovery code.</p>
-            <p className="font-semibold text-danger">This action is permanent. This cannot be undone.</p>
-          </div>
-          <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
-            <button
-              type="button"
-              onClick={resetDeleteFlow}
-              className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text-primary rounded-xl border border-bg-border hover:bg-bg-elevated transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteStep('confirm')}
-              className="px-4 py-2.5 text-sm font-semibold bg-danger hover:bg-red-600 text-white rounded-xl transition-colors"
-            >
-              I understand
-            </button>
+          }
+        >
+          <div className="flex items-start gap-3 text-sm leading-6 text-text-secondary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
+              <AlertTriangle size={20} />
+            </div>
+            <div className="space-y-2">
+              <p>All spaces and items will be permanently deleted.</p>
+              <p>Your encrypted vault cannot be recovered afterward, even with your recovery code.</p>
+              <p className="font-semibold text-danger">This action is permanent. It cannot be undone.</p>
+            </div>
           </div>
         </Modal>
       )}
 
       {deleteStep === 'confirm' && (
         <Modal
+          title="Confirm account deletion"
           onClose={resetDeleteFlow}
-          labelledBy="delete-confirm-title"
           onSubmit={handleDeleteAccount}
-          panelClassName="w-full max-w-md rounded-2xl border border-danger/30 bg-bg-surface shadow-2xl"
-        >
-            <div className="border-b border-bg-border px-5 py-4">
-              <h2 id="delete-confirm-title" className="text-base font-semibold text-text-primary">Confirm account deletion</h2>
-              <p className="text-xs text-text-muted mt-1">
-                Type <span className="font-mono text-danger">{deleteConfirmationPhrase}</span> and re-enter your credentials.
-              </p>
-            </div>
-            <div className="space-y-3 px-5 py-4">
-              <div>
-                <label htmlFor="delete-confirm-text" className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Confirmation text
-                </label>
-                <input
-                  id="delete-confirm-text"
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={e => setDeleteConfirmText(e.target.value)}
-                  required
-                  autoComplete="off"
-                  className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
-                />
-              </div>
-              <div>
-                <label htmlFor="delete-password" className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Login password
-                </label>
-                <div className="relative">
-                  <input
-                    id="delete-password"
-                    type={showDeletePassword ? 'text' : 'password'}
-                    value={deletePassword}
-                    onChange={e => setDeletePassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDeletePassword(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
-                    aria-label="Toggle delete password visibility"
-                  >
-                    {showDeletePassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-              <PinInput
-                id="delete-vault-pin"
-                label="Vault PIN"
-                value={deletePin}
-                onChange={setDeletePin}
-                disabled={deleteLoading || unlocking}
-              />
-            </div>
-            <div className="flex gap-2 justify-end border-t border-bg-border px-5 py-4">
+          footer={
+            <div className="flex gap-2 justify-end">
               <button
                 type="button"
                 onClick={resetDeleteFlow}
@@ -926,6 +867,58 @@ export default function SettingsPage() {
                 {deleteLoading || unlocking ? 'Deleting...' : 'Delete permanently'}
               </button>
             </div>
+          }
+        >
+          <p className="text-xs text-text-muted mb-3">
+            Type <span className="font-mono text-danger">{deleteConfirmationPhrase}</span> and re-enter your credentials.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="delete-confirm-text" className="block text-xs font-medium text-text-secondary mb-1.5">
+                Confirmation text
+              </label>
+              <input
+                id="delete-confirm-text"
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                required
+                autoComplete="off"
+                className="w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label htmlFor="delete-password" className="block text-xs font-medium text-text-secondary mb-1.5">
+                Login password
+              </label>
+              <div className="relative">
+                <input
+                  id="delete-password"
+                  type={showDeletePassword ? 'text' : 'password'}
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="password-field w-full bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-accent"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                  aria-label="Toggle delete password visibility"
+                >
+                  {showDeletePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <PinInput
+              id="delete-vault-pin"
+              label="Vault PIN"
+              value={deletePin}
+              onChange={setDeletePin}
+              disabled={deleteLoading || unlocking}
+            />
+          </div>
         </Modal>
       )}
     </div>

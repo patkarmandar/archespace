@@ -38,33 +38,64 @@ export function Spinner({ size = 16 }) {
   )
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 /**
  * Modal dialog overlay.
  *
  * Features:
  *   - Closes when clicking the backdrop (outside the card)
  *   - Closes on Escape key
+ *   - Traps Tab focus within the dialog and restores focus to the
+ *     opener when closed
  *   - Responsive: bottom-sheet on mobile, centered card on desktop
  *   - Optional `footer` prop for sticky action buttons
+ *   - Optional `onSubmit`: renders the panel as a <form> so a submit
+ *     button in the footer works (and Enter submits)
  *
- * @param {{ title: string, onClose: Function, children: React.ReactNode, footer?: React.ReactNode }} props
+ * @param {{ title: string, onClose: Function, children: React.ReactNode, footer?: React.ReactNode, onSubmit?: Function }} props
  */
-export function Modal({ title, onClose, children, footer }) {
+export function Modal({ title, onClose, children, footer, onSubmit }) {
   const titleId = useId()
   const panelRef = useRef(null)
 
-  // ── Escape key handler ──
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  // Keep the latest onClose without re-running the focus effect (callers pass
+  // fresh inline handlers), so focus isn't stolen back on every render.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
-  // Focus the dialog panel when opened
+  // ── Focus: move into the dialog on open, trap Tab, restore on close ──
   useEffect(() => {
-    panelRef.current?.focus()
+    const opener = document.activeElement
+    const panel = panelRef.current
+    const getFocusable = () =>
+      Array.from(panel?.querySelectorAll(FOCUSABLE) || [])
+        .filter(el => el.getClientRects().length > 0)
+
+    ;(getFocusable()[0] || panel)?.focus()
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') { onCloseRef.current?.(); return }
+      if (e.key !== 'Tab') return
+      const items = getFocusable()
+      if (items.length === 0) { e.preventDefault(); panel?.focus(); return }
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      if (e.shiftKey && (active === first || !panel.contains(active))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !panel.contains(active))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+      if (opener && typeof opener.focus === 'function') opener.focus()
+    }
   }, [])
 
   // Prevent background scroll while open
@@ -74,18 +105,21 @@ export function Modal({ title, onClose, children, footer }) {
     return () => { document.body.style.overflow = prev }
   }, [])
 
+  const Panel = onSubmit ? 'form' : 'div'
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => e.target === e.currentTarget && onClose()}
       role="presentation"
     >
-      <div
+      <Panel
         ref={panelRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onSubmit={onSubmit}
         className="bg-bg-surface border border-bg-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl flex flex-col max-h-[90vh] outline-none"
       >
         {/* Header - always visible */}
@@ -110,7 +144,7 @@ export function Modal({ title, onClose, children, footer }) {
             {footer}
           </div>
         )}
-      </div>
+      </Panel>
     </div>
   )
 }
