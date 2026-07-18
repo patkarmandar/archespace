@@ -94,10 +94,19 @@ body {
 }
 
 /* ── Custom scrollbars (WebKit) ─────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-thumb {
+  background: var(--bg-border);
+  border-radius: 6px;
+  /* Transparent border keeps the visible thumb slim while the hit area is wide */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); background-clip: padding-box; }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: var(--bg-border) transparent; }
 
 /* ── Keyboard focus visibility (a11y) ───────────────────── */
 /* Enforced with !important so it wins over the scattered Tailwind
