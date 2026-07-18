@@ -17,7 +17,13 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
   const buttonRef = useRef(null)
   const menuRef = useRef(null)
   const closeTimer = useRef(null)
+  // Set when the menu is opened via click/keyboard (not hover) so we move
+  // focus into it - hover-open must not steal focus from the pointer.
+  const shouldFocusFirst = useRef(false)
   const visibleActions = actions.filter(Boolean)
+
+  const menuItems = () =>
+    Array.from(menuRef.current?.querySelectorAll('[role="menuitem"]:not([disabled])') || [])
 
   const clearCloseTimer = useCallback(() => {
     clearTimeout(closeTimer.current)
@@ -67,7 +73,10 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
       ) closeMenu()
     }
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') closeMenu()
+      if (event.key === 'Escape') {
+        closeMenu()
+        buttonRef.current?.focus()
+      }
     }
     const handleViewportChange = () => updatePosition()
     document.addEventListener('pointerdown', handlePointerDown)
@@ -91,6 +100,46 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
 
   useEffect(() => () => clearCloseTimer(), [clearCloseTimer])
 
+  // Move focus into the menu when opened via click/keyboard.
+  useEffect(() => {
+    if (!open || !shouldFocusFirst.current) return
+    shouldFocusFirst.current = false
+    menuItems()[0]?.focus()
+  }, [open])
+
+  const openMenuFocused = () => {
+    shouldFocusFirst.current = true
+    openMenu()
+  }
+
+  const handleTriggerKeyDown = (event) => {
+    if (!open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      event.preventDefault()
+      openMenuFocused()
+    }
+  }
+
+  const handleMenuKeyDown = (event) => {
+    const items = menuItems()
+    if (items.length === 0) return
+    const currentIndex = items.indexOf(document.activeElement)
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      items[(currentIndex + 1) % items.length]?.focus()
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      items[(currentIndex - 1 + items.length) % items.length]?.focus()
+    } else if (event.key === 'Home') {
+      event.preventDefault()
+      items[0]?.focus()
+    } else if (event.key === 'End') {
+      event.preventDefault()
+      items[items.length - 1]?.focus()
+    } else if (event.key === 'Tab') {
+      closeMenu()
+    }
+  }
+
   const handleBlur = (event) => {
     const next = event.relatedTarget
     if (
@@ -111,7 +160,8 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => open ? closeMenu() : openMenu()}
+        onClick={() => open ? closeMenu() : openMenuFocused()}
+        onKeyDown={handleTriggerKeyDown}
         className={`p-2 rounded-lg border transition-all ${
           open
             ? 'border-accent/30 bg-accent-muted text-accent'
@@ -131,6 +181,7 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
         ref={menuRef}
         id={menuId}
         role="menu"
+        onKeyDown={handleMenuKeyDown}
         onMouseEnter={openMenu}
         onMouseLeave={scheduleClose}
         className={`fixed z-[1000] w-44 rounded-xl border border-bg-border bg-bg-surface p-1.5 shadow-2xl shadow-black/30 transition-all duration-150 opacity-100 scale-100 pointer-events-auto animate-fade-in ${
@@ -148,6 +199,7 @@ export function ActionMenu({ actions, label = 'Actions', align = 'right' }) {
               event.stopPropagation()
               onClick?.()
               closeMenu()
+              buttonRef.current?.focus()
             }}
             className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               variant === 'danger'
