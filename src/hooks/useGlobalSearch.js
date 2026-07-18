@@ -6,12 +6,13 @@ import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionCore'
 import { decryptSpaces, decryptItems } from '../lib/dataProtection'
 import { GLOBAL_SEARCH_RESULT_LIMIT } from '../lib/constants'
+import { queryKeys } from '../lib/queryKeys'
 
 export function useGlobalSearchData() {
   const { cryptoKey } = useEncryption()
 
   return useQuery({
-    queryKey: ['global-search-data'],
+    queryKey: queryKeys.globalSearch(),
     enabled: !!cryptoKey,
     queryFn: async () => {
       const [{ data: spaces, error: e1 }, { data: items, error: e2 }] = await Promise.all([

@@ -3,10 +3,11 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { queryKeys } from '../lib/queryKeys'
 
 export function useSpaceStats() {
   return useQuery({
-    queryKey: ['space-stats'],
+    queryKey: queryKeys.spaceStats(),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('space_items')

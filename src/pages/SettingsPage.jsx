@@ -20,6 +20,7 @@ import { logAudit } from '../lib/auditLog'
 import { APP_VERSION, BUILD_HASH, COMMIT_URL } from '../lib/buildInfo'
 import ReauthCode from '../components/ReauthCode'
 import Modal from '../components/ui/Modal'
+import { queryKeys } from '../lib/queryKeys'
 
 function SettingsSection({ id, title, description, openSection, setOpenSection, children }) {
   const open = openSection === id
@@ -343,8 +344,8 @@ export default function SettingsPage() {
     if (!file) return
     try {
       await importSpaces(file, user.id, cryptoKey)
-      await queryClient.invalidateQueries({ queryKey: ['spaces'] })
-      await queryClient.invalidateQueries({ queryKey: ['bin'] })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.spaces() })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.bin() })
       toast.success('Backup imported successfully')
     } catch (err) {
       toast.error('Failed to import backup - invalid format')

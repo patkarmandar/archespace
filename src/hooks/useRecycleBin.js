@@ -6,13 +6,14 @@ import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionCore'
 import { fetchStoredCollection } from '../lib/storedCollectionQuery'
 import { invalidateRecycleBin } from '../lib/queryInvalidation'
+import { queryKeys } from '../lib/queryKeys'
 
 export function useRecycleBin() {
   const qc = useQueryClient()
   const { cryptoKey } = useEncryption()
 
   const query = useQuery({
-    queryKey: ['bin'],
+    queryKey: queryKeys.bin(),
     enabled: !!cryptoKey,
     queryFn: () => fetchStoredCollection({
       cryptoKey,

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem, decryptItem, decryptItems } from '../lib/dataProtection'
 import { invalidateSpaceItems } from '../lib/queryInvalidation'
+import { queryKeys } from '../lib/queryKeys'
 import {
   makeSoftDelete,
   makeBulkSoftDelete,
@@ -31,7 +32,7 @@ export function useSpaceItems(spaceId) {
   const { cryptoKey } = useEncryption()
 
   const query = useQuery({
-    queryKey: ['items', spaceId],
+    queryKey: queryKeys.items(spaceId),
     enabled: !!spaceId && !!cryptoKey,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -122,7 +123,7 @@ export function useSpaceItems(spaceId) {
   const togglePin = useMutation(makeTogglePin({
     table: 'space_items',
     qc,
-    queryKey: ['items', spaceId],
+    queryKey: queryKeys.items(spaceId),
     invalidate: () => invalidateSpaceItems(qc, spaceId),
   }))
 
@@ -175,7 +176,7 @@ export function useSpaceItems(spaceId) {
 
   const reorder = useMutation(makeReorder({
     qc,
-    queryKey: ['items', spaceId],
+    queryKey: queryKeys.items(spaceId),
     rpc: 'update_item_positions',
     invalidate: () => invalidateSpaceItems(qc, spaceId),
   }))

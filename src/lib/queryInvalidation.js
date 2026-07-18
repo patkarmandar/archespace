@@ -1,6 +1,7 @@
 /**
  * queryInvalidation.js - Shared TanStack Query invalidation helpers.
  */
+import { queryKeys } from './queryKeys'
 
 function invalidateKeys(qc, keys) {
   keys.forEach(queryKey => qc.invalidateQueries({ queryKey }))
@@ -8,48 +9,48 @@ function invalidateKeys(qc, keys) {
 
 export function invalidateSpaceCollections(qc) {
   invalidateKeys(qc, [
-    ['spaces'],
-    ['bin'],
-    ['archive'],
-    ['space-stats'],
-    ['global-search-data'],
-    ['items'],
+    queryKeys.spaces(),
+    queryKeys.bin(),
+    queryKeys.archive(),
+    queryKeys.spaceStats(),
+    queryKeys.globalSearch(),
+    queryKeys.items(),
   ])
 }
 
 export function invalidateSpaceList(qc) {
   invalidateKeys(qc, [
-    ['spaces'],
-    ['global-search-data'],
+    queryKeys.spaces(),
+    queryKeys.globalSearch(),
   ])
 }
 
 export function invalidateSpaceItems(qc, spaceId) {
   invalidateKeys(qc, [
-    spaceId ? ['items', spaceId] : ['items'],
-    ['bin'],
-    ['archive'],
-    ['space-stats'],
-    ['global-search-data'],
+    queryKeys.items(spaceId),
+    queryKeys.bin(),
+    queryKeys.archive(),
+    queryKeys.spaceStats(),
+    queryKeys.globalSearch(),
   ])
 }
 
 export function invalidateArchive(qc) {
   invalidateKeys(qc, [
-    ['archive'],
-    ['spaces'],
-    ['items'],
-    ['space-stats'],
-    ['global-search-data'],
+    queryKeys.archive(),
+    queryKeys.spaces(),
+    queryKeys.items(),
+    queryKeys.spaceStats(),
+    queryKeys.globalSearch(),
   ])
 }
 
 export function invalidateRecycleBin(qc) {
   invalidateKeys(qc, [
-    ['bin'],
-    ['spaces'],
-    ['items'],
-    ['space-stats'],
-    ['global-search-data'],
+    queryKeys.bin(),
+    queryKeys.spaces(),
+    queryKeys.items(),
+    queryKeys.spaceStats(),
+    queryKeys.globalSearch(),
   ])
 }

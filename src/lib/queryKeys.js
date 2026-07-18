@@ -1,0 +1,16 @@
+/**
+ * queryKeys.js - Centralized TanStack Query key definitions.
+ *
+ * Keeping the keys in one place avoids typo-prone magic strings scattered
+ * across hooks and pages, and makes it obvious which caches a change touches.
+ * Each is a function returning a fresh array; `items()` doubles as a prefix
+ * (no arg) or an exact key for one space (`items(spaceId)`).
+ */
+export const queryKeys = {
+  spaces: () => ['spaces'],
+  items: (spaceId) => (spaceId ? ['items', spaceId] : ['items']),
+  bin: () => ['bin'],
+  archive: () => ['archive'],
+  spaceStats: () => ['space-stats'],
+  globalSearch: () => ['global-search-data'],
+}

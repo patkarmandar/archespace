@@ -6,13 +6,14 @@ import { supabase } from '../lib/supabase'
 import { useEncryption } from '../context/EncryptionCore'
 import { fetchStoredCollection } from '../lib/storedCollectionQuery'
 import { invalidateArchive } from '../lib/queryInvalidation'
+import { queryKeys } from '../lib/queryKeys'
 
 export function useArchive() {
   const qc = useQueryClient()
   const { cryptoKey } = useEncryption()
 
   const query = useQuery({
-    queryKey: ['archive'],
+    queryKey: queryKeys.archive(),
     enabled: !!cryptoKey,
     queryFn: () => fetchStoredCollection({
       cryptoKey,

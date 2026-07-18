@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { flushOfflineQueue, getOfflineQueue } from '../lib/offlineQueue'
 import { useToast } from '../context/ToastCore'
+import { queryKeys } from '../lib/queryKeys'
 
 export function useOfflineSync() {
   const qc = useQueryClient()
@@ -30,7 +31,7 @@ export function useOfflineSync() {
 
       if (flushed > 0) {
         toast.info(`Synced ${flushed} offline change${flushed === 1 ? '' : 's'}`)
-        qc.invalidateQueries({ queryKey: ['items'] })
+        qc.invalidateQueries({ queryKey: queryKeys.items() })
       }
     }
 
