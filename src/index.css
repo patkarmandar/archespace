@@ -122,6 +122,12 @@ body {
   outline-offset: 2px;
 }
 
+/* ── Toast stack lifts above the bulk-selection bar ─────── */
+.toast-stack { transition: bottom 0.2s ease; }
+body.bulk-bar-active .toast-stack {
+  bottom: calc(var(--bulk-bar-height, 4rem) + 1.5rem);
+}
+
 /* ── Glass header utility (used by sticky headers) ──────── */
 .glass {
   background: var(--glass-bg);

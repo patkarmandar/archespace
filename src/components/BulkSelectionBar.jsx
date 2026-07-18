@@ -1,6 +1,7 @@
 /**
  * BulkSelectionBar.jsx - Floating toolbar for bulk actions on selected rows.
  */
+import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 /**
@@ -13,10 +14,31 @@ import { X } from 'lucide-react'
  * }} props
  */
 export default function BulkSelectionBar({ count, total, onClear, onSelectAll, actions }) {
+  const barRef = useRef(null)
+
+  // While the bar is visible, publish a marker + its measured height so the
+  // toast stack can lift above it instead of overlapping it (see index.css).
+  useEffect(() => {
+    if (count === 0) return
+    const el = barRef.current
+    document.body.classList.add('bulk-bar-active')
+    const publishHeight = () => {
+      if (el) document.body.style.setProperty('--bulk-bar-height', `${el.offsetHeight}px`)
+    }
+    publishHeight()
+    const observer = new ResizeObserver(publishHeight)
+    if (el) observer.observe(el)
+    return () => {
+      observer.disconnect()
+      document.body.classList.remove('bulk-bar-active')
+      document.body.style.removeProperty('--bulk-bar-height')
+    }
+  }, [count])
+
   if (count === 0) return null
 
   return (
-    <div className="sticky bottom-4 z-30 mx-auto max-w-3xl">
+    <div ref={barRef} className="sticky bottom-4 z-30 mx-auto max-w-3xl">
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl border border-accent/30 bg-bg-surface shadow-2xl shadow-black/20 backdrop-blur-md">
         <span className="text-sm font-semibold text-text-primary tabular-nums shrink-0">
           {count} selected
