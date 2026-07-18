@@ -1,6 +1,6 @@
 # Arche Space
 
-[![Build](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml)
+[![CI](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/package-json/v/patkarmandar/archespace)](https://github.com/patkarmandar/archespace/blob/main/package.json)
 [![Live](https://img.shields.io/badge/live-archespace.cc-32d3aa)](https://archespace.cc)
 
@@ -44,6 +44,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Appearance settings with `System`, `Dark`, and `Light` theme modes.
 - Accent color settings with multiple color options.
 - Private, encrypted vault to keep your content secure (see [Security model](#security-model)).
+- Accessible dialogs and controls, including focus-trapped modals, keyboard dismissal, and labeled icon-only buttons.
 - Offline queue for pending changes while the browser is offline.
 - Single-user self-hosting mode by default, with an optional multi-user mode.
 - Verifiable build hash shown in Settings, linking to the exact source commit on GitHub.
@@ -77,17 +78,17 @@ All list-style types support adding, removing, drag-and-drop reordering, and key
 
 ## Security model
 
-Arche Space uses a browser-side vault model. You sign in with Supabase Auth using a login password, then unlock a separate vault PIN to access encrypted data - the password proves account ownership, the PIN protects the content itself.
+Arche Space uses a browser-side vault model. You sign in with Supabase Auth using a login password, then unlock a separate vault PIN or passphrase to access encrypted data - the password proves account ownership, the PIN or passphrase protects the content itself.
 
 **Encryption**
 
 - Space and item content (names, descriptions, tags, titles, and content) is encrypted client-side with AES-GCM before it reaches Supabase. Only non-sensitive metadata - IDs, timestamps, positions, and flags like pinned/archived/deleted - stays in plain form.
-- The vault PIN is never stored as plaintext. On setup, the browser generates a random vault master key, which is wrapped using a PIN-derived key from PBKDF2.
+- The vault secret is never stored as plaintext. It can be a numeric PIN or a longer passphrase (letters, numbers, or symbols), so you can trade convenience for strength. On setup, the browser generates a random vault master key, which is wrapped with a key derived from your PIN or passphrase using Argon2id, a memory-hard key-derivation function that resists offline brute-forcing. Vaults created before Argon2id support was added continue to use PBKDF2 and are upgraded to Argon2id automatically the next time the PIN or passphrase is changed.
 - Because encryption happens client-side, stored content is not readable by developers or app owners from the database.
 
 **Sessions and access**
 
-- The unlocked vault key lives only in browser session storage and auto-locks after 24 hours.
+- The unlocked vault key is held as a non-extractable key in IndexedDB - usable for decryption within the tab but not readable or exportable by scripts - and auto-locks after 24 hours.
 - The login session has an absolute lifetime of 1 week.
 - Password reset and password change flows globally sign out existing sessions.
 - Failed login attempts and failed vault PIN attempts are rate limited, and repeated PIN failures lock the vault server-side.
@@ -231,11 +232,11 @@ The account-deletion email is separate; its HTML lives inside `notify_account_de
 | Backend | Supabase Auth, Supabase PostgreSQL, Supabase Row Level Security, Supabase Realtime |
 | Server-side email | `pg_net` + Resend HTTP API (account-deletion email), with the key in Supabase Vault |
 | Auth email delivery | Resend SMTP (via Supabase Auth) |
-| Encryption | Web Crypto API |
+| Encryption | Web Crypto API (AES-GCM), Argon2id key derivation via `@noble/hashes` |
 | Icons | Lucide React |
 | File handling | JSZip |
 | Hosting / deploy | Cloudflare (Git-connected builds), or any static host |
-| CI / tooling | GitHub Actions (lint, build, audit), Dependabot, ESLint 10 |
+| CI / tooling | GitHub Actions (lint, test, build, audit), Vitest, Dependabot, ESLint 10 |
 
 ## Project structure
 
@@ -279,7 +280,7 @@ Key areas:
 - `src/components/editors/` contains note, markdown, checklist, list, numbered list, and card editors, including drag-handle item reordering.
 - `src/context/` contains auth, encryption, appearance/theme, toast, shortcuts, command palette, and page action providers.
 - `src/hooks/` contains data hooks for spaces, items, archive, recycle bin, global search, offline sync, drag reordering, and session timeout.
-- `src/lib/crypto/` contains AES-GCM encryption, PBKDF2 key derivation, vault setup, vault unlock, session storage, PIN recovery code, and encoding helpers.
+- `src/lib/crypto/` contains AES-GCM encryption, Argon2id and PBKDF2 key derivation, vault setup, vault unlock, non-extractable session key storage, PIN recovery code, and encoding helpers.
 - `src/lib/` contains Supabase client setup, data protection helpers, item type definitions, clipboard serialization, import/export, offline queue, rate limiting, audit logging, password policy, build info, and shared utilities.
 - `.github/` contains the CI workflow and Dependabot configuration; `docs/` contains audit and planning notes.
 - `schema.sql` contains tables, indexes, RLS policies, triggers, RPC functions, realtime setup, vault recovery and PIN lockout functions, the account-deletion email trigger, and the auth audit log.
@@ -318,8 +319,9 @@ Contributions are welcome, including bug fixes, features, docs, and translations
 - Fork the repository, create a feature branch, and open a pull request against `main`.
 - Keep PRs focused and include a short description of the change and why it is needed.
 - Run `npm run lint` before submitting.
+- Run `npm test` before submitting (Vitest unit tests for crypto, the markdown sanitizer, and rate limiting).
 - Run `npm run build` before submitting.
-- CI runs lint, build, and a dependency audit on every pull request, and Dependabot proposes weekly dependency updates. The Node version is pinned in `.nvmrc`.
+- CI runs lint, tests, build, and a dependency audit on every pull request, and Dependabot proposes weekly dependency updates. The Node version is pinned in `.nvmrc`.
 - For larger changes, schema changes, or security-relevant work, open an issue or reach out first so the approach can be discussed.
 
 For development questions, architecture discussions, feature requests, bug reports, or anything related to contributing code, contact **[dev@archespace.cc](mailto:dev@archespace.cc)**.
@@ -331,7 +333,7 @@ For development questions, architecture discussions, feature requests, bug repor
 - Hosted and deployed on Cloudflare.
 - Source hosted on GitHub.
 - Email delivery powered by Resend.
-- Created and maintained by the Arche Space project.
+- Crafted and maintained by the Arche Space project.
 
 ## License
 
