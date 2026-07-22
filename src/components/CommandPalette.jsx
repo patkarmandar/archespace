@@ -4,10 +4,15 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Home, Archive, Trash2, Search, Settings, Sparkles, Keyboard,
+  Plus, Home, Archive, Trash2, Search, Settings, Sparkles, Keyboard, Lock,
 } from 'lucide-react'
 import { useCommandPalette } from '../context/CommandPaletteCore'
 import { useTheme } from '../context/ThemeCore'
+import { useEncryption } from '../context/EncryptionCore'
+import { useToast } from '../context/ToastCore'
+
+const IS_MAC = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform || '')
+const LOCK_HINT = IS_MAC ? '⌘L' : 'Ctrl L'
 
 export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const { open, closePalette, extraCommands } = useCommandPalette()
@@ -16,6 +21,8 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
   const activeRef = useRef(null)
   const navigate = useNavigate()
   const { toggle } = useTheme()
+  const { lock, isUnlocked } = useEncryption()
+  const { toast } = useToast()
 
   const baseCommands = useMemo(() => [
     { id: 'new', label: 'New space', hint: 'N', icon: Plus, run: () => { closePalette(); onNewSpace?.() } },
@@ -31,7 +38,10 @@ export default function CommandPalette({ onNewSpace, onOpenSearch }) {
       icon: Sparkles,
       run: () => { toggle(); closePalette() },
     },
-  ], [closePalette, navigate, onNewSpace, onOpenSearch, toggle])
+    ...(isUnlocked
+      ? [{ id: 'lock', label: 'Lock vault', hint: LOCK_HINT, icon: Lock, run: () => { closePalette(); lock(); toast.info('Vault locked') } }]
+      : []),
+  ], [closePalette, navigate, onNewSpace, onOpenSearch, toggle, isUnlocked, lock, toast])
 
   const commands = useMemo(() => [...baseCommands, ...extraCommands], [baseCommands, extraCommands])
 

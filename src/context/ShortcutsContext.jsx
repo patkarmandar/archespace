@@ -58,6 +58,14 @@ export function ShortcutsProvider({ children }) {
           fn()
         }
       }
+
+      if (mod && e.key === 'l') {
+        const fn = handlersRef.current.get('lock')
+        if (fn) {
+          e.preventDefault()
+          fn()
+        }
+      }
     }
 
     window.addEventListener('keydown', onKeyDown)

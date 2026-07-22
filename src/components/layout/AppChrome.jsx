@@ -3,6 +3,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContextCore'
+import { useEncryption } from '../../context/EncryptionCore'
 import { useToast } from '../../context/ToastCore'
 import { useCommandPalette } from '../../context/CommandPaletteCore'
 import { useShortcut } from '../../context/ShortcutsCore'
@@ -14,6 +15,7 @@ import { usePageActions } from '../../context/PageActionsCore'
 
 export default function AppChrome() {
   const { user } = useAuth()
+  const { lock, isUnlocked } = useEncryption()
   const { toast } = useToast()
   const { openPalette } = useCommandPalette()
   const pageActions = usePageActions()
@@ -32,6 +34,7 @@ export default function AppChrome() {
   useShortcut('save', () => window.dispatchEvent(new CustomEvent('arche:flush-saves')), !!user)
   useShortcut('escape', () => pageActionsRef.current.onEscape?.(), !!user)
   useShortcut('shortcuts', () => setShowShortcuts(true), !!user)
+  useShortcut('lock', () => { lock(); toast.info('Vault locked') }, !!user && isUnlocked)
 
   // Let the command palette / header buttons open the shortcuts help too.
   useEffect(() => {

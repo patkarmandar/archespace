@@ -13,6 +13,7 @@ const SHORTCUTS = [
   { keys: [MOD, 'K'], label: 'Open the command palette' },
   { keys: ['/'],      label: 'Focus dashboard search' },
   { keys: ['N'],      label: 'Create a new space (on the dashboard)' },
+  { keys: [MOD, 'L'], label: 'Lock the vault' },
   { keys: [MOD, 'S'], label: 'Save all edited items on the page' },
   { keys: ['↑'],      label: 'Move the focused list row up' },
   { keys: ['↓'],      label: 'Move the focused list row down' },
@@ -47,7 +48,7 @@ export default function ShortcutsHelp({ onClose }) {
         ))}
       </ul>
       <p className="mt-4 text-xs text-text-muted leading-relaxed">
-        Most shortcuts are ignored while you're typing in a text field (except {MOD}+K and {MOD}+S).
+        Most shortcuts are ignored while you're typing in a text field (except {MOD}+K, {MOD}+L, and {MOD}+S).
       </p>
     </Modal>
   )
