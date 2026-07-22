@@ -4,8 +4,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContextCore'
-import { useTheme } from '../context/ThemeCore'
-import { Lock, Sparkles, Eye, EyeOff, UserPlus, Mail, ArrowLeft, Home } from 'lucide-react'
+import { Lock, Eye, EyeOff, UserPlus, Mail, ArrowLeft, Home } from 'lucide-react'
 import { MAX_LOGIN_ATTEMPTS, LOGIN_ATTEMPT_WINDOW_MS, LOGIN_COOLDOWN_MS } from '../lib/constants'
 import { MULTI_USER_ENABLED } from '../lib/appConfig'
 import { PASSWORD_RULES, validatePassword } from '../lib/passwordPolicy'
@@ -34,7 +33,6 @@ function getInitialInfo(searchParams) {
 
 export default function LoginPage() {
   const { signIn, signUp, requestPasswordReset } = useAuth()
-  const { theme, themes, toggle } = useTheme()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -61,7 +59,6 @@ export default function LoginPage() {
 
   const isSignUp = mode === 'signup' && MULTI_USER_ENABLED
   const isForgot = mode === 'forgot'
-  const currentThemeName = themes.find(option => option.id === theme)?.name || 'Theme'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -159,16 +156,6 @@ export default function LoginPage() {
         <Home size={16} />
         <span className="hidden sm:inline">Home</span>
       </Link>
-
-      <button
-        type="button"
-        onClick={toggle}
-        className="absolute top-4 right-4 p-2.5 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all z-50"
-        title={`Current theme: ${currentThemeName}`}
-        aria-label="Switch app theme"
-      >
-        <Sparkles size={16} />
-      </button>
 
       <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
         <div className="text-center mb-6 sm:mb-10">
