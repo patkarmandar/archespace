@@ -29,6 +29,7 @@
   --success:       #34d399;
   --danger:        #fb7185;
   --danger-hover:  #f43f5e;
+  --danger-muted:  rgba(251,113,133,0.16);
   --glass-bg:      rgba(15,17,23,0.88);
   --glass-border:  rgba(255,255,255,0.06);
 }
@@ -46,6 +47,7 @@
   --success:       #34d399;
   --danger:        #fb7185;
   --danger-hover:  #f43f5e;
+  --danger-muted:  rgba(251,113,133,0.16);
   --glass-bg:      rgba(15,17,23,0.88);
   --glass-border:  rgba(255,255,255,0.06);
 }
@@ -63,6 +65,7 @@
   --success:       #059669;
   --danger:        #dc2626;
   --danger-hover:  #b91c1c;
+  --danger-muted:  rgba(220,38,38,0.12);
   --glass-bg:      rgba(255,255,255,0.88);
   --glass-border:  rgba(18,23,19,0.08);
 }

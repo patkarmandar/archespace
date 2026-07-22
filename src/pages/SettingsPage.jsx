@@ -471,7 +471,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => setDeleteStep('warning')}
-                className="mt-4 w-full rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger transition-colors hover:bg-danger/15"
+                className="mt-4 w-full rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm font-semibold text-danger transition-colors hover:bg-danger-muted"
               >
                 Delete Account
               </button>

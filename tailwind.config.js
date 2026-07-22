@@ -30,6 +30,9 @@ export default {
         danger: {
           DEFAULT: 'var(--danger)',
           hover: 'var(--danger-hover)',
+          // Pre-mixed rgba (like accent-muted): Tailwind 3 cannot apply an
+          // /opacity modifier to a bare var() colour, so tints need a token.
+          muted: 'var(--danger-muted)',
         },
       },
     },
