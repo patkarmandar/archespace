@@ -4,7 +4,7 @@
 [![Version](https://img.shields.io/github/package-json/v/patkarmandar/archespace)](https://github.com/patkarmandar/archespace/blob/main/package.json)
 [![Live](https://img.shields.io/badge/live-archespace.cc-32d3aa)](https://archespace.cc)
 
-Arche Space is an open source, private, encrypted space for organizing ideas, plans, notes, checklists, and cards. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
+Arche Space is an open source, private, encrypted space to organize everything you are working on. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
 
 It follows a zero-knowledge architecture: your content is encrypted in the browser and the backend only ever stores ciphertext, so the server, its operators, and the developers never see your data in readable form.
 
