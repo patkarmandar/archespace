@@ -1,0 +1,87 @@
+name: Release
+
+# Builds the app reproducibly, publishes per-file SHA-256 checksums, and signs
+# them with cosign (keyless, via GitHub OIDC). This does NOT deploy the app -
+# Cloudflare still deploys on push to main. It only produces verifiable, signed
+# release artifacts so anyone can confirm what was built from a tag.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Version tag to release (e.g. v1.5.0)'
+        required: true
+
+permissions:
+  contents: write   # create the GitHub Release and upload assets
+  id-token: write   # cosign keyless signing (OIDC)
+
+concurrency:
+  group: release-${{ github.event.inputs.ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+
+      - run: npm ci
+
+      # Pin the build timestamp to the commit so the output is byte-reproducible.
+      - name: Set reproducible build date
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - run: npm run build
+
+      - name: Generate checksums and dist archive
+        run: |
+          ( cd dist && find . -type f -print0 | sort -z | xargs -0 sha256sum ) > checksums.txt
+          tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner \
+              -cf - -C dist . | gzip -n > "archespace-${TAG}-dist.tar.gz"
+          echo "Built ${TAG}:"
+          cat checksums.txt
+
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Sign checksums (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature checksums.txt.sig \
+            --output-certificate checksums.txt.pem \
+            checksums.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Signed, reproducible release."
+            echo
+            echo "**Artifacts**"
+            echo "- \`checksums.txt\` -SHA-256 of every built file in \`dist/\`"
+            echo "- \`checksums.txt.sig\` / \`checksums.txt.pem\` -cosign signature and certificate"
+            echo "- \`archespace-${TAG}-dist.tar.gz\` -the built \`dist/\`"
+            echo
+            echo "See the **Verifying a release** section of the README to check the"
+            echo "signature and reproduce the build byte-for-byte."
+          } > release-notes.md
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md \
+            checksums.txt \
+            checksums.txt.sig \
+            checksums.txt.pem \
+            "archespace-${TAG}-dist.tar.gz"

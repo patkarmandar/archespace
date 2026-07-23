@@ -20,6 +20,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Deployment notes](#deployment-notes)
+- [Release verification](#release-verification)
 - [Help and support](#help-and-support)
 - [Contributing and development](#contributing-and-development)
 - [Credits](#credits)
@@ -299,6 +300,40 @@ Key areas:
 - Enable `pg_net` and store `RESEND_API_KEY` in Supabase Vault before relying on the account-deletion email.
 - Rebuild after changing environment variables.
 - Hard refresh after deploying PWA changes if a browser keeps an old service worker cache.
+
+## Release verification
+
+Tagged releases are built reproducibly and published to GitHub Releases with SHA-256 checksums signed by [cosign](https://github.com/sigstore/cosign) (keyless, via GitHub OIDC). This is separate from deployment - Cloudflare still deploys on push to `main`; the signed artifacts let anyone confirm what a given tag builds to.
+
+Each release attaches:
+
+- `checksums.txt` - SHA-256 of every file in `dist/`.
+- `checksums.txt.sig` and `checksums.txt.pem` - the cosign signature and certificate.
+- `archespace-<tag>-dist.tar.gz` - the built `dist/`.
+
+**Verify the signature** (proves the checksums came from this repository's release workflow):
+
+```bash
+cosign verify-blob \
+  --certificate checksums.txt.pem \
+  --signature checksums.txt.sig \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/patkarmandar/archespace/.github/workflows/release.yml@' \
+  checksums.txt
+```
+
+**Reproduce the build** (the Node version is pinned in `.nvmrc`):
+
+```bash
+git checkout <tag>
+npm ci
+SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) npm run build
+( cd dist && find . -type f -print0 | sort -z | xargs -0 sha256sum ) | diff - checksums.txt
+```
+
+An empty diff means your build matches the signed release byte-for-byte. Builds are deterministic because the build timestamp is derived from the commit rather than the wall clock (see `resolveBuildTime` in `vite.config.js`).
+
+To cut a release, push a version tag (`git tag v1.2.3 && git push origin v1.2.3`) or run the **Release** workflow manually from the Actions tab.
 
 ## Help and support
 

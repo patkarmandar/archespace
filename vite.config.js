@@ -24,12 +24,25 @@ function resolveCommit() {
   }
 }
 
+// Build timestamp derived from the commit (or SOURCE_DATE_EPOCH), never the wall
+// clock, so a given commit always builds byte-for-byte identically (reproducible
+// builds). Falls back to empty in a non-git checkout.
+function resolveBuildTime() {
+  const epoch = process.env.SOURCE_DATE_EPOCH
+  if (epoch) return new Date(Number(epoch) * 1000).toISOString()
+  try {
+    return execSync('git log -1 --format=%cI').toString().trim()
+  } catch {
+    return ''
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_HASH__: JSON.stringify(resolveCommit()),
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_TIME__: JSON.stringify(resolveBuildTime()),
   },
   build: {
     rollupOptions: {
