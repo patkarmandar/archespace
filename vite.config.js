@@ -37,10 +37,25 @@ function resolveBuildTime() {
   }
 }
 
+// App version, sourced from the git tag so releases are driven purely by tagging
+// (no manual package.json bump). Prefers the CI tag, then the nearest tag in
+// history, and finally package.json for dev / no-tag builds. The leading "v" is
+// stripped (the UI adds its own).
+function resolveVersion() {
+  if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME) {
+    return process.env.GITHUB_REF_NAME.replace(/^v/, '')
+  }
+  try {
+    return execSync('git describe --tags --abbrev=0').toString().trim().replace(/^v/, '')
+  } catch {
+    return pkg.version
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(resolveVersion()),
     __BUILD_HASH__: JSON.stringify(resolveCommit()),
     __BUILD_TIME__: JSON.stringify(resolveBuildTime()),
   },

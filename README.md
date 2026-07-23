@@ -1,7 +1,7 @@
 # Arche Space
 
 [![CI](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml/badge.svg)](https://github.com/patkarmandar/archespace/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/github/package-json/v/patkarmandar/archespace)](https://github.com/patkarmandar/archespace/blob/main/package.json)
+[![Version](https://img.shields.io/github/v/release/patkarmandar/archespace)](https://github.com/patkarmandar/archespace/releases)
 [![Live](https://img.shields.io/badge/live-archespace.cc-32d3aa)](https://archespace.cc)
 
 Arche Space is an open source, private, encrypted space to organize everything you are working on. It is built as a self-hostable web app with Supabase sync and a client-side encrypted vault, ensuring that your saved content stays private even from the application owner and developers.
@@ -333,7 +333,14 @@ SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) npm run build
 
 An empty diff means your build matches the signed release byte-for-byte. Builds are deterministic because the build timestamp is derived from the commit rather than the wall clock (see `resolveBuildTime` in `vite.config.js`).
 
-To cut a release, push a version tag (`git tag v1.2.3 && git push origin v1.2.3`) or run the **Release** workflow manually from the Actions tab.
+The app version is derived from the git tag at build time (see `resolveVersion` in `vite.config.js`), so a release needs no manual version bump. To cut one, just tag and push:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+That triggers the workflow; the tag also becomes the version shown in Settings and the footer. You can also run the **Release** workflow manually from the Actions tab.
 
 ## Help and support
 
