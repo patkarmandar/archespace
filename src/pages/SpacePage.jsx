@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useBlocker, useLocation } from 'react-router-dom'
-import { ArrowLeft, Plus, CheckSquare } from 'lucide-react'
+import { ArrowLeft, Plus, CheckSquare, FileDown } from 'lucide-react'
 import { ITEM_TYPE_OPTIONS } from '../lib/itemTypes'
 import { useDragReorder } from '../hooks/useDragReorder'
 import { useSpaces } from '../hooks/useSpaces'
@@ -23,6 +23,7 @@ import { useSpaceItems } from '../hooks/useSpaceItems'
 import { useToast } from '../context/ToastCore'
 import { useRegisterPageActions } from '../context/PageActionsCore'
 import SpaceItem from '../components/SpaceItem'
+import { exportSpaceToPdf } from '../lib/pdfExport'
 import BulkSelectionBar from '../components/BulkSelectionBar'
 import { BULK_ICONS } from '../components/BulkSelectionIcons'
 import { Modal } from '../components/ui/UI'
@@ -294,6 +295,18 @@ export default function SpacePage() {
 
           {/* Header actions */}
           <div className="flex items-center gap-2 shrink-0 relative">
+            {items.length > 0 && !selectMode && (
+              <button
+                type="button"
+                onClick={() => exportSpaceToPdf(space, items)}
+                className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 rounded-xl border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated text-sm font-medium transition-all"
+                title="Export space as PDF"
+                aria-label="Export space as PDF"
+              >
+                <FileDown size={14} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            )}
             {items.length > 0 && (
               <button
                 type="button"

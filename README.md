@@ -40,6 +40,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 - Archive area for hiding content without deleting it.
 - Auto-save for edited items.
 - One-click copy of any item's content to the clipboard as clean plain text.
+- Export a whole space or a single item to PDF via the browser's print dialog.
 - Backup import/export to JSON.
 - Appearance settings with `System`, `Dark`, and `Light` theme modes.
 - Accent color settings with multiple color options.

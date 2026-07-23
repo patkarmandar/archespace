@@ -23,7 +23,7 @@ import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
   CheckSquare, Square, Maximize2, Minimize2, MoveRight,
-  ClipboardCopy, ClipboardCheck,
+  ClipboardCopy, ClipboardCheck, FileDown,
 } from 'lucide-react'
 import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, NumberedListEditor, CardListEditor } from './editors/ItemEditors'
 import { ActionMenu } from './ui/ActionMenu'
@@ -32,6 +32,7 @@ import { isOnline, enqueueOffline } from '../lib/offlineQueue'
 import { useEncryption } from '../context/EncryptionCore'
 import { encryptItem } from '../lib/dataProtection'
 import { itemToClipboardText } from '../lib/itemClipboard'
+import { exportItemToPdf } from '../lib/pdfExport'
 import { TYPE_LABELS, TYPE_STYLES } from '../lib/itemTypes'
 import { AUTO_SAVE_DELAY_MS } from '../lib/constants'
 
@@ -446,6 +447,16 @@ function SpaceItem({
                       { id: 'rename', label: 'Rename', icon: Pencil, onClick: () => setEditingTitle(true) },
                       onDuplicate && { id: 'duplicate', label: 'Duplicate', icon: Copy, onClick: () => onDuplicate(item) },
                       onMove && { id: 'move', label: 'Move', icon: MoveRight, onClick: () => onMove(item.id) },
+                      {
+                        id: 'export-pdf',
+                        label: 'Export PDF',
+                        icon: FileDown,
+                        onClick: () => exportItemToPdf({
+                          type: item.type,
+                          title: latestState.current.title,
+                          content: latestState.current.content,
+                        }),
+                      },
                       onArchive && { id: 'archive', label: 'Archive', icon: Archive, onClick: () => onArchive(item.id) },
                       { id: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', onClick: () => onDelete(item.id) },
                     ]}
