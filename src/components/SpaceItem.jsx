@@ -23,9 +23,10 @@ import {
   Trash2, ChevronDown, ChevronUp, Pencil, Check, X,
   Pin, PinOff, Save, AlertTriangle, GripVertical, Copy, Archive,
   CheckSquare, Square, Maximize2, Minimize2, MoveRight,
-  ClipboardCopy, ClipboardCheck, FileDown,
+  ClipboardCopy, ClipboardCheck, FileDown, Eye, EyeOff,
 } from 'lucide-react'
 import { TextboxEditor, MarkdownEditor, ChecklistEditor, MenuListEditor, NumberedListEditor, CardListEditor } from './editors/ItemEditors'
+import { SecretEditor } from './editors/SecretEditor'
 import { ActionMenu } from './ui/ActionMenu'
 import { getChecklistProgress } from '../lib/checklistProgress'
 import { isOnline, enqueueOffline } from '../lib/offlineQueue'
@@ -72,6 +73,8 @@ function SpaceItem({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [editorVersion, setEditorVersion] = useState(0)
   const [copied, setCopied] = useState(false)
+  const [secretState, setSecretState] = useState({ revealed: false, prompting: false })
+  const secretEditorRef = useRef(null)
 
   const latestState = useRef({ title: item.title, content: item.content })
   
@@ -405,6 +408,7 @@ function SpaceItem({
                 </>
               ) : (
                 <>
+                  {item.type !== 'secret' && (
                   <button
                     type="button"
                     onClick={handleCopy}
@@ -418,6 +422,30 @@ function SpaceItem({
                   >
                     {copied ? <ClipboardCheck size={14} /> : <ClipboardCopy size={14} />}
                   </button>
+                  )}
+                  {item.type === 'secret' && !!localContent?.cipher && (
+                    secretState.revealed ? (
+                      <button
+                        type="button"
+                        onClick={() => secretEditorRef.current?.hide()}
+                        className="p-2 rounded-lg border border-bg-border bg-bg-surface text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-all"
+                        aria-label="Hide secret"
+                        title="Hide secret"
+                      >
+                        <EyeOff size={14} />
+                      </button>
+                    ) : !secretState.prompting ? (
+                      <button
+                        type="button"
+                        onClick={() => secretEditorRef.current?.startReveal()}
+                        className="p-2 rounded-lg border border-accent/30 bg-accent-muted text-accent hover:bg-accent/20 transition-all"
+                        aria-label="Reveal secret"
+                        title="Reveal secret"
+                      >
+                        <Eye size={14} />
+                      </button>
+                    ) : null
+                  )}
                   <button
                     type="button"
                     onClick={handleCollapseClick}
@@ -510,6 +538,7 @@ function SpaceItem({
           {item.type === 'menu_list'     && <MenuListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'numbered_list' && <NumberedListEditor key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
           {item.type === 'card_list'     && <CardListEditor   key={`${item.id}:${editorVersion}`} content={localContent} onChange={handleContentChange} />}
+          {item.type === 'secret'        && <SecretEditor     key={`${item.id}:${editorVersion}`} ref={secretEditorRef} content={localContent} onChange={handleContentChange} onStateChange={setSecretState} />}
         </div>
       )}
     </div>

@@ -29,7 +29,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 ## Features
 
 - Multiple spaces for separating ideas, projects, plans, references, and personal systems.
-- Six item types for different kinds of content (see [Item types](#item-types)).
+- Multiple item types for different kinds of content, including PIN-protected secrets (see [Item types](#item-types)).
 - Pinning for important spaces and items.
 - Drag-and-drop reordering for spaces and page items, plus keyboard reordering inside lists.
 - Unified dashboard search across spaces, tags, and item content, with keyboard navigation and jump-to-item.
@@ -63,6 +63,7 @@ It follows a zero-knowledge architecture: your content is encrypted in the brows
 | Numbered List | Ordered list with automatic numbering that updates as rows are added, removed, or reordered. |
 | Checklist | Items with checkboxes and progress tracking. |
 | Cards | Title and description pairs for planning and grouping ideas. |
+| Secret | PIN-protected text: the title stays visible, but the content is hidden and requires re-entering your vault PIN to view or edit. |
 
 All list-style types support adding, removing, drag-and-drop reordering, and keyboard reordering with `Arrow Up` / `Arrow Down`.
 

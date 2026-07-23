@@ -63,6 +63,8 @@ function itemBodyHtml({ type, content }) {
       return checklistHtml(c.items)
     case 'card_list':
       return cardsHtml(c.items)
+    case 'secret':
+      return '<p class="empty">•••••• (hidden secret - reveal it in the app to view)</p>'
     default:
       return ''
   }

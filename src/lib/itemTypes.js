@@ -1,4 +1,4 @@
-import { AlignLeft, CheckSquare, List, ListOrdered, LayoutList, FileCode } from 'lucide-react'
+import { AlignLeft, CheckSquare, List, ListOrdered, LayoutList, FileCode, KeyRound } from 'lucide-react'
 
 /** Human-readable labels for each item type */
 export const TYPE_LABELS = {
@@ -8,6 +8,7 @@ export const TYPE_LABELS = {
   numbered_list: 'Numbered List',
   card_list: 'Cards',
   markdown: 'Markdown',
+  secret: 'Secret',
 }
 
 /** Colour scheme per item type (text, background, border) */
@@ -18,6 +19,7 @@ export const TYPE_STYLES = {
   numbered_list: { text: 'text-pink-400', bg: 'bg-pink-400/10', border: 'border-pink-400/20' },
   card_list: { text: 'text-amber-400', bg: 'bg-amber-400/10', border: 'border-amber-400/20' },
   markdown: { text: 'text-teal-400', bg: 'bg-teal-400/10', border: 'border-teal-400/20' },
+  secret: { text: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
 }
 
 /** Item type definitions for the "Add item" modal */
@@ -28,4 +30,5 @@ export const ITEM_TYPE_OPTIONS = [
   { type: 'numbered_list', label: 'Numbered List', desc: 'Ordered list with numbering', icon: ListOrdered, color: 'text-pink-400', bg: 'bg-pink-400/10' },
   { type: 'checkbox_list', label: 'Checklist', desc: 'Items with checkboxes', icon: CheckSquare, color: 'text-green-400', bg: 'bg-green-400/10' },
   { type: 'card_list', label: 'Cards', desc: 'Title + description pairs', icon: LayoutList, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+  { type: 'secret', label: 'Secret', desc: 'PIN-protected hidden text', icon: KeyRound, color: 'text-indigo-400', bg: 'bg-indigo-400/10' },
 ]

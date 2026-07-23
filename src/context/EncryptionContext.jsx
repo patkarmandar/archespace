@@ -123,6 +123,30 @@ export function EncryptionProvider({ children }) {
     }
   }, [userId, applyUnlockedKey])
 
+  // Verify a re-entered PIN without changing session state (used to reveal
+  // "secret" items). Shares the vault-unlock rate limiter + server lockout, so
+  // a wrong reveal PIN counts like a wrong unlock. Returns true if correct.
+  const verifyVaultPin = useCallback(async (pin) => {
+    if (!userId) return false
+    const rateKey = `vault-unlock:${userId}`
+    const status = getClientRateLimitStatus(rateKey, VAULT_PIN_MAX_ATTEMPTS)
+    if (status.blocked) {
+      throw new Error(`Too many failed PIN attempts. Try again in ${status.retryAfter} seconds.`)
+    }
+    try {
+      await unlockUserVault(userId, pin)
+      clearClientRateLimit(rateKey)
+      return true
+    } catch (err) {
+      const msg = err?.message || ''
+      if (msg.includes('Incorrect PIN') || msg.includes('cannot unlock')) {
+        recordClientRateLimitFailure(rateKey, VAULT_PIN_MAX_ATTEMPTS, VAULT_PIN_LOCKOUT_MS)
+        return false
+      }
+      throw err
+    }
+  }, [userId])
+
   const setup = useCallback(async (pin) => {
     if (!userId) throw new Error('Not signed in')
     setUnlocking(true)
@@ -295,6 +319,7 @@ export function EncryptionProvider({ children }) {
         unlockError,
         vaultStatus,
         unlock,
+        verifyVaultPin,
         setup,
         updatePin,
         setupRecoveryCode,

@@ -25,6 +25,7 @@ const defaultContent = {
   numbered_list: { items: [] },
   card_list: { items: [] },
   markdown: { text: '' },
+  secret: { secret: true, cipher: '' },
 }
 
 export function useSpaceItems(spaceId) {
